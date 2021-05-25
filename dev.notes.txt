@@ -1,0 +1,8 @@
+# GraphQL
+    + Rquire Python 3
+    + Bison parser.ypp: change `%require '3'` to `%require '3.0'`
+
+# Fastcgi++
+    + Define virtual destructor of the `Manager_base` class.
+
+# Need fix the GCC warnings at subprojects

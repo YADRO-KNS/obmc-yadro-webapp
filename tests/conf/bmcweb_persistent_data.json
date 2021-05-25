@@ -1,0 +1,1 @@
+{"auth_config":{"BasicAuth":true,"Cookie":true,"SessionToken":true,"TLS":false,"XToken":true},"revision":1,"sessions":[{"client_ip":"","csrf_token":"8Bu750MWYvQfn5exstuo","session_token":"0vAFsNVEBlCvTXnjI0YQ","unique_id":"FSWf4p00ec","username":"admin"}],"system_uuid":"9973d1cb-f97b-4258-a65e-26cc66e0b013","timeout":3600}
