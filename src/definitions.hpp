@@ -35,6 +35,14 @@ constexpr const char* fieldVersionBios = "BiosVersion";
 constexpr const char* fieldVersionBmc = "BmcVersion";
 } // namespace version
 
+namespace power
+{
+constexpr const char* entityHostPower = "HostPower";
+constexpr const char* fieldState = "PowerState";
+constexpr const char* fieldStatus = "Status";
+constexpr const char* metaStatus = "__meta__raw_dbus_status";
+} // namespace power
+
 
 namespace supplement_providers
 {
