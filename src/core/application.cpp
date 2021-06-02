@@ -18,6 +18,10 @@ void Application::configure()
 
     registerAllRoutes();
 
+    // TODO include IProtocol abstraction which incapsulate own specific
+    // handlers. Need to remove a static class/methods.
+    route::handlers::VisitorFactory::registerGqlVisitors();
+
     this->initEntityMap();
     this->initBrokers();
 

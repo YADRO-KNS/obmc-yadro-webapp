@@ -1,0 +1,964 @@
+{
+    "data": {
+        "query": {
+            "Server": {
+                "BiosVersion": "1.2-UPI-g380b03",
+                "BmcVersion": "v1.2rc810e0p1-unofficial",
+                "Chassis": {
+                    "Baseboard": {
+                        "Manufacturer": "YADRO",
+                        "Model": "VEGMAN Motherboard",
+                        "Name": "Baseboard",
+                        "PartNumber": "MBDX86780001B",
+                        "SerialNumber": "Y07QA02DTV00J",
+                        "Status": "OK",
+                        "Type": "Board"
+                    },
+                    "Manufacturer": "YADRO",
+                    "PartNumber": "KITBDY780102A",
+                    "Status": "OK",
+                    "Type": "Rack Mount"
+                },
+                "Manufacturer": "YADRO",
+                "Model": "VEGMAN S220 2U Server",
+                "Name": "VEGMAN S220 2U Server",
+                "PartNumber": "ASMVEG780102A",
+                "Sensors": [
+                    {
+                        "HighCritical": 13.5,
+                        "HighWarning": 13.1,
+                        "LowCritical": 10.61,
+                        "LowWarning": 10.95,
+                        "Name": "P12V AUX",
+                        "Reading": 11.5391,
+                        "Status": "OK",
+                        "Unit": "Volts"
+                    },
+                    {
+                        "HighCritical": 83.0,
+                        "HighWarning": 78.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "DIMM A1 CPU0",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 850.0,
+                        "HighWarning": 780.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "PSU2 Input Power",
+                        "Reading": 8.25,
+                        "Status": "OK",
+                        "Unit": "Watts"
+                    },
+                    {
+                        "HighCritical": 13.0,
+                        "HighWarning": 12.6,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "PSU1 Output Voltage",
+                        "Reading": 0.0,
+                        "Status": "OK",
+                        "Unit": "Volts"
+                    },
+                    {
+                        "HighCritical": "N/A",
+                        "HighWarning": "N/A",
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Average Power CPU0",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "Watts"
+                    },
+                    {
+                        "HighCritical": "N/A",
+                        "HighWarning": "N/A",
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "PSU1 Fan1 Speed",
+                        "Reading": 4648.0,
+                        "Status": "OK",
+                        "Unit": "RPM"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 12 CPU0",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 115.0,
+                        "HighWarning": 110.0,
+                        "LowCritical": 0.0,
+                        "LowWarning": 5.0,
+                        "Name": "VR 0 Temp",
+                        "Reading": 21.312,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": "N/A",
+                        "HighWarning": "N/A",
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "CPU0 Fan PWM",
+                        "Reading": 100.0,
+                        "Status": "OK",
+                        "Unit": "%"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 9 CPU1",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 1 CPU0",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 65.0,
+                        "HighWarning": 50.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "PSU2 Temp",
+                        "Reading": 22.0,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 13.5,
+                        "HighWarning": 13.1,
+                        "LowCritical": 10.6,
+                        "LowWarning": 10.9,
+                        "Name": "P12V MAIN",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "Volts"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 1 CPU1",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 1.35,
+                        "HighWarning": 1.3,
+                        "LowCritical": 1.1,
+                        "LowWarning": 1.15,
+                        "Name": "PVDQ DEF CPU0",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "Volts"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 16 CPU0",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 8 CPU1",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 1.8,
+                        "HighWarning": 1.4,
+                        "LowCritical": 0.9,
+                        "LowWarning": 1.0,
+                        "Name": "P1V2 LAN AUX",
+                        "Reading": 1.212,
+                        "Status": "OK",
+                        "Unit": "Volts"
+                    },
+                    {
+                        "HighCritical": 2.1,
+                        "HighWarning": 2.0,
+                        "LowCritical": 1.45,
+                        "LowWarning": 1.55,
+                        "Name": "PVCCIN CPU1",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "Volts"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 7 CPU1",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 2 CPU0",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": "N/A",
+                        "HighWarning": "N/A",
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "PSU2 Fan1 PWM",
+                        "Reading": 40.0,
+                        "Status": "OK",
+                        "Unit": "%"
+                    },
+                    {
+                        "HighCritical": 1250.0,
+                        "HighWarning": 1150.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "PSU1 Input Power",
+                        "Reading": 11.625,
+                        "Status": "OK",
+                        "Unit": "Watts"
+                    },
+                    {
+                        "HighCritical": "N/A",
+                        "HighWarning": "N/A",
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Average Power CPU1",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "Watts"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 3 CPU1",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 16 CPU1",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 103.0,
+                        "HighWarning": 98.0,
+                        "LowCritical": 0.0,
+                        "LowWarning": 5.0,
+                        "Name": "SSB Temp",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 800.0,
+                        "HighWarning": 750.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "PSU2 Output Power",
+                        "Reading": 0.0,
+                        "Status": "OK",
+                        "Unit": "Watts"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 15 CPU1",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 4 CPU0",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 6 CPU1",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 1.25,
+                        "HighWarning": 1.15,
+                        "LowCritical": 0.75,
+                        "LowWarning": 0.85,
+                        "Name": "PVCCIO CPU0",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "Volts"
+                    },
+                    {
+                        "HighCritical": "N/A",
+                        "HighWarning": "N/A",
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "CPU1 Fan PWM",
+                        "Reading": 100.0,
+                        "Status": "OK",
+                        "Unit": "%"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 11 CPU0",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Die CPU1",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": "N/A",
+                        "HighWarning": "N/A",
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Sys Fan3 PWM",
+                        "Reading": 100.0,
+                        "Status": "OK",
+                        "Unit": "%"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 5 CPU0",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 9 CPU0",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 14 CPU0",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 3 CPU0",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 1.2,
+                        "HighWarning": 1.1,
+                        "LowCritical": 0.7,
+                        "LowWarning": 0.8,
+                        "Name": "PVNN PCH AUX",
+                        "Reading": 0.996,
+                        "Status": "OK",
+                        "Unit": "Volts"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 2 CPU1",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": "N/A",
+                        "HighWarning": "N/A",
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "PSU2 Input Current",
+                        "Reading": 0.152,
+                        "Status": "OK",
+                        "Unit": "Amperes"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "DTS CPU0",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 4 CPU1",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 7 CPU0",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 83.0,
+                        "HighWarning": 78.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "DIMM A1 CPU1",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": "N/A",
+                        "HighWarning": "N/A",
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Sys Fan2 PWM",
+                        "Reading": 100.0,
+                        "Status": "OK",
+                        "Unit": "%"
+                    },
+                    {
+                        "HighCritical": 17000.0,
+                        "HighWarning": 15500.0,
+                        "LowCritical": 500.0,
+                        "LowWarning": "N/A",
+                        "Name": "Sys Fan3 Speed",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "RPM"
+                    },
+                    {
+                        "HighCritical": 115.0,
+                        "HighWarning": 110.0,
+                        "LowCritical": 0.0,
+                        "LowWarning": 5.0,
+                        "Name": "PCH Temp",
+                        "Reading": 33.25,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": "N/A",
+                        "HighWarning": "N/A",
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "PSU2 Fan1 Speed",
+                        "Reading": 7224.0,
+                        "Status": "OK",
+                        "Unit": "RPM"
+                    },
+                    {
+                        "HighCritical": 1.35,
+                        "HighWarning": 1.3,
+                        "LowCritical": 1.1,
+                        "LowWarning": 1.15,
+                        "Name": "PVDQ DEF CPU1",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "Volts"
+                    },
+                    {
+                        "HighCritical": 17000.0,
+                        "HighWarning": 15500.0,
+                        "LowCritical": 500.0,
+                        "LowWarning": "N/A",
+                        "Name": "Sys Fan5 Speed",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "RPM"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 11 CPU1",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": "N/A",
+                        "HighWarning": "N/A",
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Sys Fan1 PWM",
+                        "Reading": 100.0,
+                        "Status": "OK",
+                        "Unit": "%"
+                    },
+                    {
+                        "HighCritical": "N/A",
+                        "HighWarning": "N/A",
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "PSU1 Input Current",
+                        "Reading": 0.166,
+                        "Status": "OK",
+                        "Unit": "Amperes"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 8 CPU0",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 14 CPU1",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 125.0,
+                        "HighWarning": 105.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "PSU1 Output Current",
+                        "Reading": 0.0,
+                        "Status": "OK",
+                        "Unit": "Amperes"
+                    },
+                    {
+                        "HighCritical": 1200.0,
+                        "HighWarning": 1100.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "PSU1 Output Power",
+                        "Reading": 0.0,
+                        "Status": "OK",
+                        "Unit": "Watts"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Die CPU0",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 3.5,
+                        "HighWarning": 3.4,
+                        "LowCritical": 2.0,
+                        "LowWarning": 2.5,
+                        "Name": "P3VBAT",
+                        "Reading": 3.0093,
+                        "Status": "OK",
+                        "Unit": "Volts"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 10 CPU0",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 115.0,
+                        "HighWarning": 110.0,
+                        "LowCritical": 0.0,
+                        "LowWarning": 5.0,
+                        "Name": "BMC Temp",
+                        "Reading": 26.812,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 73.0,
+                        "HighWarning": 67.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "PSU2 Output Current",
+                        "Reading": 0.0,
+                        "Status": "OK",
+                        "Unit": "Amperes"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 13 CPU1",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 260.0,
+                        "HighWarning": 240.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": 90.0,
+                        "Name": "PSU1 Input Voltage",
+                        "Reading": 221.5,
+                        "Status": "OK",
+                        "Unit": "Volts"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 10 CPU1",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 1.14,
+                        "HighWarning": 1.1,
+                        "LowCritical": 0.95,
+                        "LowWarning": 1.0,
+                        "Name": "P1V05 PCH AUX",
+                        "Reading": 1.047,
+                        "Status": "OK",
+                        "Unit": "Volts"
+                    },
+                    {
+                        "HighCritical": 115.0,
+                        "HighWarning": 110.0,
+                        "LowCritical": 0.0,
+                        "LowWarning": 5.0,
+                        "Name": "VR 1 Temp",
+                        "Reading": 21.812,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 1.35,
+                        "HighWarning": 1.3,
+                        "LowCritical": 1.1,
+                        "LowWarning": 1.15,
+                        "Name": "PVDQ ABC CPU0",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "Volts"
+                    },
+                    {
+                        "HighCritical": 260.0,
+                        "HighWarning": 240.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": 90.0,
+                        "Name": "PSU2 Input Voltage",
+                        "Reading": 219.25,
+                        "Status": "OK",
+                        "Unit": "Volts"
+                    },
+                    {
+                        "HighCritical": 17000.0,
+                        "HighWarning": 15500.0,
+                        "LowCritical": 500.0,
+                        "LowWarning": "N/A",
+                        "Name": "Sys Fan1 Speed",
+                        "Reading": 16000.0,
+                        "Status": "Warning",
+                        "Unit": "RPM"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 12 CPU1",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 10000.0,
+                        "HighWarning": 9000.0,
+                        "LowCritical": 500.0,
+                        "LowWarning": "N/A",
+                        "Name": "CPU1 Fan Speed",
+                        "Reading": null,
+                        "Status": "Critical",
+                        "Unit": "RPM"
+                    },
+                    {
+                        "HighCritical": 10000.0,
+                        "HighWarning": 9000.0,
+                        "LowCritical": 500.0,
+                        "LowWarning": "N/A",
+                        "Name": "CPU0 Fan Speed",
+                        "Reading": null,
+                        "Status": "Critical",
+                        "Unit": "RPM"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 13 CPU0",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 17000.0,
+                        "HighWarning": 15500.0,
+                        "LowCritical": 500.0,
+                        "LowWarning": "N/A",
+                        "Name": "Sys Fan2 Speed",
+                        "Reading": 300.0,
+                        "Status": "Critical",
+                        "Unit": "RPM"
+                    },
+                    {
+                        "HighCritical": "N/A",
+                        "HighWarning": "N/A",
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Sys Fan5 PWM",
+                        "Reading": 100.0,
+                        "Status": "OK",
+                        "Unit": "%"
+                    },
+                    {
+                        "HighCritical": 3.65,
+                        "HighWarning": 3.5,
+                        "LowCritical": 2.97,
+                        "LowWarning": 3.1,
+                        "Name": "P3V3",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "Volts"
+                    },
+                    {
+                        "HighCritical": "N/A",
+                        "HighWarning": "N/A",
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Sys Fan4 PWM",
+                        "Reading": 100.0,
+                        "Status": "OK",
+                        "Unit": "%"
+                    },
+                    {
+                        "HighCritical": "N/A",
+                        "HighWarning": "N/A",
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "PSU1 Fan1 PWM",
+                        "Reading": 40.0,
+                        "Status": "OK",
+                        "Unit": "%"
+                    },
+                    {
+                        "HighCritical": 2.1,
+                        "HighWarning": 2.0,
+                        "LowCritical": 1.45,
+                        "LowWarning": 1.55,
+                        "Name": "PVCCIN CPU0",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "Volts"
+                    },
+                    {
+                        "HighCritical": 13.0,
+                        "HighWarning": 12.6,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "PSU2 Output Voltage",
+                        "Reading": 0.0,
+                        "Status": "OK",
+                        "Unit": "Volts"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 15 CPU0",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 1.25,
+                        "HighWarning": 1.15,
+                        "LowCritical": 0.75,
+                        "LowWarning": 0.85,
+                        "Name": "PVCCIO CPU1",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "Volts"
+                    },
+                    {
+                        "HighCritical": 60.0,
+                        "HighWarning": 50.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "PSU1 Temp",
+                        "Reading": 20.75,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 17000.0,
+                        "HighWarning": 15500.0,
+                        "LowCritical": 500.0,
+                        "LowWarning": "N/A",
+                        "Name": "Sys Fan4 Speed",
+                        "Reading": 5300.0,
+                        "Status": "OK",
+                        "Unit": "RPM"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 6 CPU0",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 1.96,
+                        "HighWarning": 1.9,
+                        "LowCritical": 1.65,
+                        "LowWarning": 1.7,
+                        "Name": "P1V8 PCH",
+                        "Reading": 1.7988,
+                        "Status": "OK",
+                        "Unit": "Volts"
+                    },
+                    {
+                        "HighCritical": 1.35,
+                        "HighWarning": 1.3,
+                        "LowCritical": 1.1,
+                        "LowWarning": 1.15,
+                        "Name": "PVDQ ABC CPU1",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "Volts"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "Core 5 CPU1",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    },
+                    {
+                        "HighCritical": 100.0,
+                        "HighWarning": 85.0,
+                        "LowCritical": "N/A",
+                        "LowWarning": "N/A",
+                        "Name": "DTS CPU1",
+                        "Reading": null,
+                        "Status": "OK",
+                        "Unit": "°C"
+                    }
+                ],
+                "SerialNumber": "DARTAGNAN",
+                "Status": "Critical",
+                "Type": "Chassis"
+            }
+        }
+    }
+}
