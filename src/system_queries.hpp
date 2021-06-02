@@ -407,6 +407,224 @@ class Chassis final : public dbus::FindObjectDBusQuery
     }
 };
 
+
+class Sensors final : public dbus::FindObjectDBusQuery
+{
+    static constexpr const char* sensorThresholdWarningInterface =
+        "xyz.openbmc_project.Sensor.Threshold.Warning";
+    static constexpr const char* sensorThresholdCriticalInterface =
+        "xyz.openbmc_project.Sensor.Threshold.Critical";
+    static constexpr const char* sensorValueInterface =
+        "xyz.openbmc_project.Sensor.Value";
+    static constexpr const char* sensorAvailabilityInterface =
+        "xyz.openbmc_project.State.Decorator.Availability";
+    static constexpr const char* sensorOperationalStatusInterface =
+        "xyz.openbmc_project.State.Decorator.OperationalStatus";
+
+
+    static constexpr const char* namePropertyCriticalLow = "CriticalLow";
+    static constexpr const char* namePropertyCriticalHigh = "CriticalHigh";
+    static constexpr const char* namePropertyWarningLow = "WarningLow";
+    static constexpr const char* namePropertyWarningHigh = "WarningHigh";
+    static constexpr const char* namePropertyValue = "Value";
+    static constexpr const char* namePropertyUnit = "Unit";
+
+    static constexpr const char* defaultUnitLabel = "Unit";
+
+    static constexpr const char* nameAvailable = "Available";
+    static constexpr const char* nameFunctional = "Functional";
+
+    static const std::map<std::string, std::string> sensorUnitsMap;
+
+  public:
+    Sensors() : dbus::FindObjectDBusQuery()
+    {}
+    ~Sensors() override = default;
+
+    const dbus::DBusPropertyEndpointMap& getSearchPropertiesMap() const override
+    {
+        static const dbus::DBusPropertyEndpointMap dictionary{
+            {
+                sensorValueInterface,
+                {
+                    {
+                        namePropertyValue,
+                        app::entity::obmc::definitions::sensors::fieldValue,
+                    },
+                    {
+                        namePropertyUnit,
+                        app::entity::obmc::definitions::sensors::fieldUnit,
+                    },
+                },
+            },
+            {
+                sensorThresholdWarningInterface,
+                {
+                    {
+                        namePropertyWarningLow,
+                        app::entity::obmc::definitions::sensors::
+                            fieldLowWarning,
+                    },
+                    {
+                        namePropertyWarningHigh,
+                        app::entity::obmc::definitions::sensors::
+                            fieldHighWarning,
+                    },
+                },
+            },
+            {
+                sensorThresholdCriticalInterface,
+                {
+                    {
+                        namePropertyCriticalHigh,
+                        app::entity::obmc::definitions::sensors::
+                            fieldHightCritical,
+                    },
+                    {
+                        namePropertyCriticalLow,
+                        app::entity::obmc::definitions::sensors::
+                            fieldLowCritical,
+                    },
+                },
+            },
+            {
+                sensorAvailabilityInterface,
+                {{
+                    nameAvailable,
+                    app::entity::obmc::definitions::sensors::fieldAvailable,
+                }},
+            },
+            {
+                sensorOperationalStatusInterface,
+                {
+                    {
+                        nameFunctional,
+                        app::entity::obmc::definitions::sensors::
+                            fieldFunctional,
+                    },
+                },
+            },
+        };
+
+        return dictionary;
+    }
+
+    static void linkStatus(const IEntity::InstancePtr& Supplementer,
+                           const IEntity::InstancePtr& target)
+    {
+        using namespace app::entity::obmc;
+        using namespace definitions::supplement_providers;
+        using namespace status;
+
+        try
+        {
+            auto& targetObjectPath =
+                target->getField(metaObjectPath)->getStringValue();
+            auto& causer =
+                Supplementer->getField(fieldObjectCauthPath)->getStringValue();
+
+            auto candidate =
+                Supplementer->getField(fieldStatus)->getStringValue();
+            auto current = target->getField(fieldStatus)->getStringValue();
+
+            if (targetObjectPath != causer)
+            {
+                return;
+            }
+
+            BMC_LOG_DEBUG << "Supplementer object=" << targetObjectPath
+                      << " field Status=" << candidate
+                      << ". Current Value=" << current;
+
+            target->getField(status::fieldStatus)
+                ->setValue(Status::getHigherStatus(current, candidate));
+        }
+        catch (std::bad_variant_access& ex)
+        {
+            BMC_LOG_ERROR << "Can't supplement the 'Status' field of 'Sensor' "
+                         "Entity. Reason: "
+                      << ex.what();
+        }
+    }
+
+    void supplementByStaticFields(DBusInstancePtr& instance) const override
+    {
+        this->setSensorName(instance);
+    }
+
+    const DefaultFieldsValueDict& getDefaultFieldsValue() const
+    {
+        using namespace app::entity::obmc::definitions::supplement_providers;
+        static const DefaultFieldsValueDict defaultStatusOk{
+            {status::fieldStatus, std::string(Status::statusOK)},
+        };
+        return defaultStatusOk;
+    }
+
+  protected:
+    const DBusObjectEndpoint& getQueryCriteria() const override
+    {
+        static const DBusObjectEndpoint criteria{
+            "/xyz/openbmc_project/sensors",
+            {
+                sensorValueInterface,
+            },
+            noDepth,
+            std::nullopt,
+        };
+
+        return criteria;
+    }
+
+    void setSensorName(DBusInstancePtr& instance) const
+    {
+        auto& objectPath = instance->getObjectPath();
+        instance->supplementOrUpdate(
+            app::entity::obmc::definitions::sensors::fieldName,
+            app::helpers::utils::getNameFromLastSegmentObjectPath(objectPath));
+    }
+
+    static const DbusVariantType formatSensorUnit(const PropertyName&,
+                                                  const DbusVariantType& value,
+                                                  DBusInstancePtr)
+    {
+        auto formattedValue = std::visit(
+            [](auto&& chassisType) -> const DbusVariantType {
+                using TChassisType = std::decay_t<decltype(chassisType)>;
+
+                if constexpr (std::is_same_v<TChassisType, std::string>)
+                {
+                    auto findTypeIt = sensorUnitsMap.find(chassisType);
+                    if (findTypeIt == sensorUnitsMap.end())
+                    {
+                        return DbusVariantType(std::string(defaultUnitLabel));
+                    }
+
+                    return DbusVariantType(findTypeIt->second);
+                }
+
+                throw std::invalid_argument(
+                    "Invalid value type of Sensor Unit property");
+            },
+            value);
+        return formattedValue;
+    }
+
+    const FieldsFormattingMap& getFormatters() const override
+    {
+        static const FieldsFormattingMap formatters{
+            {
+                namePropertyUnit,
+                {
+                    Sensors::formatSensorUnit,
+                },
+            },
+        };
+
+        return formatters;
+    }
+};
+
 } // namespace obmc
 } // namespace query
 } // namespace app

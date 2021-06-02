@@ -15,6 +15,7 @@ namespace definitions
 
 constexpr const char* entityChassis = "Chassis";
 constexpr const char* entityServer = "Server";
+constexpr const char* entitySensors = "Sensors";
 constexpr const char* fieldName = "Name";
 constexpr const char* fieldType = "Type";
 constexpr const char* fieldModel = "Model";
@@ -28,6 +29,21 @@ constexpr const char* metaFieldPrefix = "__meta_";
 constexpr const char* metaObjectPath = "__meta_field__object_path";
 constexpr const char* metaObjectService = "__meta_field__object_service";
 
+
+namespace sensors
+{
+constexpr const char* fieldName = "Name";
+constexpr const char* fieldValue = "Reading";
+constexpr const char* fieldUnit = "Unit";
+constexpr const char* fieldLowCritical = "LowCritical";
+constexpr const char* fieldLowWarning = "LowWarning";
+constexpr const char* fieldHighWarning = "HighWarning";
+constexpr const char* fieldHightCritical = "HighCritical";
+
+constexpr const char* fieldAvailable = "Available";
+constexpr const char* fieldFunctional = "Functional";
+
+} // namespace sensors
 
 namespace version
 {
