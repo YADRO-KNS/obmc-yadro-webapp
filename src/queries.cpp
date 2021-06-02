@@ -109,6 +109,16 @@ void Application::initEntityMap()
         ->addObject<Chassis>()
         .complete();
 
+    /* Define HOST POWER entity */
+    entityManager.buildEntity(definitions::power::entityHostPower)
+        ->addMembers({
+            definitions::power::fieldState,
+            definitions::power::fieldStatus,
+            definitions::power::metaStatus,
+        })
+        .addQuery<dbus::DBusQueryBuilder>(dbusBrokerManager)
+        ->addObject<HostPower>()
+        .complete();
 }
 
 } // namespace core
