@@ -17,6 +17,7 @@ constexpr const char* entityChassis = "Chassis";
 constexpr const char* entityServer = "Server";
 constexpr const char* entitySensors = "Sensors";
 constexpr const char* entityBaseboard = "Baseboard";
+constexpr const char* entityNetwork = "Network";
 constexpr const char* fieldName = "Name";
 constexpr const char* fieldType = "Type";
 constexpr const char* fieldModel = "Model";
@@ -61,6 +62,61 @@ constexpr const char* fieldStatus = "Status";
 constexpr const char* metaStatus = "__meta__raw_dbus_status";
 } // namespace power
 
+namespace network
+{
+
+namespace config
+{
+
+constexpr const char* entityNetConf = "NetworkConfig";
+constexpr const char* entityDHCPConf = "NetworkDHCPConfig";
+
+static constexpr const char* fieldHostName = "HostName";
+static constexpr const char* fieldDefaultIPv4Gateway = "DefaultIPv4Gateway";
+static constexpr const char* fieldDefaultIPv6Gateway = "DefaultIPv6Gateway";
+
+static constexpr const char* fieldDNSEnabled = "DNSEnabled";
+static constexpr const char* fieldHostNameEnabled = "HostNameEnabled";
+static constexpr const char* fieldNTPEnabled = "NTPEnabled";
+static constexpr const char* fieldSendHostNameEnabled = "SendHostNameEnabled";
+
+} // namespace config
+
+namespace ip
+{
+
+constexpr const char* entityIpIface = "IP";
+
+static constexpr const char* fieldAddress = "Address";
+static constexpr const char* fieldGateway = "Gateway";
+static constexpr const char* fieldOrigin = "Origin";
+static constexpr const char* fieldMask = "SubnetMask";
+static constexpr const char* fieldType = "Type";
+
+}
+
+namespace ethernet
+{
+constexpr const char* entityEthIface = "Ethernet";
+
+static constexpr const char* fieldAutoNeg = "AutoNeg";
+static constexpr const char* fieldDHCPEnabled = "DHCPEnabled";
+static constexpr const char* fieldDomainName = "DomainName";
+static constexpr const char* fieldIPv6AcceptRA = "IPv6AcceptRA";
+static constexpr const char* fieldInterfaceName = "InterfaceName";
+static constexpr const char* fieldLinkLocalAutoConf =
+    "LinkLocalAutoConf";
+static constexpr const char* fieldLinkUp = "LinkUp";
+static constexpr const char* fieldNICEnabled = "NICEnabled";
+static constexpr const char* fieldNTPServers = "NTPServers";
+static constexpr const char* fieldNameservers = "Nameservers";
+static constexpr const char* fieldSpeed = "Speed";
+static constexpr const char* fieldStaticNameServers =
+    "StaticNameServers";
+static constexpr const char* fieldMACAddress = "MACAddress";
+} // namespace ethernet
+
+} // namespace network
 
 namespace supplement_providers
 {
