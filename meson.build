@@ -251,6 +251,8 @@ srcfiles_obmc_webapp = [
   'src/core/entity/dbus_query.cpp',
   # brokers
   'src/core/broker/dbus_broker.cpp',
+  # target entities
+  'src/system_queries.cpp',
 ]
 
 srcfiles_unittest = [

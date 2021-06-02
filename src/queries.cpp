@@ -96,6 +96,19 @@ void Application::initEntityMap()
         .addQuery<dbus::DBusQueryBuilder>(dbusBrokerManager)
         ->addObject<Server>()
         .complete();
+
+    /* Define CHASSIS entity */
+    entityManager.buildEntity(definitions::entityChassis)
+        ->addMembers({
+            definitions::fieldType,
+            definitions::fieldPartNumber,
+            definitions::fieldManufacturer,
+        })
+        .linkSupplementProvider(assetTag::providerAssetTag)
+        .addQuery<dbus::DBusQueryBuilder>(dbusBrokerManager)
+        ->addObject<Chassis>()
+        .complete();
+
 }
 
 } // namespace core
