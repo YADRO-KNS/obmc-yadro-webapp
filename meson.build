@@ -196,6 +196,33 @@ if not fastcgipp.found()
 endif
 obmc_webapp_dependencies += fastcgipp
 
+graphqlparser = cxx.find_library('graphqlparser', required : false)
+if not graphqlparser.found()
+  graphqlparser_cmake_opt = cmake.subproject_options()
+  graphqlparser_cmake_opt.append_compile_args('cpp', '-Wno-error=unused-parameter')
+  graphqlparser = cmake.subproject('graphqlparser', options: graphqlparser_cmake_opt, required: true)
+  graphqlparser = graphqlparser.dependency('graphqlparser')
+  graphqlparser_inc = declare_dependency(
+    include_directories: ['subprojects', 'subprojects/graphqlparser']
+  )
+  obmc_webapp_dependencies += [graphqlparser_inc]
+endif
+obmc_webapp_dependencies += [graphqlparser]
+obmc_webapp_dependencies += [atomic, openssl, systemd, zlib, threads]
+
+if cxx.has_header('nlohmann/json.hpp')
+    nlohmann_json = declare_dependency()
+else
+    subproject('nlohmann', required: false)
+    nlohmann_json = declare_dependency(
+        include_directories: [
+            'subprojects/nlohmann/single_include',
+            'subprojects/nlohmann/single_include/nlohmann',
+        ]
+    )
+endif
+obmc_webapp_dependencies += nlohmann_json
+
 if get_option('tests').enabled()
   gtest = dependency('gtest', main: true,disabler: true, required : false)
   gmock = dependency('gmock', required : false)
@@ -217,6 +244,8 @@ srcfiles_obmc_webapp = [
   'src/core/router.cpp',
   'src/routes.cpp',
   'src/queries.cpp',
+  # protocol handlers
+  'src/core/route/handlers/graphql_handler.cpp',
   # entities
   'src/core/entity/entity.cpp',
   'src/core/entity/dbus_query.cpp',

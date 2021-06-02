@@ -1,0 +1,39 @@
+query {
+    Server {
+         Name
+         Status
+         Model
+         PartNumber
+         SerialNumber
+         Manufacturer
+         BmcVersion
+         BiosVersion
+         Type
+         Chassis {
+             Baseboard {
+                 Name
+                 SerialNumber
+                 Model
+                 PartNumber
+                 SerialNumber
+                 Manufacturer
+                 Type
+                 Status
+             }
+             Status
+             Manufacturer
+             Type
+             PartNumber
+         }
+         Sensors {
+             Name
+             Unit
+             LowCritical
+             LowWarning
+             Reading
+             HighWarning
+             HighCritical
+             Status
+        }
+    }
+}
