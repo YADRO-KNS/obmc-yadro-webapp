@@ -407,6 +407,101 @@ class Chassis final : public dbus::FindObjectDBusQuery
     }
 };
 
+class Baseboard final : public dbus::FindObjectDBusQuery
+{
+    static constexpr const char* boardInterface =
+        "xyz.openbmc_project.Inventory.Item.Board";
+    static constexpr const char* namePropertyName = "Name";
+    static constexpr const char* namePropertyType = "Type";
+
+  public:
+    Baseboard() : dbus::FindObjectDBusQuery()
+    {}
+    ~Baseboard() override = default;
+
+    const dbus::DBusPropertyEndpointMap& getSearchPropertiesMap() const override
+    {
+        static const dbus::DBusPropertyEndpointMap dictionary{
+            {
+                boardInterface,
+                {
+                    {
+                        namePropertyName,
+                        app::entity::obmc::definitions::fieldName,
+                    },
+                    {
+                        namePropertyType,
+                        app::entity::obmc::definitions::fieldType,
+                    },
+                },
+            },
+            {
+                general::assets::assetInterface,
+                {
+                    {
+                        general::assets::propertyManufacturer,
+                        app::entity::obmc::definitions::fieldManufacturer,
+                    },
+                    {
+                        general::assets::propertyModel,
+                        app::entity::obmc::definitions::fieldModel,
+                    },
+                    {
+                        general::assets::propertySerialNumber,
+                        app::entity::obmc::definitions::fieldSerialNumber,
+                    },
+                    {
+                        general::assets::propertyPartNumber,
+                        app::entity::obmc::definitions::fieldPartNumber,
+                    },
+                },
+            },
+        };
+
+        return dictionary;
+    }
+
+    static std::vector<MemberName>
+        relationsSensorsLinkRule(const IEntity::InstancePtr& supplementer,
+                                 const IEntity::InstancePtr&)
+    {
+        using namespace app::entity::obmc::definitions;
+        using namespace app::entity::obmc::definitions::supplement_providers;
+
+        std::visit(
+            [](auto&& relations) {
+                using TProperty = std::decay_t<decltype(relations)>;
+
+                if constexpr (std::is_same_v<std::string, TProperty>)
+                {
+                    for (auto& relation : relations)
+                    {
+                        BMC_LOG_DEBUG << "Relation: " << relation;
+                    }
+                }
+            },
+            supplementer->getField(relations::fieldEndpoint)->getValue());
+
+        return {
+            metaRelation,
+        };
+    }
+
+  protected:
+    const DBusObjectEndpoint& getQueryCriteria() const override
+    {
+        static const DBusObjectEndpoint criteria{
+            "/xyz/openbmc_project/inventory/system/board/",
+            {
+                boardInterface,
+            },
+            nextOneDepth,
+            std::nullopt,
+        };
+
+        return criteria;
+    }
+};
 
 class Sensors final : public dbus::FindObjectDBusQuery
 {
