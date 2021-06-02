@@ -306,6 +306,107 @@ class Server final : public dbus::FindObjectDBusQuery
     }
 };
 
+class Chassis final : public dbus::FindObjectDBusQuery
+{
+    static constexpr const char* yadroInterface = "com.yadro.Platform";
+
+    static constexpr const char* namePropertyType = "ChassisType";
+    static constexpr const char* namePropertyPartNumber = "ChassisPartNumber";
+
+    static constexpr const char* chassisTypeOther = "Other";
+    static const std::map<std::string, std::string> chassisTypesNames;
+
+  public:
+    Chassis() : dbus::FindObjectDBusQuery()
+    {}
+    ~Chassis() = default;
+
+    const dbus::DBusPropertyEndpointMap& getSearchPropertiesMap() const override
+    {
+        static const dbus::DBusPropertyEndpointMap dictionary{
+            {
+                yadroInterface,
+                {
+                    {
+                        namePropertyType,
+                        app::entity::obmc::definitions::fieldType,
+                    },
+                    {
+                        namePropertyPartNumber,
+                        app::entity::obmc::definitions::fieldPartNumber,
+                    },
+                },
+            },
+            {
+                general::assets::assetInterface,
+                {
+                    {
+                        general::assets::propertyManufacturer,
+                        app::entity::obmc::definitions::fieldManufacturer,
+                    },
+                },
+            },
+        };
+
+        return dictionary;
+    }
+
+  protected:
+    const DBusObjectEndpoint& getQueryCriteria() const override
+    {
+        static const DBusObjectEndpoint criteria{
+            "/xyz/openbmc_project/inventory/system/board/",
+            {
+                yadroInterface,
+            },
+            nextOneDepth,
+            std::nullopt,
+        };
+
+        return criteria;
+    }
+
+    static const DbusVariantType formatChassisType(const PropertyName&,
+                                                   const DbusVariantType& value,
+                                                   DBusInstancePtr)
+    {
+        auto formattedValue = std::visit(
+            [](auto&& chassisType) -> const DbusVariantType {
+                using TChassisType = std::decay_t<decltype(chassisType)>;
+
+                if constexpr (std::is_same_v<TChassisType, std::string>)
+                {
+                    auto findTypeIt = chassisTypesNames.find(chassisType);
+                    if (findTypeIt == chassisTypesNames.end())
+                    {
+                        return DbusVariantType(std::string(chassisTypeOther));
+                    }
+
+                    return DbusVariantType(findTypeIt->second);
+                }
+
+                throw std::invalid_argument(
+                    "Invalid value type of ChassisType property");
+            },
+            value);
+        return formattedValue;
+    }
+
+    const FieldsFormattingMap& getFormatters() const override
+    {
+        static const FieldsFormattingMap formatters{
+            {
+                namePropertyType,
+                {
+                    Chassis::formatChassisType,
+                },
+            },
+        };
+
+        return formatters;
+    }
+};
+
 } // namespace obmc
 } // namespace query
 } // namespace app

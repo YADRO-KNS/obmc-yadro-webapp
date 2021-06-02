@@ -13,6 +13,7 @@ namespace obmc
 namespace definitions
 {
 
+constexpr const char* entityChassis = "Chassis";
 constexpr const char* entityServer = "Server";
 constexpr const char* fieldName = "Name";
 constexpr const char* fieldType = "Type";
