@@ -25,6 +25,17 @@ Router::Router(const RequestPtr& request) :
 
 const ResponseUni& Router::process()
 {
+    // Current session sharing architecture between BMCWEB and WEBAPP processes,
+    // in fact, works via filesystem synchronization. Hence, we need to re-read
+    // the config file for each new connection.
+    service::config::getConfig().readData();
+    if (!app::service::authorization::authenticate(getRequest(), getResponse()))
+    {
+        BMC_LOG_INFO << "Unauthorized access from "
+                 << getRequest()->environment().remoteAddress;
+        return getResponse();
+    }
+
     if (!this->handler) {
         auto builder = routerHandlers.find(getRequest()->environment().requestUri);
         if (builder == routerHandlers.end())
