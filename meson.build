@@ -219,17 +219,42 @@ srcfiles_obmc_webapp = [
   'src/queries.cpp',
   # entities
   'src/core/entity/entity.cpp',
+  'src/core/entity/dbus_query.cpp',
+  # brokers
+  'src/core/broker/dbus_broker.cpp',
 ]
 
 srcfiles_unittest = [
   'tests/http/headers_utest.cpp'
 ]
 
+# configure the dbus connection type
+dbus_connect_types = {
+  'remote': 'BMC_DBUS_CONNECT_REMOTE',
+  'system': 'BMC_DBUS_CONNECT_SYSTEM',
+}
+
+summary(
+  {
+    'dbus-connect-type' : get_option('dbus-connect-type')
+  },
+  section : 'Enabled Features'
+)
+
 # Gather the Configuration data
 conf_data = configuration_data()
 conf_data.set('MESON_INSTALL_PREFIX',get_option('prefix'))
 conf_data.set('HTTP_REQ_BODY_LIMIT_MB',get_option('http-body-limit'))
 conf_data.set('BMC_LOGGING_LEVEL',get_option('bmc-logging'))
+if get_option('dbus-connect-type') == 'remote'
+  conf_data.set('BMC_DBUS_REMOTE_HOST','"' + get_option('dbus-remote-host') + '"')
+  summary(
+  {
+    'dbus-remote-host' : get_option('dbus-remote-host')
+  },
+  section : 'Enabled Features'
+)
+endif
 
 if cxx.has_header('phosphor-logging/log.hpp')
   conf_data.set('LOG_ENGINE_PHOSPHOR', '')
