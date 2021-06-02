@@ -3,3 +3,5 @@ option('yocto-deps', type: 'feature', value: 'disabled', description : 'Use YOCT
 option ('tests', type : 'feature', value : 'enabled', description : 'Enable Unit tests for obmc-yadro-webapp')
 option('bmc-logging', type : 'combo', choices: ['EMERG','ALERT','CRIT','ERR','WARNING','NOTICE','INFO','DEBUG'], value : 'DEBUG', description : 'Set the log level')
 option('http-body-limit', type: 'integer', min : 0, max : 512, value : 30, description : 'Specifies the http request body length limit')
+option('dbus-connect-type', type: 'combo', choices: ['remote', 'system'], value: 'system', description: 'Set the DBus connection type.')
+option('dbus-remote-host', type: 'string', value: 'root@127.0.0.1', description: 'Set the hostname to connect to the remote DBus bus through SSH tunnel.')
