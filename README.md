@@ -1,7 +1,6 @@
-# OpenBMC webserver #
+# OpenBMC YADRO Web application #
 
-This is an alternative implementation of the OpenBMC web server, which does serve each public API.
-
+This is an alternative implementation for the OpenBMC API web server, which does serve each public API.
 
 ## Improvements ##
 + Separate the HTTP protocol and OpenBMC business logic via lighttpd and fastcgi-server applications.
@@ -11,17 +10,19 @@ This is an alternative implementation of the OpenBMC web server, which does serv
 
 ## Configuration
 
-obmc-web server is configured by setting `-D` flags that correspond to options in
-`obmc-webserver/meson_options.txt` and then compiling.  For example, `meson <builddir> -Dkvm=disabled ...`
-followed by `ninja` in build directory.
+Build-time configuration of `obmc-yadro-webapp` is possible with meson options:
+```
+meson -Dkvm=disabled
+```
+See obmc-webserver/meson_options.txt for the list of available configuration options
 The option names become C++ preprocessor symbols that control which code is compiled into the program.
 
-### Compile obmc-webserver with default options:
+### Compile obmc-yadro-webapp with default options:
 ```ascii
 meson builddir
 ninja -C builddir
 ```
-### Compile obmc-webserver with yocto defaults:
+### Compile obmc-yadro-webapp with yocto defaults:
 ```ascii
 meson builddir -Dbuildtype=minsize -Db_lto=true -Dtests=disabled
 ninja -C buildir

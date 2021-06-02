@@ -21,7 +21,6 @@ CID=$(docker create \
              --env HOME=/source/build/ \
              --volume ${SOURCE_DIR}:/source:Z \
              -p 18081:18081 \
-             -p 443:443 \
              ${DLCACHE_OPT} \
              --workdir ${SOURCE_DIR} \
              ${DOCKER_IMAGE} \
