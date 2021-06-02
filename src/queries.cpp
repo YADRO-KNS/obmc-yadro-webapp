@@ -140,6 +140,21 @@ void Application::initEntityMap()
         .addQuery<dbus::DBusQueryBuilder>(dbusBrokerManager)
         ->addObject<HostPower>()
         .complete();
+
+    /* Define BASEBOARD entity */
+    entityManager.buildEntity(definitions::entityBaseboard)
+        ->addMembers({
+            definitions::fieldName,
+            definitions::fieldType,
+            definitions::fieldManufacturer,
+            definitions::fieldModel,
+            definitions::fieldPartNumber,
+            definitions::fieldSerialNumber,
+        })
+        .addQuery<dbus::DBusQueryBuilder>(dbusBrokerManager)
+        ->addObject<Baseboard>()
+        .complete();
+
 }
 
 } // namespace core
