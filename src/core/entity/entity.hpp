@@ -249,6 +249,8 @@ class IEntity
     virtual const std::vector<RelationPtr>& getRelations() const = 0;
     virtual const RelationPtr getRelation(const EntityName&) const = 0;
 
+    virtual void fillEntity() = 0;
+
     virtual ~IEntity() = default;
 };
 
@@ -416,6 +418,17 @@ class Entity : public IEntity
     void addRelation(const RelationPtr) override;
     const std::vector<RelationPtr>& getRelations() const override;
     const RelationPtr getRelation(const EntityName&) const override;
+
+    /**
+     * @brief Fill the entity from the configured data source.
+     *
+     * The data might come from different places and in different ways.
+     * The end-entity class should configure the way of filling.
+     */
+    void fillEntity() override
+    {
+        // nothing to do in the base entity;
+    }
 };
 
 class EntitySupplementProvider :
@@ -507,10 +520,12 @@ class EntityManager final
      *
      * @param entityName - the entity name to retrieve the corresponding an
      * Entity Objects instances
+     * @param forceFillInstances - true - with correspoding filling process
+     *                             false - don't update instances.
      * @return const EntityPtr - Entity object which contains the target
      * instances
      */
-    const EntityPtr getEntity(const EntityName& entityName) const;
+    const EntityPtr getEntity(const EntityName& entityName, bool forceFillInstances = true) const;
 
     /**
      * @brief Get the Objects object

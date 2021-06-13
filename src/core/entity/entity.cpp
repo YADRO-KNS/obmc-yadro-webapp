@@ -248,6 +248,8 @@ const IEntity::RelationPtr
                       << relation->getDestinationTarget()->getName();
         if (relation->getDestinationTarget()->getName() == entityName)
         {
+            // force update instance before checking relations
+            relation->getDestinationTarget()->fillEntity();
             return relation;
         }
     }
@@ -320,7 +322,7 @@ EntityManager::EntityBuilder& EntityManager::EntityBuilder::addRelations(
     const IEntity::IRelation::RelationRulesList& ruleBuilders)
 {
     auto destinationEntity =
-        this->entityManager.getEntity(destinationEntityName);
+        this->entityManager.getEntity(destinationEntityName, false);
 
     auto relation =
         std::make_shared<Entity::Relation>(this->entity, destinationEntity);
@@ -367,12 +369,17 @@ void EntityManager::addEntity(EntityPtr entity)
     }
 }
 
-const EntityPtr EntityManager::getEntity(const std::string& entityName) const
+const EntityPtr EntityManager::getEntity(const std::string& entityName,
+                                         bool forceFillInstances) const
 {
     auto it = entityDictionary.find(entityName);
     if (it == entityDictionary.end())
     {
         throw EntityException("The Object <" + entityName + "> not found");
+    }
+    if (forceFillInstances)
+    {
+        it->second->fillEntity();
     }
     return it->second;
 }
