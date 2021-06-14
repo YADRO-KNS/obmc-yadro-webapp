@@ -417,12 +417,9 @@ const json GqlObjectBuild::getFragment(std::optional<std::size_t> parentInstance
             auto& instances = getEntity()->getInstances(conditions);
             if (instances.size() == 1)
             {
-                BMC_LOG_DEBUG << "GQL: Fill a singale instanced object";
-                if (std::to_string(instances.back()->getHash()) ==
-                    fragment.begin().key())
-                {
-                    result = fragment.back();
-                }
+                BMC_LOG_DEBUG << "GQL: Fill a single instanced object";
+                result =
+                    fragment.at(std::to_string(instances.back()->getHash()));
             }
             else if (instances.size() > 1)
             {
