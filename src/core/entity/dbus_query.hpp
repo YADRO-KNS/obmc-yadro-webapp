@@ -65,7 +65,7 @@ using EntityDBusQueryConstWeakPtr = std::weak_ptr<const EntityDBusQuery>;
 using EntityDBusQueryPtr = std::shared_ptr<EntityDBusQuery>;
 
 class DBusInstance final :
-    public IEntity::IInstance,
+    public Entity::StaticInstance,
     public std::enable_shared_from_this<DBusInstance>
 {
     using InstanceHash = std::size_t;
@@ -79,9 +79,6 @@ class DBusInstance final :
     std::vector<sdbusplus::bus::match::match> listeners;
 
   public:
-    using MemberInstancesMap =
-        std::map<entity::MemberName, IEntity::IEntityMember::InstancePtr>;
-
     DBusInstance(const DBusInstance&) = delete;
     DBusInstance& operator=(const DBusInstance&) = delete;
     DBusInstance(DBusInstance&&) = delete;
@@ -91,9 +88,9 @@ class DBusInstance final :
         const std::string& inServiceName, const std::string& inObjectPath,
         const DBusPropertyEndpointMap& targetPropertiesDict,
         const EntityDBusQueryConstWeakPtr& queryObject) noexcept :
-        serviceName(inServiceName),
-        objectPath(inObjectPath), targetProperties(targetPropertiesDict),
-        dbusQuery(queryObject)
+        Entity::StaticInstance(Entity::EntityMember::fieldValueNotAvailable),
+        serviceName(inServiceName), objectPath(inObjectPath),
+        targetProperties(targetPropertiesDict), dbusQuery(queryObject)
     {
         using namespace app::entity::obmc::definitions;
         try
@@ -160,13 +157,8 @@ class DBusInstance final :
 
     void initDefaultFieldsValue() override;
   protected:
-    virtual const IEntity::IEntityMember::InstancePtr& instanceNotFound() const;
-
     const DBusPropertyMemberDict
         getPropertyMemberDict(const InterfaceName&) const;
-
-  private:
-    MemberInstancesMap memberInstances;
 };
 
 class DBusMemberInstance final : public IEntity::IEntityMember::IInstance
@@ -265,7 +257,8 @@ class DBusQueryBuilder final
                               app::broker::DBusBrokerManager& dbusManager) :
         entityBuilder(entityBuilderPtr),
         entity(targetEntity), manager(dbusManager)
-    {}
+    {
+    }
 
     virtual ~DBusQueryBuilder() = default;
 
