@@ -137,6 +137,9 @@ class IEntity
     class IInstance
     {
       public:
+        using MemberInstancesMap =
+            std::map<entity::MemberName, IEntity::IEntityMember::InstancePtr>;
+
         virtual ~IInstance() = default;
         /**
          * @brief Get the Field of Entity Instance
@@ -234,6 +237,8 @@ class IEntity
         getMember(const std::string& memberName) const = 0;
 
     virtual const MemberMap& getMembers() const = 0;
+
+    virtual bool hasMember(const MemberName&) const = 0;
 
     virtual const InstancePtr getInstance(std::size_t) const = 0;
     virtual const std::vector<InstancePtr>
@@ -382,6 +387,56 @@ class Entity : public IEntity
         LinkWay getLinkWay() const override;
     };
 
+    class StaticInstance : public IInstance
+    {
+        const std::string identity;
+
+      public:
+        StaticInstance(const StaticInstance&) = delete;
+        StaticInstance& operator=(const StaticInstance&) = delete;
+        StaticInstance(StaticInstance&&) = delete;
+        StaticInstance& operator=(StaticInstance&&) = delete;
+
+        explicit StaticInstance(const std::string& identityFieldValue) noexcept
+            :
+            identity(identityFieldValue)
+        {}
+
+        virtual ~StaticInstance() = default;
+
+        const IEntity::IEntityMember::InstancePtr&
+            getField(const IEntity::EntityMemberPtr&) const override;
+
+        const IEntity::IEntityMember::InstancePtr&
+            getField(const MemberName&) const override;
+
+        const std::vector<MemberName> getMemberNames() const override;
+
+        void supplement(const MemberName&,
+                        const IEntity::IEntityMember::IInstance::FieldType&) override;
+        void supplementOrUpdate(
+            const MemberName&,
+            const IEntity::IEntityMember::IInstance::FieldType&) override;
+        void supplementOrUpdate(const InstancePtr&) override;
+
+        bool hasField(const MemberName&) const override;
+        bool checkCondition(const ConditionPtr) const override;
+
+        const std::map<std::size_t, InstancePtr> getComplex() const override;
+        bool isComplex() const override;
+        void initDefaultFieldsValue() override;
+        /**
+         * @brief Get the Hash of Entity Instance
+         *
+         * @return std::size_t hash value
+         */
+        std::size_t getHash() const override;
+
+      protected:
+        virtual const IEntity::IEntityMember::InstancePtr&
+            instanceNotFound() const;
+        MemberInstancesMap memberInstances;
+    };
 
     explicit Entity() = delete;
     Entity(const Entity&) = delete;
@@ -405,6 +460,12 @@ class Entity : public IEntity
     {
         return this->members;
     }
+
+    bool hasMember(const MemberName& memberName) const override
+    {
+        return (this->members.find(memberName) != this->members.end());
+    }
+
     const InstancePtr getInstance(std::size_t) const override;
     const std::vector<InstancePtr>
         getInstances(const ConditionsList& = ConditionsList()) const override;

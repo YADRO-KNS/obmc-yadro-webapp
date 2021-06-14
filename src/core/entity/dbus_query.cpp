@@ -321,37 +321,26 @@ bool DBusInstance::fillMembers(
 }
 
 const IEntity::IEntityMember::InstancePtr&
-    DBusInstance::getField(const IEntity::EntityMemberPtr& entityMember) const
+    DBusInstance::getField(const IEntity::EntityMemberPtr& member) const
 {
-    return getField(entityMember->getName());
+    return Entity::StaticInstance::getField(member);
 }
 
 const IEntity::IEntityMember::InstancePtr&
-    DBusInstance::getField(const MemberName& entityMemberName) const
+    DBusInstance::getField(const MemberName& memberName) const
 {
-    auto findInstanceIt = memberInstances.find(entityMemberName);
-    if (findInstanceIt == memberInstances.end())
-    {
-        return instanceNotFound();
-    }
-
-    return findInstanceIt->second;
+    return Entity::StaticInstance::getField(memberName);
 }
 
 const std::vector<MemberName> DBusInstance::getMemberNames() const
 {
-    std::vector<MemberName> result;
-    for (auto& [memberName, memberInstance] : memberInstances)
-    {
-        result.push_back(memberName);
-    }
-
-    return std::forward<const std::vector<MemberName>>(result);
+    return std::forward<const std::vector<MemberName>>(
+        Entity::StaticInstance::getMemberNames());
 }
 
 bool DBusInstance::hasField(const MemberName& memberName) const
 {
-    return memberInstances.find(memberName) != memberInstances.end();
+    return Entity::StaticInstance::hasField(memberName);
 }
 
 const DBusPropertiesMap
@@ -421,29 +410,16 @@ const InterfaceName& DBusInstance::getService() const
     return serviceName;
 }
 
-void DBusInstance::supplement(
-    const MemberName& member,
-    const IEntity::IEntityMember::IInstance::FieldType& value)
+void DBusInstance::supplement(const MemberName& memberName,
+        const IEntity::IEntityMember::IInstance::FieldType& value)
 {
-    auto memberInstance = std::make_shared<DBusMemberInstance>(value);
-    if (!memberInstances.emplace(member, std::move(memberInstance)).second)
-    {
-        throw std::logic_error("The requested member '" + member +
-                               "' already registried.");
-    }
+    Entity::StaticInstance::supplement(memberName, value);
 }
 
-void DBusInstance::supplementOrUpdate(
-    const MemberName& memberName,
-    const IEntity::IEntityMember::IInstance::FieldType& value)
+void DBusInstance::supplementOrUpdate(const MemberName& memberName,
+        const IEntity::IEntityMember::IInstance::FieldType& value)
 {
-    if (hasField(memberName))
-    {
-        getField(memberName)->setValue(value);
-        return;
-    }
-
-    supplement(memberName, value);
+    Entity::StaticInstance::supplementOrUpdate(memberName, value);
 }
 
 void DBusInstance::supplementOrUpdate(const IEntity::InstancePtr& destination)
@@ -466,8 +442,7 @@ void DBusInstance::supplementOrUpdate(const IEntity::InstancePtr& destination)
 
 bool DBusInstance::checkCondition(const IEntity::ConditionPtr condition) const
 {
-    BMC_LOG_DEBUG << "Checking condition";
-    return !condition || condition->check(*this);
+    return Entity::StaticInstance::checkCondition(condition);
 }
 
 std::size_t DBusInstance::getHash() const
@@ -502,16 +477,6 @@ void DBusInstance::captureComplexDBusProperty(const MemberName& memberName,
                                                 complexInstance);
     }
     return;
-}
-
-const IEntity::IEntityMember::InstancePtr&
-    DBusInstance::instanceNotFound() const
-{
-    static IEntity::IEntityMember::InstancePtr notAvailable =
-        std::make_shared<Entity::EntityMember::StaticInstance>(
-            std::string(Entity::EntityMember::fieldValueNotAvailable));
-
-    return notAvailable;
 }
 
 void DBusInstance::captureDBusAssociations(

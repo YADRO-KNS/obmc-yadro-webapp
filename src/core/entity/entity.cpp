@@ -65,6 +65,114 @@ IEntity::IRelation::LinkWay Entity::Relation::getLinkWay() const
     return linkWay;
 }
 
+const IEntity::IEntityMember::InstancePtr& Entity::StaticInstance::getField(
+    const IEntity::EntityMemberPtr& entityMember) const
+{
+    return getField(entityMember->getName());
+}
+
+const IEntity::IEntityMember::InstancePtr&
+    Entity::StaticInstance::getField(const MemberName& entityMemberName) const
+{
+    auto findInstanceIt = memberInstances.find(entityMemberName);
+    if (findInstanceIt == memberInstances.end())
+    {
+        return instanceNotFound();
+    }
+
+    return findInstanceIt->second;
+}
+
+const std::vector<MemberName> Entity::StaticInstance::getMemberNames() const
+{
+    std::vector<MemberName> result;
+    for (auto& [memberName, memberInstance] : memberInstances)
+    {
+        result.emplace_back(memberName);
+    }
+
+    return std::forward<const std::vector<MemberName>>(result);
+}
+
+void Entity::StaticInstance::supplement(
+    const MemberName& member,
+    const IEntity::IEntityMember::IInstance::FieldType& value)
+{
+    auto memberInstance = std::make_shared<EntityMember::StaticInstance>(value);
+    if (!memberInstances.emplace(member, std::move(memberInstance)).second)
+    {
+        throw std::logic_error("The requested member '" + member +
+                               "' is already registried.");
+    }
+}
+
+void Entity::StaticInstance::supplementOrUpdate(const MemberName& memberName,
+                                const IEntity::IEntityMember::IInstance::FieldType& value)
+{
+    if (hasField(memberName))
+    {
+        getField(memberName)->setValue(value);
+        return;
+    }
+
+    supplement(memberName, value);
+}
+
+void Entity::StaticInstance::supplementOrUpdate(
+    const IEntity::InstancePtr& destination)
+{
+    BMC_LOG_DEBUG << "count destination members: "
+                  << destination->getMemberNames().size();
+    for (auto& memberName : destination->getMemberNames())
+    {
+        this->supplementOrUpdate(memberName,
+                                 destination->getField(memberName)->getValue());
+    }
+}
+
+bool Entity::StaticInstance::hasField(const MemberName& memberName) const
+{
+    return memberInstances.find(memberName) != memberInstances.end();
+}
+
+bool Entity::StaticInstance::checkCondition(
+    const IEntity::ConditionPtr condition) const
+{
+    BMC_LOG_DEBUG << "Checking condition";
+    return !condition || condition->check(*this);
+}
+
+const std::map<std::size_t, IEntity::InstancePtr> Entity::StaticInstance::getComplex() const
+{
+    return std::map<std::size_t, IEntity::InstancePtr>();
+}
+
+bool Entity::StaticInstance::isComplex() const
+{
+    return false;
+}
+
+void Entity::StaticInstance::initDefaultFieldsValue()
+{
+    // nothing to do
+}
+
+std::size_t Entity::StaticInstance::getHash() const
+{
+    auto hash = std::hash<std::string>{}(identity);
+    return hash;
+}
+
+const IEntity::IEntityMember::InstancePtr&
+    Entity::StaticInstance::instanceNotFound() const
+{
+    static IEntity::IEntityMember::InstancePtr notAvailable =
+        std::make_shared<Entity::EntityMember::StaticInstance>(
+            std::string(Entity::EntityMember::fieldValueNotAvailable));
+
+    return notAvailable;
+}
+
 void Entity::Condition::addRule(
     const MemberName& destinationMember,
     const IEntity::IEntityMember::IInstance::FieldType& value,
