@@ -460,11 +460,8 @@ EntityManager::EntityBuilderPtr EntityManager::buildSupplementProvider(
 EntityManager::EntityBuilderPtr
     EntityManager::buildEntity(const std::string& name)
 {
-    auto entity = std::make_shared<Entity>(name);
-    this->addEntity(entity);
-    auto builder = std::make_shared<EntityManager::EntityBuilder>(
-        std::move(entity), supplementProviders, *this);
-    return std::forward<EntityManager::EntityBuilderPtr>(builder);
+    return std::forward<EntityManager::EntityBuilderPtr>(
+        buildEntity<Entity>(name));
 }
 
 void EntityManager::addEntity(EntityPtr entity)
