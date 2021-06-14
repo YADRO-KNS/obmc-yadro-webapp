@@ -13,6 +13,7 @@
 #include <status_provider.hpp>
 #include <system_queries.hpp>
 #include <version_provider.hpp>
+#include <pcie_provider.hpp>
 
 namespace app
 {
@@ -72,6 +73,42 @@ void Application::initEntityMap()
         .addQuery<dbus::DBusQueryBuilder>(dbusBrokerManager)
         ->addObject<IndicatorLed>()
         .complete();
+
+    /* Define PCIe supplement provider */
+    entityManager
+        .buildSupplementProvider(
+            supplement_providers::pcie::providerPCIe)
+        ->addMembers(PCIeProvider::getPCIeMemberNameList())
+        .addQuery<dbus::DBusQueryBuilder>(dbusBrokerManager)
+        ->addObject<PCIeProvider>()
+        .complete();
+
+    /* Define PCIe Functions entity */
+    entityManager
+        .buildEntity<PCIeFunctionEntity>(
+            definitions::pcie::functions::entityFunction)
+        // Each PCIe provider dynamic field is a PCIe Function member.
+        ->addMembers(PCIeProvider::pcieFunctionsDynamicFields)
+        .addMembers({
+            supplement_providers::pcie::metaSBD,
+            definitions::pcie::functions::fieldFunctionId,
+        });
+
+    /* Define PCIeDevice entity */
+    entityManager.buildEntity<PCIeDeviceEntity>(definitions::pcie::entityPCIe)
+        ->addMembers({
+            supplement_providers::pcie::metaSBD,
+            supplement_providers::pcie::fieldSocket,
+            supplement_providers::pcie::fieldBus,
+            supplement_providers::pcie::fieldAddress,
+            supplement_providers::pcie::fieldDevice,
+            supplement_providers::pcie::fieldDeviceType,
+            supplement_providers::pcie::fieldManufacturer,
+            supplement_providers::pcie::fieldSubsystem,
+            supplement_providers::status::fieldStatus,
+        })
+        .addRelations(definitions::pcie::functions::entityFunction,
+                      PCIeDeviceEntity::realtionToFunctions());
 
     /* Define SENSORS entity */
     entityManager.buildEntity(definitions::entitySensors)
