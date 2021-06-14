@@ -118,6 +118,18 @@ static constexpr const char* fieldMACAddress = "MACAddress";
 
 } // namespace network
 
+namespace pcie
+{
+constexpr const char* entityPCIe = "PCIe";
+
+namespace functions
+{
+constexpr const char* entityFunction = "Function";
+constexpr const char* fieldFunctionId = "FunctionId";
+} // namespace functions
+
+} // namespace pcie
+
 namespace supplement_providers
 {
 
@@ -130,6 +142,36 @@ constexpr const char* fieldSource = "Source";
 constexpr const char* fieldDestination = "Destination";
 
 } // namespace relations
+
+namespace pcie
+{
+constexpr const char* providerPCIe = "__provider__PCIe";
+constexpr const char* metaSBD = "__meta__SBD";
+
+constexpr const char* fieldSocket = "Socket";
+constexpr const char* fieldBus = "Bus";
+constexpr const char* fieldAddress = "Address";
+constexpr const char* fieldDevice = "Device";
+constexpr const char* fieldDeviceType = "DeviceType";
+constexpr const char* fieldManufacturer = "Manufacturer";
+constexpr const char* fieldSubsystem = "Subsystem";
+
+namespace functions
+{
+constexpr const char* fieldClassCode = "ClassCode";
+constexpr const char* fieldDeviceClass = "DeviceClass";
+constexpr const char* fieldDeviceId = "DeviceId";
+constexpr const char* fieldDeviceName = "DeviceName";
+constexpr const char* fieldFunctionType = "FunctionType";
+constexpr const char* fieldRevisionId = "RevisionId";
+constexpr const char* fieldSubsystemId = "SubsystemId";
+constexpr const char* fieldSubsystemName = "SubsystemName";
+constexpr const char* fieldSubsystemVendorId = "SubsystemVendorId";
+constexpr const char* fieldVendorId = "VendorId";
+constexpr const char* fieldVendorName = "VendorName";
+} // namespace functions
+
+} // namespace pcie
 
 namespace status
 {
