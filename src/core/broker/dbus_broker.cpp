@@ -159,7 +159,7 @@ void DBusBrokerManager::doCaptureDbus()
                 if (!broker->tryProcess(*connection,
                                         *dbusMatchConnect->getConnect()))
                 {
-                    BMC_LOG_WARNING << "Cant process broker task";
+                    BMC_LOG_DEBUG << "Can't process broker task";
                 }
             }
         }

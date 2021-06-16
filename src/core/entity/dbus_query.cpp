@@ -660,9 +660,10 @@ void DBusQuery<TInstance>::registerObjectCreationObserver(
         {
             message.read(objectPath, interfacesAdded);
         }
-        catch (sdbusplus::exception_t&)
+        catch (sdbusplus::exception_t& ex)
         {
-            BMC_LOG_ERROR << "Can't read added interfaces signal";
+            BMC_LOG_CRITICAL << "Can't read added interfaces signal. Reason: "
+                             << ex.what();
             return;
         }
 
@@ -727,7 +728,8 @@ void DBusQuery<TInstance>::registerObjectRemovingObserver(
         }
         catch (sdbusplus::exception_t& ex)
         {
-            BMC_LOG_ERROR << "Can't read removed interfaces signal: " << ex.what();
+            BMC_LOG_CRITICAL << "Can't read removed interfaces signal: "
+                             << ex.what();
             return;
         }
 

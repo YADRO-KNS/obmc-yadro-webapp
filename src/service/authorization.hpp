@@ -51,7 +51,7 @@ static session::UserSessionPtr
     }
     catch (std::out_of_range&)
     {
-        BMC_LOG_INFO << "The 'X-Auth-Token' header is not present";
+        BMC_LOG_DEBUG << "The 'X-Auth-Token' header is not present";
     }
     return nullptr;
 }
@@ -63,7 +63,7 @@ static session::UserSessionPtr
     auto sessionValueIt = request->environment().cookies.find(cookieSession);
     if (sessionValueIt == request->environment().cookies.end())
     {
-        BMC_LOG_INFO << "The 'SESSION' Cookie is not present";
+        BMC_LOG_DEBUG << "The 'SESSION' Cookie is not present";
         return nullptr;
     }
 
@@ -108,7 +108,7 @@ static session::UserSessionPtr
         }
         catch (std::out_of_range&)
         {
-            BMC_LOG_ERROR << "The 'X-XSRF-TOKEN' header is not present";
+            BMC_LOG_DEBUG << "The 'X-XSRF-TOKEN' header is not present";
             return nullptr;
         }
     }
