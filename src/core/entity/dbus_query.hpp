@@ -33,7 +33,8 @@ using ServiceName = std::string;
 using PropertyName = std::string;
 using ObjectPath = std::string;
 
-using DBusServiceInterfaces = std::map<ServiceName, std::vector<InterfaceName>>;
+using InterfaceList = std::vector<InterfaceName>;
+using DBusServiceInterfaces = std::map<ServiceName, InterfaceList>;
 using DBusPropertyMemberDict = std::map<PropertyName, app::entity::MemberName>;
 using DBusPropertyEndpointMap = std::map<InterfaceName, DBusPropertyMemberDict>;
 
@@ -315,6 +316,34 @@ class FindObjectDBusQuery :
     virtual constexpr const DBusObjectEndpoint& getQueryCriteria() const = 0;
 
     const ObjectPath& getObjectPathNamespace() const override;
+    EntityDBusQueryConstWeakPtr getWeakPtr() const override;
+    EntityDBusQueryPtr getSharedPtr() override;
+};
+
+class GetObjectDBusQuery :
+    public EntityDBusQuery,
+    public std::enable_shared_from_this<GetObjectDBusQuery>
+{
+    const ServiceName serviceName;
+    const ObjectPath objectPath;
+
+  public:
+    explicit GetObjectDBusQuery(const ServiceName& service,
+                                const ObjectPath& path) noexcept :
+        EntityDBusQuery(), serviceName(service), objectPath(path)
+    {}
+    ~GetObjectDBusQuery() override = default;
+
+    std::vector<IEntity::InstancePtr> process(const connect::DBusConnectUni&) override;
+
+    bool checkCriteria(const ObjectPath&, const InterfaceList&,
+                       std::optional<ServiceName> = std::nullopt) const override;
+
+  protected:
+    const ObjectPath& getObjectPathNamespace() const override;
+
+    virtual const InterfaceList& searchInterfaces() const = 0;
+
     EntityDBusQueryConstWeakPtr getWeakPtr() const override;
     EntityDBusQueryPtr getSharedPtr() override;
 };
