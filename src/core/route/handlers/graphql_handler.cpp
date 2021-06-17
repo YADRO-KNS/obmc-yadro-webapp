@@ -292,7 +292,7 @@ bool GraphqlRouter::preHandlers(const RequestPtr& request)
     }
     catch (std::exception& ex)
     {
-        BMC_LOG_ERROR << "Error parsing GQL request. Reason:" << ex.what();
+        BMC_LOG_ERROR << "Error parsing GQL request:" << ex.what();
     }
     return true;
 }

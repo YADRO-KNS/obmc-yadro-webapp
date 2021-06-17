@@ -15,32 +15,20 @@ namespace app
 {
 namespace broker
 {
-bool DBusBroker::tryProcess(sdbusplus::bus::bus&, sdbusplus::bus::bus&)
-{
-    if (!isTimeout())
-    {
-        BMC_LOG_DEBUG << "Attempt to get to process the task which "
-                     "not timed yet.";
-        return false;
-    }
 
-    return true;
-}
-
-bool EntityDbusBroker::tryProcess(sdbusplus::bus::bus& queryConnect,
-                                  sdbusplus::bus::bus& watcherConnect)
+bool EntityDbusBroker::tryProcess(const connect::DBusConnectionPoolUni& connections)
 {
     std::unique_lock<std::mutex> lock(guardMutex, std::try_to_lock);
     if (!lock.owns_lock())
     {
-        BMC_LOG_DEBUG << "Attempt to get to process a broker's task which "
-                     "already runs.";
+        BMC_LOG_DEBUG
+            << "Attempt to process a broker's task which already runs.";
         return false;
     }
 
-    auto result = DBusBroker::tryProcess(queryConnect, watcherConnect);
-    if (!result)
+    if (!isTimeout())
     {
+        BMC_LOG_DEBUG << "Attempt to process the task which is not timed out yet.";
         return false;
     }
 
@@ -49,35 +37,45 @@ bool EntityDbusBroker::tryProcess(sdbusplus::bus::bus& queryConnect,
         throw app::core::exceptions::ObmcAppException(
             "Query not registried! Entity=" + entity->getName());
     }
-    BMC_LOG_DEBUG << "Accept broker task of Entity '" << entity->getName() << "'";
+    BMC_LOG_INFO << "Accept broker task of Entity '" << entity->getName() << "'";
 
-    auto instances = this->entityQuery->process(queryConnect);
-
-    // Register watchers if the broker is configured to watch of DBus signals.
-    if (this->isWatch())
+    try
     {
-        for (auto& instance : instances)
+        auto instances =
+            this->entityQuery->process(connections->getQueryConnection());
+
+        // Register watchers if the broker is configured to watch of DBus
+        // signals.
+        if (this->isWatch())
         {
-            auto dbusInstance =
-                std::dynamic_pointer_cast<dbus::DBusInstance>(instance);
-            if (!dbusInstance)
+            for (auto& instance : instances)
             {
-                throw std::logic_error("At the DBusBroker the entity query "
-                                       "accepted instance which is "
-                                       "not DBusInstance.");
+                auto dbusInstance =
+                    std::dynamic_pointer_cast<dbus::DBusInstance>(instance);
+                if (!dbusInstance)
+                {
+                    throw std::logic_error("Found a non-DBusInstance during "
+                                           "DBusBroker query processin.");
+                }
+                dbusInstance->bindListeners(connections->getWatcherConnection());
             }
-            dbusInstance->bindListeners(watcherConnect);
         }
+        this->entity->setInstances(instances);
     }
-    this->entity->setInstances(instances);
+    catch (sdbusplus::exception::SdBusError& ex)
+    {
+        BMC_LOG_ERROR << "Can't process task: " << ex.what();
+        return false;
+    }
     this->setExecutionTime();
 
-    BMC_LOG_DEBUG << "Process query is sucess. Entity '" << entity->getName()
+    BMC_LOG_DEBUG << "Query processed successfuly. Entity '" << entity->getName()
               << "'";
     return true;
 }
 
-void EntityDbusBroker::registerObjectsListener(sdbusplus::bus::bus& connect)
+void EntityDbusBroker::registerObjectsListener(
+    const connect::DBusConnectionPoolUni& connections)
 {
     auto dbusQuery =
         std::dynamic_pointer_cast<query::dbus::EntityDBusQuery>(entityQuery);
@@ -88,8 +86,8 @@ void EntityDbusBroker::registerObjectsListener(sdbusplus::bus::bus& connect)
             "At the DBusBroker the entity query is not EntityDBusQuery.");
     }
 
-    dbusQuery->registerObjectCreationObserver(connect, this->entity);
-    dbusQuery->registerObjectRemovingObserver(connect, this->entity);
+    dbusQuery->registerObjectCreationObserver(connections, this->entity);
+    dbusQuery->registerObjectRemovingObserver(connections, this->entity);
 }
 
 void DBusBrokerManager::start()
@@ -133,31 +131,31 @@ void DBusBrokerManager::terminate()
 
 void DBusBrokerManager::bind(DBusBrokerPtr broker)
 {
-    auto& connection = this->objectObserverConnect->getConnect();
     if (broker->isWatch())
     {
-        broker->registerObjectsListener(*connection);
+        broker->registerObjectsListener(getConnectionPool());
     }
     this->brokers.push_back(broker);
 }
 
 void DBusBrokerManager::doCaptureDbus()
 {
-    auto dbusConnect = createDbusConnection();
-    auto dbusMatchConnect = createDbusConnection();
-
+    // Since the access to the dbus-connection is not thread-safe, adding
+    // the object listeners from the processing query might be when another
+    // thread does `sdbusplus::bus::bus::process()`, which will
+    // cause a segfault.
+    // Open a new connection pool for each thread.
+    connect::DBusConnectionPoolUni connections =
+        std::make_unique<connect::DBusConnectionPool>();
     while (active)
     {
-        auto& connection = dbusConnect->getConnect();
-
         for (const auto& broker : brokers)
         {
             if (broker->isTimeout())
             {
                 BMC_LOG_DEBUG << "Try process broker task: #"
                           << std::this_thread::get_id();
-                if (!broker->tryProcess(*connection,
-                                        *dbusMatchConnect->getConnect()))
+                if (!broker->tryProcess(connections))
                 {
                     BMC_LOG_DEBUG << "Can't process broker task";
                 }
@@ -167,8 +165,17 @@ void DBusBrokerManager::doCaptureDbus()
         // Process watcher while haven't ready tasks
         do
         {
-            dbusMatchConnect->getConnect()->wait(500ms);
-            dbusMatchConnect->getConnect()->process_discard();
+            connections->getWatcherConnection()->getConnect()->wait(500ms);
+            try
+            {
+                connections->getWatcherConnection()
+                    ->getConnect()
+                    ->process_discard();
+            }
+            catch (sdbusplus::exception_t& ex)
+            {
+                BMC_LOG_CRITICAL << "Can't process dbus handler: " << ex.what();
+            }
         } while (active && !hasReadyTask());
     }
     BMC_LOG_INFO << "Terminate broker ID #" << std::this_thread::get_id();
@@ -178,9 +185,17 @@ void DBusBrokerManager::doManageringObjects()
 {
     while (active)
     {
-        auto& connection = objectObserverConnect->getConnect();
+        auto& connection =
+            getConnectionPool()->getWatcherConnection()->getConnect();
         connection->wait(500ms);
-        connection->process_discard();
+        try
+        {
+            connection->process_discard();
+        }
+        catch (sdbusplus::exception_t& ex)
+        {
+            BMC_LOG_CRITICAL << "Can't process dbus handler: " << ex.what();
+        }
     }
     BMC_LOG_INFO << "Terminate object watcher ID #" << std::this_thread::get_id();
 }
@@ -188,8 +203,9 @@ void DBusBrokerManager::doManageringObjects()
 void DBusBrokerManager::doWatchDBusServiceOwners()
 {
     using namespace sdbusplus::bus::match;
-    auto dbusConnect = createDbusConnection();
-    auto& connection = dbusConnect->getConnect();
+    // See to the DBusBrokerManager::doCaptureDbus()
+    auto watcherConnect = connect::DBusConnectionPool::createDbusConnection();
+    auto& connection = watcherConnect->getConnect();
     static match serviceOwnerWatcher(
         *connection, rules::nameOwnerChanged(),
         [](sdbusplus::message::message& message) {
@@ -203,7 +219,8 @@ void DBusBrokerManager::doWatchDBusServiceOwners()
             }
             catch (sdbusplus::exception_t& ex)
             {
-                BMC_LOG_ERROR << "Can't read name owner property changed: " << ex.what();
+                BMC_LOG_ERROR << "Can't read name owner property changed: "
+                              << ex.what();
                 return;
             }
             if (name.starts_with(":"))
@@ -217,7 +234,14 @@ void DBusBrokerManager::doWatchDBusServiceOwners()
     while (active)
     {
         connection->wait(1s);
-        connection->process_discard();
+        try
+        {
+            connection->process_discard();
+        }
+        catch (sdbusplus::exception_t& ex)
+        {
+            BMC_LOG_CRITICAL << "Can't process dbus handler: " << ex.what();
+        }
     }
     BMC_LOG_INFO << "Terminate dbus service names watcher ID #"
              << std::this_thread::get_id();
@@ -228,27 +252,8 @@ void DBusBrokerManager::setupDBusServiceNames()
     constexpr const char* freedesktopServiceName = "org.freedesktop.DBus";
     constexpr const char* freedesktopInterfaceName = "org.freedesktop.DBus";
 
-    auto dbusConnect = createDbusConnection();
-    auto& connection = objectObserverConnect->getConnect();
-    std::vector<app::query::dbus::ServiceName> serviceNameList;
-    {
-        auto mapperCall = connection->new_method_call(
-            freedesktopServiceName, "/xyz/openbmc_project/object_mapper",
-            freedesktopInterfaceName, "ListNames");
-
-        auto mapperResponseMsg = connection->call(mapperCall);
-
-        if (mapperResponseMsg.is_method_error())
-        {
-            BMC_LOG_ERROR << "Error of mapper call: ListNames. Reason: "
-                      << mapperResponseMsg.get_error()->message;
-            return;
-        }
-
-        mapperResponseMsg.read(serviceNameList);
-    }
-
-    for (auto& wellKnownServiceName: serviceNameList)
+    auto& connection = getConnectionPool()->getQueryConnection()->getConnect();
+    for (auto& wellKnownServiceName : connection->list_names_acquired())
     {
         std::string uniqueServiceName;
         // There is unique name of DBus service. Skip
@@ -261,48 +266,30 @@ void DBusBrokerManager::setupDBusServiceNames()
             freedesktopInterfaceName, "GetNameOwner");
 
         mapperCall.append(wellKnownServiceName);
-        auto mapperResponseMsg = connection->call(mapperCall);
-
-        if (mapperResponseMsg.is_method_error())
+        try
         {
-            BMC_LOG_ERROR << "Error of mapper call: GetNameOwner. Reason: "
-                      << mapperResponseMsg.get_error()->message;
-            return;
+            connection->call(mapperCall).read(uniqueServiceName);
         }
-
-        mapperResponseMsg.read(uniqueServiceName);
+        catch (sdbusplus::exception_t& ex)
+        {
+            BMC_LOG_CRITICAL << "Can't call dbus GetNameOwner: " << ex.what();
+        }
         app::query::dbus::EntityDBusQuery::setServiceName(uniqueServiceName,
                                                           wellKnownServiceName);
     }
 }
 
-connect::DBusConnectUni DBusBrokerManager::createDbusConnection()
-{
-#ifdef BMC_DBUS_CONNECT_SYSTEM
-    connect::DBusConnectUni dbusConnect =
-        std::make_unique<app::connect::SystemDBusConnect>();
-#elif defined(BMC_DBUS_CONNECT_REMOTE)
-    connect::DBusConnectUni dbusConnect =
-        std::make_unique<app::connect::RemoteHostDbusConnect>(
-            BMC_DBUS_REMOTE_HOST);
-#else
-#error "Unknown DBus connection type"
-#endif
-    dbusConnect->connect();
-
-    return std::forward<connect::DBusConnectUni>(dbusConnect);
-}
-
 bool DBusBrokerManager::hasReadyTask() const
 {
-    for (const auto& broker : brokers)
-    {
-        if (broker->isTimeout())
-        {
-            return true;
-        }
-    }
-    return false;
+    return std::any_of(
+        brokers.begin(), brokers.end(),
+        [](IBrokerManager::BrokerPtr&& broker) { return broker->isTimeout(); });
+}
+
+const connect::DBusConnectionPoolUni&
+    DBusBrokerManager::getConnectionPool() const
+{
+    return connectionPool;
 }
 
 } // namespace broker

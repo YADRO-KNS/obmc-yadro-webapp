@@ -20,7 +20,10 @@ namespace app
 namespace connect
 {
 class DBusConnect;
+class IDBusConnectionPool;
+
 using DBusConnectUni = std::unique_ptr<DBusConnect>;
+using DBusConnectionPoolUni = std::unique_ptr<IDBusConnectionPool>;
 
 class DBusConnect : public IConnect
 {
@@ -92,8 +95,8 @@ class SystemDBusConnect : public DBusConnect
         if (status < 0)
         {
             throw std::runtime_error(
-                std::string("Can't establish dbus connection. Reason: ") +
-                std::strerror(status));
+                std::string("Can't establish dbus connection: ") +
+                std::strerror(-status));
         }
         BMC_LOG_DEBUG << "Establish DBus connection on system bus";
         initSdBusConnection();
@@ -118,11 +121,64 @@ class RemoteHostDbusConnect : public DBusConnect
         if (status < 0)
         {
             throw std::runtime_error(
-                std::string("Can't establish dbus connection. Reason: ") +
-                std::strerror(status));
+                std::string("Can't establish dbus connection: ") +
+                std::strerror(-status));
         }
         BMC_LOG_DEBUG << "Establish DBus connection to Host: " << hostname;
         initSdBusConnection();
+    }
+};
+
+class IDBusConnectionPool
+{
+public:
+    virtual ~IDBusConnectionPool() = default;
+
+    virtual const DBusConnectUni& getQueryConnection() const = 0;
+    virtual const DBusConnectUni& getWatcherConnection() const = 0;
+};
+
+class DBusConnectionPool final: public IDBusConnectionPool
+{
+    DBusConnectUni queryConnection;
+    DBusConnectUni watchConnection;
+public:
+    DBusConnectionPool(const DBusConnectionPool&) = delete;
+    DBusConnectionPool& operator=(const DBusConnectionPool&) = delete;
+    DBusConnectionPool(DBusConnectionPool&&) = delete;
+    DBusConnectionPool& operator=(DBusConnectionPool&&) = delete;
+
+    explicit DBusConnectionPool():
+        queryConnection(createDbusConnection()),
+        watchConnection(createDbusConnection())
+    {
+    }
+    ~DBusConnectionPool() override = default;
+
+    const DBusConnectUni& getQueryConnection() const override
+    {
+        return queryConnection;
+    }
+    const DBusConnectUni& getWatcherConnection() const override
+    {
+        return watchConnection;
+    }
+
+    static DBusConnectUni createDbusConnection()
+    {
+#ifdef BMC_DBUS_CONNECT_SYSTEM
+        connect::DBusConnectUni dbusConnect =
+            std::make_unique<app::connect::SystemDBusConnect>();
+#elif defined(BMC_DBUS_CONNECT_REMOTE)
+        connect::DBusConnectUni dbusConnect =
+            std::make_unique<app::connect::RemoteHostDbusConnect>(
+                BMC_DBUS_REMOTE_HOST);
+#else
+#error "Unknown DBus connection type"
+#endif
+        dbusConnect->connect();
+
+        return std::forward<connect::DBusConnectUni>(dbusConnect);
     }
 };
 
