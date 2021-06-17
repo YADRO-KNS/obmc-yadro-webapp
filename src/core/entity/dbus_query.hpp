@@ -221,7 +221,7 @@ class DBusQuery : public IQuery<TInstance, connect::DBusConnectUni>
     {}
 
     virtual bool checkCriteria(const ObjectPath&,
-                               const std::vector<InterfaceName>&,
+                               const InterfaceList&,
                                std::optional<ServiceName> = std::nullopt) const = 0;
 
     static void setServiceName(const std::string, const std::string);
@@ -241,7 +241,7 @@ class DBusQuery : public IQuery<TInstance, connect::DBusConnectUni>
     virtual DBusInstancePtr createInstance(const connect::DBusConnectUni&,
                                            const ServiceName&,
                                            const ObjectPath&,
-                                           const std::vector<InterfaceName>&);
+                                           const InterfaceList&);
 
     void addObserver(sdbusplus::bus::match::match&&);
 
@@ -306,7 +306,7 @@ class FindObjectDBusQuery :
 
     std::vector<IEntity::InstancePtr> process(const connect::DBusConnectUni&) override;
 
-    bool checkCriteria(const ObjectPath&, const std::vector<InterfaceName>&,
+    bool checkCriteria(const ObjectPath&, const InterfaceList&,
                        std::optional<ServiceName> = std::nullopt) const override;
 
   protected:
@@ -362,10 +362,9 @@ class IntrospectServiceDBusQuery :
     {}
     ~IntrospectServiceDBusQuery() override = default;
 
-    std::vector<IEntity::InstancePtr>
-        process(const connect::DBusConnectUni&) override;
+    std::vector<IEntity::InstancePtr> process(const connect::DBusConnectUni&) override;
 
-    bool checkCriteria(const ObjectPath&, const std::vector<InterfaceName>&,
+    bool checkCriteria(const ObjectPath&, const InterfaceList&,
                        std::optional<ServiceName> = std::nullopt) const override;
 
   protected:
