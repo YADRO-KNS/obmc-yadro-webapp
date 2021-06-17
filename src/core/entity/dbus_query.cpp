@@ -560,9 +560,17 @@ void DBusInstance::captureDBusAssociations(
         BMC_LOG_DEBUG << "Loop association: Source=" << source
                   << ", Destination=" << destination
                   << ", ObjectPath=" << destObjectPath;
+        // The object path is used to calc the instance unique CRC, and it
+        // should be unique. Build complex (valid) dbus path by concatenation
+        // `dest-object + dest-name + source`.
+        // Adding postfix `__meta` to be sure that calculated path never match
+        // with real object path.
+        auto complexAssocDummyPath =
+            destObjectPath + "__meta/" + destination + "/" + source;
 
         auto childInstance = std::make_shared<DBusInstance>(
-            serviceName, destObjectPath, targetProperties, dbusQuery);
+            serviceName, complexAssocDummyPath, targetProperties,
+            dbusQuery);
         DBusPropertiesMap properties{
             {relations::fieldSource, source},
             {relations::fieldDestination, destination},
