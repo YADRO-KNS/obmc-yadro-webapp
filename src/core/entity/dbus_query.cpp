@@ -97,10 +97,10 @@ std::vector<IEntity::InstancePtr>
 }
 
 bool FindObjectDBusQuery::checkCriteria(
-    const ObjectPath& objectPath, const std::vector<InterfaceName>& interface,
+    const ObjectPath& objectPath, const InterfaceList& interface,
     std::optional<ServiceName> optionalServiceName) const
 {
-    std::vector<InterfaceName> notMatchedInterfaces;
+    InterfaceList notMatchedInterfaces;
     auto& activeInterfaces = getQueryCriteria().interfaces;
 
     if (optionalServiceName.has_value() &&
@@ -242,11 +242,11 @@ std::vector<IEntity::InstancePtr>
 }
 
 bool IntrospectServiceDBusQuery::checkCriteria(
-    const ObjectPath&, const std::vector<InterfaceName>& inputInterfaces,
+    const ObjectPath&, const InterfaceList& inputInterfaces,
     std::optional<ServiceName> optionalServiceName) const
 {
-    std::vector<InterfaceName> notMatchedInterfaces;
-    std::vector<InterfaceName> activeInterfaces;
+    InterfaceList notMatchedInterfaces;
+    InterfaceList activeInterfaces;
     for (auto& seachPropIt : getSearchPropertiesMap())
     {
         activeInterfaces.push_back(seachPropIt.first);
@@ -316,6 +316,7 @@ const ObjectPath& IntrospectServiceDBusQuery::getObjectPathNamespace() const
 template <class TInstance>
 DBusInstancePtr DBusQuery<TInstance>::createInstance(
     const connect::DBusConnectUni& connect, const ServiceName& serviceName,
+    const ObjectPath& objectPath, const InterfaceList& interfaces)
 {
     auto entityInstance = std::make_shared<DBusInstance>(
         serviceName, objectPath, getSearchPropertiesMap(), getWeakPtr());
@@ -726,7 +727,7 @@ void DBusQuery<TInstance>::registerObjectCreationObserver(
                     entity](sdbusplus::message::message& message) {
         DBusInterfacesMap interfacesAdded;
         sdbusplus::message::object_path objectPath;
-        std::vector<InterfaceName> interfacesList;
+        InterfaceList interfacesList;
 
         try
         {
@@ -762,6 +763,7 @@ void DBusQuery<TInstance>::registerObjectCreationObserver(
             interfacesList.push_back(interfaceName);
         }
 
+        BMC_LOG_DEBUG << "Create instance from `interfacesAdded` signal";
         auto entityInstance = dbusQueryShr->createInstance(
             pool->getQueryConnection(), serviceName, objectPathStr, interfacesList);
 
@@ -793,7 +795,7 @@ void DBusQuery<TInstance>::registerObjectRemovingObserver(
     auto handler = [entity, dbusQueryWeak = this->getWeakPtr()](
                        sdbusplus::message::message& message) {
         sdbusplus::message::object_path objectPath;
-        std::vector<InterfaceName> removedInterfaces;
+        InterfaceList removedInterfaces;
 
         try
         {
