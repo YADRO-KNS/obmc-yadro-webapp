@@ -140,6 +140,61 @@ EntityDBusQueryPtr FindObjectDBusQuery::getSharedPtr()
     return shared_from_this();
 }
 
+std::vector<IEntity::InstancePtr>
+    GetObjectDBusQuery::process(const connect::DBusConnectUni& connect)
+{
+    std::vector<IEntity::InstancePtr> result;
+    BMC_LOG_DEBUG << "Emplace new entity instance.";
+    IEntity::InstancePtr instance = this->createInstance(
+        connect, serviceName, objectPath, searchInterfaces());
+    result.emplace_back(instance);
+    return std::forward<std::vector<IEntity::InstancePtr>>(result);
+}
+
+bool GetObjectDBusQuery::checkCriteria(
+    const ObjectPath& objectPath,
+    const InterfaceList& inputInterfaces,
+    std::optional<ServiceName> optionalServiceName) const
+{
+    if (!optionalServiceName.has_value() || *optionalServiceName != serviceName)
+    {
+        return false;
+    }
+
+    if (getObjectPathNamespace() != objectPath)
+    {
+        return false;
+    }
+
+    InterfaceList notMatchedInterfaces;
+    std::set_difference(
+        searchInterfaces().begin(), searchInterfaces().end(),
+        inputInterfaces.begin(), inputInterfaces.end(),
+        std::inserter(notMatchedInterfaces, notMatchedInterfaces.begin()));
+    if (notMatchedInterfaces.size() == searchInterfaces().size())
+    {
+        // No one interface matched
+        return false;
+    }
+
+    return true;
+}
+
+const ObjectPath& GetObjectDBusQuery::getObjectPathNamespace() const
+{
+    return this->objectPath;
+}
+
+EntityDBusQueryConstWeakPtr GetObjectDBusQuery::getWeakPtr() const
+{
+    return weak_from_this();
+}
+
+EntityDBusQueryPtr GetObjectDBusQuery::getSharedPtr()
+{
+    return shared_from_this();
+}
+
 const ObjectPath& FindObjectDBusQuery::getObjectPathNamespace() const
 {
     return this->getQueryCriteria().path;
