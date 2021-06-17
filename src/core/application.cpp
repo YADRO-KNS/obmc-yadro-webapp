@@ -6,6 +6,7 @@
 #include <core/route/handlers/graphql_handler.hpp>
 
 #include <csignal>
+#include <filesystem>
 
 namespace app
 {
@@ -16,6 +17,7 @@ void Application::configure()
 {
     BMC_LOG_DEBUG << "configure";
 
+    waitBootingBmc();
     registerAllRoutes();
 
     // TODO include IProtocol abstraction which incapsulate own specific
@@ -53,6 +55,19 @@ void Application::initBrokers()
 {
     dbusBrokerManager.start();
     BMC_LOG_DEBUG << "Start DBus broker";
+}
+
+void Application::waitBootingBmc()
+{
+    constexpr const char * bootingFilePath = "/run/bmc-booting";
+    using namespace std::literals;
+
+    // Don't initialize the application until the BMC boot processing to avoid
+    // query to dbus-services which an incomplete state.
+    while(std::filesystem::exists(bootingFilePath))
+    {
+        std::this_thread::sleep_for(1s);
+    }
 }
 
 void Application::handleSignals(int signal)

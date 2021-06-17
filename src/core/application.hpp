@@ -61,6 +61,7 @@ class Application final
     void initEntityMap();
     void initBrokers();
     void registerAllRoutes();
+    void waitBootingBmc();
 
     static void handleSignals(int signal);
   private:
