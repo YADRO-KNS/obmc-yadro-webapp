@@ -58,7 +58,7 @@ class DBusBrokerManager : public IBrokerManager
     std::vector<std::thread> threads;
     std::atomic_bool active;
 
-    static constexpr size_t queryBrokerThreadCount = 10;
+    static constexpr size_t queryBrokerThreadCount = 1;
     static constexpr size_t singleThreadTask = 1;
   public:
     DBusBrokerManager(const DBusBrokerManager&) = delete;
