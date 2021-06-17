@@ -27,10 +27,12 @@ using namespace app::query::dbus;
 using namespace std::placeholders;
 using namespace app::helpers;
 
-class Status final : public dbus::FindObjectDBusQuery
+class Status final : public dbus::GetObjectDBusQuery
 {
     static constexpr const char* callbackService =
         "xyz.openbmc_project.CallbackManager";
+    static constexpr const char* statusSensorObjectPath =
+        "/xyz/openbmc_project/sensors";
     static constexpr const char* definitionInterface =
         "xyz.openbmc_project.Association.Definitions";
     static constexpr const char* namePropertyAssociations = "Associations";
@@ -40,7 +42,7 @@ class Status final : public dbus::FindObjectDBusQuery
     static constexpr const char* statusWarning = "Warning";
     static constexpr const char* statusCritical = "Critical";
 
-    Status() : dbus::FindObjectDBusQuery()
+    Status() : dbus::GetObjectDBusQuery(callbackService, statusSensorObjectPath)
     {}
     ~Status() override = default;
 
@@ -119,16 +121,13 @@ class Status final : public dbus::FindObjectDBusQuery
     }
 
 
-    const DBusObjectEndpoint& getQueryCriteria() const override
+    const InterfaceList& searchInterfaces() const override
     {
-        static const DBusObjectEndpoint criteria{
-            "/xyz/openbmc_project",
-            {},
-            nextOneDepth,
-            callbackService,
+        static const InterfaceList interfaces{
+            definitionInterface
         };
 
-        return criteria;
+        return interfaces;
     }
 };
 
