@@ -35,7 +35,7 @@ class IQuery
      * @return std::vector<TInstance> The list of retrieved data which
      * incapsulated at TInstance objects
      */
-    virtual std::vector<TInstance> process(TConnect&) = 0;
+    virtual std::vector<TInstance> process(const TConnect&) = 0;
 };
 
 } // namespace query

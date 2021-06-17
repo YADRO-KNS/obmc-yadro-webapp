@@ -213,9 +213,9 @@ class Server final : public dbus::FindObjectDBusQuery
         }
         catch (std::bad_variant_access& ex)
         {
-            BMC_LOG_ERROR << "Can't supplement the 'Status' field of 'Server' "
-                         "Entity. Reason: "
-                      << ex.what();
+            BMC_LOG_ERROR
+                << "Can't supplement the 'Status' field of 'Server' Entity:"
+                << ex.what();
         }
     }
 
@@ -270,9 +270,9 @@ class Server final : public dbus::FindObjectDBusQuery
         }
         catch (std::bad_variant_access& ex)
         {
-            BMC_LOG_ERROR << "Can't supplement the 'Version' field of 'Server' "
-                         "Entity. Reason: "
-                      << ex.what();
+            BMC_LOG_ERROR
+                << "Can't supplement the 'Version' field of 'Server': "
+                << ex.what();
         }
     }
 
@@ -636,9 +636,9 @@ class Sensors final : public dbus::FindObjectDBusQuery
         }
         catch (std::bad_variant_access& ex)
         {
-            BMC_LOG_ERROR << "Can't supplement the 'Status' field of 'Sensor' "
-                         "Entity. Reason: "
-                      << ex.what();
+            BMC_LOG_ERROR
+                << "Can't supplement the 'Status' field of 'Sensor' Entity: "
+                << ex.what();
         }
     }
 

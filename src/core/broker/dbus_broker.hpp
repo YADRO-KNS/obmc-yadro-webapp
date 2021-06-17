@@ -27,29 +27,13 @@ namespace broker
 using namespace entity;
 using namespace app::query;
 
-class DBusBroker;
+class EntityDbusBroker;
 
 using QueryEntityPtr =
-    std::shared_ptr<IQuery<IEntity::InstancePtr, sdbusplus::bus::bus>>;
-using DBusBrokerPtr = std::shared_ptr<DBusBroker>;
+    std::shared_ptr<IQuery<IEntity::InstancePtr, connect::DBusConnectUni>>;
+using DBusBrokerPtr = std::shared_ptr<EntityDbusBroker>;
 
-class DBusBroker : public Broker
-{
-  public:
-    DBusBroker(std::chrono::seconds timeout = minutes(0),
-               bool watch = false) noexcept :
-        Broker(timeout, watch)
-    {}
-    ~DBusBroker() override = default;
-
-    // TODO(ik) move to the IConnect interface
-    // TODO(ik) make feel free for connect arg
-    virtual bool tryProcess(sdbusplus::bus::bus&, sdbusplus::bus::bus&);
-
-    virtual void registerObjectsListener(sdbusplus::bus::bus&);
-};
-
-class EntityDbusBroker : public DBusBroker
+class EntityDbusBroker : public Broker
 {
     std::mutex guardMutex;
     entity::EntityPtr entity;
@@ -59,14 +43,14 @@ class EntityDbusBroker : public DBusBroker
     EntityDbusBroker(entity::EntityPtr entityPointer,
                      QueryEntityPtr queryPointer, bool watch = true,
                      std::chrono::seconds timeout = minutes(0)) noexcept :
-        DBusBroker(timeout, watch),
+        Broker(timeout, watch),
         entity(entityPointer), entityQuery(queryPointer)
     {}
     ~EntityDbusBroker() override = default;
 
-    bool tryProcess(sdbusplus::bus::bus&, sdbusplus::bus::bus&) override;
+    bool tryProcess(const connect::DBusConnectionPoolUni&);
 
-    void registerObjectsListener(sdbusplus::bus::bus&) override;
+    void registerObjectsListener(const connect::DBusConnectionPoolUni&);
 };
 
 class DBusBrokerManager : public IBrokerManager
@@ -83,9 +67,11 @@ class DBusBrokerManager : public IBrokerManager
     DBusBrokerManager& operator=(DBusBrokerManager&&) = delete;
 
     explicit DBusBrokerManager() :
-        active(false)
+        active(false),
+        connectionPool(std::make_unique<connect::DBusConnectionPool>())
     {
-      objectObserverConnect = createDbusConnection();
+        // TODO(IK) Needs to define `Connection Pool` abstraction to thread-safe
+        // access to dbus-resources and safe processing dbus-handlers.
     }
     ~DBusBrokerManager() override
     {
@@ -109,9 +95,10 @@ class DBusBrokerManager : public IBrokerManager
 
     connect::DBusConnectUni createDbusConnection();
     bool hasReadyTask() const;
-    connect::DBusConnectUni objectObserverConnect;
+    const connect::DBusConnectionPoolUni& getConnectionPool() const;
   private:
     std::vector<DBusBrokerPtr> brokers;
+    connect::DBusConnectionPoolUni connectionPool;
 };
 
 } // namespace broker

@@ -39,13 +39,13 @@ std::size_t FindObjectDBusQuery::DBusObjectEndpoint::getHash() const
 }
 
 std::vector<IEntity::InstancePtr>
-    FindObjectDBusQuery::process(sdbusplus::bus::bus& connect)
+    FindObjectDBusQuery::process(const connect::DBusConnectUni& dbusConnection)
 {
     using DBusSubTreeOut =
         std::vector<std::pair<std::string, DBusServiceInterfaces>>;
     std::vector<DBusInstancePtr> dbusInstances;
 
-    auto mapperCall = connect.new_method_call(
+    auto mapperCall = dbusConnection->getConnect()->new_method_call(
         "xyz.openbmc_project.ObjectMapper",
         "/xyz/openbmc_project/object_mapper",
         "xyz.openbmc_project.ObjectMapper", "GetSubTree");
@@ -54,18 +54,20 @@ std::vector<IEntity::InstancePtr>
     mapperCall.append(getQueryCriteria().depth);
     mapperCall.append(getQueryCriteria().interfaces);
 
-    auto mapperResponseMsg = connect.call(mapperCall);
-
-    if (mapperResponseMsg.is_method_error())
-    {
-        BMC_LOG_ERROR << "Error of mapper call";
-        throw ObmcAppException("ERROR of mapper call");
-    }
-
     DBusSubTreeOut mapperResponse;
-    mapperResponseMsg.read(mapperResponse);
-    mapperResponseMsg.release();
-    mapperCall.release();
+    try
+    {
+        dbusConnection->getConnect()->call(mapperCall).read(mapperResponse);
+    }
+    catch (sdbusplus::exception_t& ex)
+    {
+        BMC_LOG_CRITICAL << "Can't query objects (" << ex.what() << ") for criteria:";
+        BMC_LOG_CRITICAL << "[FindObject] path=" << getQueryCriteria().path;
+        for (auto& interface: getQueryCriteria().interfaces)
+        {
+            BMC_LOG_CRITICAL << "[FindObject] iface=" << interface;
+        }
+    }
 
     BMC_LOG_DEBUG << "DBus Objects read sucess.";
     for (auto& [objectPath, serviceInfoList] : mapperResponse)
@@ -80,14 +82,15 @@ std::vector<IEntity::InstancePtr>
                 continue;
             }
             BMC_LOG_DEBUG << "Emplace new entity instance.";
-            auto instance = this->createInstance(connect, serviceName,
+            auto instance = this->createInstance(dbusConnection, serviceName,
                                                  objectPath, interfaces);
             dbusInstances.push_back(instance);
         }
     }
 
-    BMC_LOG_DEBUG << "Process Found DBus Object query is sucess. Count instance: "
-              << dbusInstances.size();
+    BMC_LOG_DEBUG
+        << "Process Found DBus Object query is sucess. Count instance: "
+        << dbusInstances.size();
     std::vector<IEntity::InstancePtr> result(dbusInstances.begin(),
                                              dbusInstances.end());
     return result;
@@ -143,28 +146,26 @@ const ObjectPath& FindObjectDBusQuery::getObjectPathNamespace() const
 }
 
 std::vector<IEntity::InstancePtr>
-    IntrospectServiceDBusQuery::process(sdbusplus::bus::bus& connect)
+    IntrospectServiceDBusQuery::process(const connect::DBusConnectUni& dbusConnection)
 {
     using ObjectValueTree =
         std::map<sdbusplus::message::object_path, DBusInterfacesMap>;
     std::vector<DBusInstancePtr> dbusInstances;
     ObjectValueTree interfacesResponse;
 
-    auto mapperCall = connect.new_method_call(
+    auto mapperCall = dbusConnection->getConnect()->new_method_call(
         serviceName.c_str(), "/", "org.freedesktop.DBus.ObjectManager",
         "GetManagedObjects");
 
-    auto mapperResponseMsg = connect.call(mapperCall);
-
-    if (mapperResponseMsg.is_method_error())
+    try
     {
-        BMC_LOG_ERROR << "Error of mapper call";
-        throw ObmcAppException("ERROR of mapper call");
+        dbusConnection->getConnect()->call(mapperCall).read(interfacesResponse);
     }
-
-    mapperResponseMsg.read(interfacesResponse);
-    mapperResponseMsg.release();
-    mapperCall.release();
+    catch (const std::exception& e)
+    {
+        BMC_LOG_CRITICAL << "Failed to GetManagedObjects of " << serviceName
+                         << ": " << e.what();
+    }
     for (auto& [objectPath, interfaces] : interfacesResponse)
     {
         auto instance = std::make_shared<DBusInstance>(
@@ -259,8 +260,7 @@ const ObjectPath& IntrospectServiceDBusQuery::getObjectPathNamespace() const
 
 template <class TInstance>
 DBusInstancePtr DBusQuery<TInstance>::createInstance(
-    sdbusplus::bus::bus& connect, const ServiceName& serviceName,
-    const ObjectPath& objectPath, const std::vector<InterfaceName>& interfaces)
+    const connect::DBusConnectUni& connect, const ServiceName& serviceName,
 {
     auto entityInstance = std::make_shared<DBusInstance>(
         serviceName, objectPath, getSearchPropertiesMap(), getWeakPtr());
@@ -344,7 +344,7 @@ bool DBusInstance::hasField(const MemberName& memberName) const
 }
 
 const DBusPropertiesMap
-    DBusInstance::queryProperties(sdbusplus::bus::bus& connect,
+    DBusInstance::queryProperties(const connect::DBusConnectUni& dbusConnection,
                                   const InterfaceName& interface)
 {
     std::map<PropertyName, DbusVariantType> properties;
@@ -353,30 +353,30 @@ const DBusPropertiesMap
               << serviceName << "', ObjectPath='" << objectPath
               << "', Interface='" << interface << "'";
 
-    sdbusplus::message::message getProperties = connect.new_method_call(
-        this->serviceName.c_str(), this->objectPath.c_str(),
-        "org.freedesktop.DBus.Properties", "GetAll");
+    sdbusplus::message::message getProperties =
+        dbusConnection->getConnect()->new_method_call(
+            this->serviceName.c_str(), this->objectPath.c_str(),
+            "org.freedesktop.DBus.Properties", "GetAll");
     getProperties.append(interface);
 
     try
     {
-        sdbusplus::message::message response = connect.call(getProperties);
-        response.read(properties);
-        response.release();
+        dbusConnection->getConnect()->call(getProperties).read(properties);
         BMC_LOG_DEBUG << "DBus Properties read SUCCESS. Count properties: "
-                  << properties.size();
+                      << properties.size();
     }
     catch (const std::exception& e)
     {
-        BMC_LOG_CRITICAL << "Failed to GetAll properties. PATH=" << objectPath
-                     << ", INTF=" << interface << ", WHAT=" << e.what();
+        // Don't rase CRITICAL log level because the GetAll might processing for
+        // object which already deleted by service.
+        BMC_LOG_DEBUG << "Failed to GetAll properties. PATH=" << objectPath
+                         << ", INTF=" << interface << ": " << e.what();
     }
-    getProperties.release();
 
     return std::forward<const DBusPropertiesMap>(properties);
 }
 
-void DBusInstance::bindListeners(sdbusplus::bus::bus& connection)
+void DBusInstance::bindListeners(const connect::DBusConnectUni& connection)
 {
     using namespace sdbusplus::bus::match;
 
@@ -385,18 +385,27 @@ void DBusInstance::bindListeners(sdbusplus::bus::bus& connection)
     for (auto [interface, _] : targetProperties)
     {
         match matcher(
-            connection,
+            *connection->getConnect(),
             rules::propertiesChanged(this->getObjectPath(), interface),
             [self](sdbusplus::message::message& message) {
                 std::map<PropertyName, DbusVariantType> changedValues;
                 InterfaceName interfaceName;
-                message.read(interfaceName, changedValues);
-
+                try
+                {
+                    message.read(interfaceName, changedValues);
+                }
+                catch (const std::exception& e)
+                {
+                    BMC_LOG_CRITICAL << "Failed to read message of "
+                                        "PropertiesChanged signal, PATH="
+                                     << message.get_path()
+                                     << ": " << e.what();
+                }
                 self->fillMembers(interfaceName, changedValues);
             });
         BMC_LOG_DEBUG << "Registried watcher for Object=" << this->getObjectPath()
                   << ", Interface=" << interface;
-        listeners.push_back(std::forward<match>(matcher));
+        listeners.emplace_back(std::forward<match>(matcher));
     }
 }
 
@@ -646,10 +655,10 @@ const DbusVariantType
 
 template <class TInstance>
 void DBusQuery<TInstance>::registerObjectCreationObserver(
-    sdbusplus::bus::bus& connection, entity::EntityPtr entity)
+    const connect::DBusConnectionPoolUni& pool, entity::EntityPtr entity)
 {
     using namespace sdbusplus::bus::match;
-    auto handler = [&connection, dbusQueryShr = this->getSharedPtr(),
+    auto handler = [&pool, dbusQueryShr = this->getSharedPtr(),
                     actualProperties = std::ref(this->getSearchPropertiesMap()),
                     entity](sdbusplus::message::message& message) {
         DBusInterfacesMap interfacesAdded;
@@ -662,7 +671,7 @@ void DBusQuery<TInstance>::registerObjectCreationObserver(
         }
         catch (sdbusplus::exception_t& ex)
         {
-            BMC_LOG_CRITICAL << "Can't read added interfaces signal. Reason: "
+            BMC_LOG_CRITICAL << "Can't read added interfaces signal: "
                              << ex.what();
             return;
         }
@@ -691,7 +700,7 @@ void DBusQuery<TInstance>::registerObjectCreationObserver(
         }
 
         auto entityInstance = dbusQueryShr->createInstance(
-            connection, serviceName, objectPathStr, interfacesList);
+            pool->getQueryConnection(), serviceName, objectPathStr, interfacesList);
 
         auto newInstance = entity->mergeInstance(entityInstance);
         auto dbusInstance =
@@ -702,10 +711,11 @@ void DBusQuery<TInstance>::registerObjectCreationObserver(
                                    "accepted instance which is "
                                    "not DBusInstance.");
         }
-        dbusInstance->bindListeners(connection);
+        dbusInstance->bindListeners(pool->getWatcherConnection());
     };
 
-    match observer(connection, rules::interfacesAdded(), std::move(handler));
+    match observer(*pool->getWatcherConnection()->getConnect(),
+                   rules::interfacesAdded(), std::move(handler));
 
     BMC_LOG_DEBUG << "registerObjectCreationObserver";
     addObserver(std::forward<match>(observer));
@@ -713,7 +723,7 @@ void DBusQuery<TInstance>::registerObjectCreationObserver(
 
 template <class TInstance>
 void DBusQuery<TInstance>::registerObjectRemovingObserver(
-    sdbusplus::bus::bus& connection, entity::EntityPtr entity)
+    const connect::DBusConnectionPoolUni& pool, entity::EntityPtr entity)
 {
     using namespace sdbusplus::bus::match;
 
@@ -750,7 +760,8 @@ void DBusQuery<TInstance>::registerObjectRemovingObserver(
     };
 
     BMC_LOG_DEBUG << "registerObjectRemovingObserver";
-    match observer(connection, rules::interfacesRemoved(), std::move(handler));
+    match observer(*pool->getWatcherConnection()->getConnect(),
+                   rules::interfacesRemoved(), std::move(handler));
     addObserver(std::forward<match>(observer));
 }
 

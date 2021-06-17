@@ -122,10 +122,10 @@ class DBusInstance final :
     bool hasField(const MemberName&) const override;
     // TODO(IK) Move to the IFormatter abstractions instead the
     // FindObjectDBusQuery weak pointer.
-    const DBusPropertiesMap queryProperties(sdbusplus::bus::bus&,
+    const DBusPropertiesMap queryProperties(const connect::DBusConnectUni&,
                                             const InterfaceName&);
 
-    void bindListeners(sdbusplus::bus::bus&);
+    void bindListeners(const connect::DBusConnectUni&);
     const ObjectPath& getObjectPath() const;
     const ServiceName& getService() const;
 
@@ -184,7 +184,7 @@ class DBusMemberInstance final : public IEntity::IEntityMember::IInstance
 };
 
 template <class TInstance>
-class DBusQuery : public IQuery<TInstance, sdbusplus::bus::bus>
+class DBusQuery : public IQuery<TInstance, connect::DBusConnectUni>
 {
     std::vector<sdbusplus::bus::match::match> observers;
     static std::map<std::string, std::string> serviceNamesDict;
@@ -211,8 +211,10 @@ class DBusQuery : public IQuery<TInstance, sdbusplus::bus::bus>
         return emptyDefaultFieldsDict;
     }
 
-    void registerObjectCreationObserver(sdbusplus::bus::bus&, entity::EntityPtr);
-    void registerObjectRemovingObserver(sdbusplus::bus::bus&, entity::EntityPtr);
+    void registerObjectCreationObserver(const connect::DBusConnectionPoolUni&,
+                                        entity::EntityPtr);
+    void registerObjectRemovingObserver(const connect::DBusConnectionPoolUni&,
+                                        entity::EntityPtr);
 
     virtual void supplementByStaticFields(DBusInstancePtr&) const
     {}
@@ -235,7 +237,7 @@ class DBusQuery : public IQuery<TInstance, sdbusplus::bus::bus>
     virtual EntityDBusQueryConstWeakPtr getWeakPtr() const = 0;
     virtual EntityDBusQueryPtr getSharedPtr() = 0;
 
-    virtual DBusInstancePtr createInstance(sdbusplus::bus::bus&,
+    virtual DBusInstancePtr createInstance(const connect::DBusConnectUni&,
                                            const ServiceName&,
                                            const ObjectPath&,
                                            const std::vector<InterfaceName>&);
@@ -301,7 +303,7 @@ class FindObjectDBusQuery :
     {}
     ~FindObjectDBusQuery() override = default;
 
-    std::vector<IEntity::InstancePtr> process(sdbusplus::bus::bus&) override;
+    std::vector<IEntity::InstancePtr> process(const connect::DBusConnectUni&) override;
 
     bool checkCriteria(const ObjectPath&, const std::vector<InterfaceName>&,
                        std::optional<ServiceName> = std::nullopt) const override;
@@ -331,7 +333,8 @@ class IntrospectServiceDBusQuery :
     {}
     ~IntrospectServiceDBusQuery() override = default;
 
-    std::vector<IEntity::InstancePtr> process(sdbusplus::bus::bus&) override;
+    std::vector<IEntity::InstancePtr>
+        process(const connect::DBusConnectUni&) override;
 
     bool checkCriteria(const ObjectPath&, const std::vector<InterfaceName>&,
                        std::optional<ServiceName> = std::nullopt) const override;
