@@ -17,7 +17,7 @@ namespace authorization
 {
 
 constexpr const char* xXSRFToken = "HTTP_X_XSRF_TOKEN";
-constexpr const char* xAuthToken = "HTTP_X_Auth_Token";
+constexpr const char* xAuthToken = "HTTP_X_AUTH_TOKEN";
 constexpr const char* authBasic = "Basic ";
 constexpr const char* authToken = "Token ";
 constexpr const char* cookieSession = "SESSION";
