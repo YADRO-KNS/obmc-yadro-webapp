@@ -191,8 +191,9 @@ class DBusQuery : public IQuery<TInstance, connect::DBusConnectUni>
     static std::map<std::string, std::string> serviceNamesDict;
 
   public:
-    using DefaultFieldsValueDict =
-        std::map<MemberName, IEntity::IEntityMember::IInstance::FieldType>;
+    using DefaultValueSetter =
+        std::function<IEntity::IEntityMember::IInstance::FieldType()>;
+    using DefaultFieldsValueDict = std::map<MemberName, DefaultValueSetter>;
 
     DBusQuery(const DBusQuery&) = delete;
     DBusQuery& operator=(const DBusQuery&) = delete;

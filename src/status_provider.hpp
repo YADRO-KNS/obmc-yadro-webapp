@@ -115,7 +115,10 @@ class Status final : public dbus::GetObjectDBusQuery
         // then have OK value as default if no one instance is found.
         using namespace app::entity::obmc::definitions::supplement_providers;
         static const DefaultFieldsValueDict defaultStatusOk{
-            {status::fieldStatus, std::string(Status::statusOK)},
+            {
+                status::fieldStatus,
+                []() { return std::string(Status::statusOK); },
+            },
         };
         return defaultStatusOk;
     }
