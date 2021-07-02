@@ -636,9 +636,9 @@ void DBusInstance::initDefaultFieldsValue()
 {
     auto& defaultFields = dbusQuery.lock()->getDefaultFieldsValue();
 
-    for (auto& [memberName, memberValue] : defaultFields)
+    for (auto& [memberName, memberValueSetter] : defaultFields)
     {
-        this->supplementOrUpdate(memberName, memberValue);
+        this->supplementOrUpdate(memberName, std::invoke(memberValueSetter));
     }
 }
 

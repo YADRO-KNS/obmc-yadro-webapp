@@ -282,11 +282,22 @@ class Server final : public dbus::FindObjectDBusQuery
         using namespace supplement_providers;
         using namespace app::helpers::utils;
 
-        static constexpr const char* bmcDatetimeFormat = "%FT%T%z";
         static const DefaultFieldsValueDict defaultStatusOk{
-            {status::fieldStatus, std::string(Status::statusOK)},
-            {indicatorLed::fieldLed, false},
-            {fieldDatetime, getFormattedCurrentDate(bmcDatetimeFormat)},
+            {
+                status::fieldStatus,
+                []() { return std::string(Status::statusOK); },
+            },
+            {
+                indicatorLed::fieldLed,
+                []() { return false; },
+            },
+            {
+                fieldDatetime,
+                []() {
+                    static constexpr const char* bmcDatetimeFormat = "%FT%T%z";
+                    return getFormattedCurrentDate(bmcDatetimeFormat);
+                },
+            },
         };
         return defaultStatusOk;
     }
@@ -651,7 +662,10 @@ class Sensors final : public dbus::FindObjectDBusQuery
     {
         using namespace app::entity::obmc::definitions::supplement_providers;
         static const DefaultFieldsValueDict defaultStatusOk{
-            {status::fieldStatus, std::string(Status::statusOK)},
+            {
+                status::fieldStatus,
+                []() { return std::string(Status::statusOK); },
+            },
         };
         return defaultStatusOk;
     }
