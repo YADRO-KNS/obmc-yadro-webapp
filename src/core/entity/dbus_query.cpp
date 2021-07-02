@@ -97,16 +97,18 @@ std::vector<IEntity::InstancePtr>
 }
 
 bool FindObjectDBusQuery::checkCriteria(
-    const ObjectPath& objectPath, const InterfaceList& interface,
+    const ObjectPath& objectPath, const InterfaceList& interfacesToCheck,
     std::optional<ServiceName> optionalServiceName) const
 {
-    InterfaceList notMatchedInterfaces;
-    auto& activeInterfaces = getQueryCriteria().interfaces;
+    auto& criteriaInterfaces = getQueryCriteria().interfaces;
 
     if (optionalServiceName.has_value() &&
         getQueryCriteria().service.has_value() &&
         *optionalServiceName != *getQueryCriteria().service)
     {
+        BMC_LOG_DEBUG << "[Check criteria] Bad service: "
+                      << *optionalServiceName << "|"
+                      << *getQueryCriteria().service;
         return false;
     }
 
@@ -114,16 +116,28 @@ bool FindObjectDBusQuery::checkCriteria(
         app::helpers::utils::countExtraSegmentsOfPath(
             getQueryCriteria().path, objectPath) > getQueryCriteria().depth)
     {
+        BMC_LOG_DEBUG << "[Check criteria] Bad depth: "
+                      << getQueryCriteria().depth << "|"
+                      << app::helpers::utils::countExtraSegmentsOfPath(
+                             getQueryCriteria().path, objectPath)
+                      << "(" << getQueryCriteria().path << ", " << objectPath
+                      << ")";
         return false;
     }
 
-    std::set_difference(
-        activeInterfaces.begin(), activeInterfaces.end(), interface.begin(),
-        interface.end(),
-        std::inserter(notMatchedInterfaces, notMatchedInterfaces.begin()));
-    if (notMatchedInterfaces.size() == activeInterfaces.size())
+    auto hasValidInterfaceForCriteria = std::any_of(
+        interfacesToCheck.begin(), interfacesToCheck.end(),
+        [&criteriaInterfaces](const InterfaceName& interfaceToCheck) {
+            return std::any_of(
+                criteriaInterfaces.begin(), criteriaInterfaces.end(),
+                [&interfaceToCheck](const InterfaceName& criteriaInterface) {
+                    return interfaceToCheck == criteriaInterface;
+                });
+        });
+    if (!hasValidInterfaceForCriteria)
     {
-        // No one interface matched
+        BMC_LOG_DEBUG
+            << "[Check criteria] Bad interface list: no interface matched";
         return false;
     }
 
