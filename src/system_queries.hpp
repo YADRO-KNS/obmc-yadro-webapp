@@ -249,8 +249,27 @@ class Server final : public dbus::FindObjectDBusQuery
                 {Version::VersionPurpose::BIOS,
                  definitions::version::fieldVersionBios},
             };
+        static const std::vector<std::string> availableVersionObjects{
+            "bmc active",
+            "bios active",
+        };
+
         try
         {
+            auto availableName = utils::getNameFromLastSegmentObjectPath(
+                Supplementer->getField(metaObjectPath)->getStringValue());
+
+            auto versionObjectValid = std::any_of(
+                availableVersionObjects.begin(), availableVersionObjects.end(),
+                [availableName](
+                    const std::string& availableVersionObject) -> bool {
+                    return availableName == availableVersionObject;
+                });
+            if (!versionObjectValid)
+            {
+                return;
+            }
+
             auto purpose = Version::getPurpose(Supplementer);
             if (Version::VersionPurpose::Unknown == purpose)
             {
