@@ -222,17 +222,33 @@ class Server final : public dbus::FindObjectDBusQuery
     static void linkIndicatorLed(const IEntity::InstancePtr& supplementer,
                                  const IEntity::InstancePtr& target)
     {
-        static constexpr std::string_view indicatorObjectPath =
-            "/xyz/openbmc_project/led/groups/enclosure_identify";
-        if (supplementer->getField(metaObjectPath)->getStringValue() ==
-            indicatorObjectPath)
+        static constexpr std::array indicatorObjectsPath{
+            "/xyz/openbmc_project/led/groups/enclosure_identify",
+            "/xyz/openbmc_project/led/groups/enclosure_identify_blink",
+        };
+        for (auto& indicatorObjectPath: indicatorObjectsPath)
         {
-            auto asserted =
-                supplementer
-                    ->getField(supplement_providers::indicatorLed::fieldLed)
-                    ->getValue();
-            target->supplementOrUpdate(
-                supplement_providers::indicatorLed::fieldLed, asserted);
+            if (supplementer->getField(metaObjectPath)->getStringValue() ==
+                std::string(indicatorObjectPath))
+            {
+                try
+                {
+                    // Only the `true` value will be set because `false` is the
+                    // default.
+                    if (supplementer
+                            ->getField(
+                                supplement_providers::indicatorLed::fieldLed)
+                            ->getBoolValue())
+                    {
+                        target->supplementOrUpdate(
+                            supplement_providers::indicatorLed::fieldLed, true);
+                    }
+                }
+                catch (std::out_of_range&)
+                {
+                    // Error on retrieving the bool value of Indicator LED.
+                }
+            }
         }
     }
 
