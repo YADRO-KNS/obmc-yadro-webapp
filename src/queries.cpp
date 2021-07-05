@@ -110,26 +110,6 @@ void Application::initEntityMap()
         .addRelations(definitions::pcie::functions::entityFunction,
                       PCIeDeviceEntity::realtionToFunctions());
 
-    /* Define SENSORS entity */
-    entityManager.buildEntity(definitions::entitySensors)
-        ->addMembers({
-            definitions::sensors::fieldName,
-            definitions::sensors::fieldValue,
-            definitions::sensors::fieldUnit,
-            definitions::sensors::fieldLowWarning,
-            definitions::sensors::fieldLowCritical,
-            definitions::sensors::fieldHighWarning,
-            definitions::sensors::fieldHightCritical,
-            definitions::sensors::fieldAvailable,
-            definitions::sensors::fieldFunctional,
-        })
-        .linkSupplementProvider(
-            status::providerStatus,
-            std::bind(&Sensors::linkStatus, _1, _2))
-        .addQuery<dbus::DBusQueryBuilder>(dbusBrokerManager)
-        ->addObject<Sensors>()
-        .complete();
-
     /* Define SERVER entity */
     entityManager.buildEntity(definitions::entityServer)
         ->addMembers({
@@ -247,6 +227,26 @@ void Application::initEntityMap()
                       NetworkEthInterface::relationToIp())
         .addQuery<dbus::DBusQueryBuilder>(dbusBrokerManager)
         ->addObject<NetworkEthInterface>()
+        .complete();
+
+    /* Define SENSORS entity */
+    entityManager.buildEntity(definitions::entitySensors)
+        ->addMembers({
+            definitions::sensors::fieldName,
+            definitions::sensors::fieldValue,
+            definitions::sensors::fieldUnit,
+            definitions::sensors::fieldLowWarning,
+            definitions::sensors::fieldLowCritical,
+            definitions::sensors::fieldHighWarning,
+            definitions::sensors::fieldHightCritical,
+            definitions::sensors::fieldAvailable,
+            definitions::sensors::fieldFunctional,
+        })
+        .linkSupplementProvider(
+            status::providerStatus,
+            std::bind(&Sensors::linkStatus, _1, _2))
+        .addQuery<dbus::DBusQueryBuilder>(dbusBrokerManager)
+        ->addObject<Sensors>()
         .complete();
 }
 
