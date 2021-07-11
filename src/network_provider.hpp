@@ -391,7 +391,22 @@ class NetworkEthInterface final : public dbus::FindObjectDBusQuery
                     BMC_LOG_DEBUG << "[CHECK RELATION] "
                                   << instance->getStringValue() << "|"
                                   << objectPath;
-                    return instance->getStringValue().starts_with(objectPath);
+                    //  An ethernet-interface object path includes its own name
+                    //  at the last segment, but the VLAN name start with the
+                    //  corresponding physical interface name, e.g.,
+                    //  - ethernet object path:
+                    //    `/xyz/openbmc_project/network/eth0`
+                    //  - vlan object path:
+                    //    `/xyz/openbmc_project/network/eth0_999`.
+                    // Hence, for the ip-interface object
+                    // /xyz/openbmc_project/network/eth0_999/ipv4/4bf59855` the
+                    // relation will be established for both ethernet
+                    // interfaces, which is incorrect.
+                    // Add the closure segment delimiter '/' to the end of the
+                    // ethernet-interface object path to be certain that the
+                    // relation matched for the entire dbus-path, not for part
+                    // of the ethernet-interface name.
+                    return instance->getStringValue().starts_with(objectPath + "/");
                 },
             },
         };
