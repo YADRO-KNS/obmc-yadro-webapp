@@ -14,6 +14,7 @@
 #include <system_queries.hpp>
 #include <version_provider.hpp>
 #include <pcie_provider.hpp>
+#include <settings.hpp>
 
 namespace app
 {
@@ -109,6 +110,13 @@ void Application::initEntityMap()
         })
         .addRelations(definitions::pcie::functions::entityFunction,
                       PCIeDeviceEntity::realtionToFunctions());
+
+    /* Define Settings entity */
+    entityManager.buildEntity(definitions::entitySettings)
+        ->addMembers({settings::fieldTitleTemplate})
+        .addQuery<dbus::DBusQueryBuilder>(dbusBrokerManager)
+        ->addObject<Settings>()
+        .complete();
 
     /* Define SERVER entity */
     entityManager.buildEntity(definitions::entityServer)

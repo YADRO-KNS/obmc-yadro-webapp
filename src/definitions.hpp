@@ -18,6 +18,7 @@ constexpr const char* entityServer = "Server";
 constexpr const char* entitySensors = "Sensors";
 constexpr const char* entityBaseboard = "Baseboard";
 constexpr const char* entityNetwork = "Network";
+constexpr const char* entitySettings = "Settings";
 constexpr const char* fieldName = "Name";
 constexpr const char* fieldType = "Type";
 constexpr const char* fieldModel = "Model";
@@ -47,6 +48,11 @@ constexpr const char* fieldAvailable = "Available";
 constexpr const char* fieldFunctional = "Functional";
 
 } // namespace sensors
+
+namespace settings
+{
+constexpr const char* fieldTitleTemplate = "TitleTemplate";
+} // namespace settings
 
 namespace version
 {
