@@ -538,26 +538,6 @@ std::size_t DBusInstance::getHash(const ServiceName& serviceName,
     return (hashPath ^ (hashServiceName << 1));
 }
 
-template <typename TProperty>
-void DBusInstance::captureComplexDBusProperty(const MemberName& memberName,
-                                              const TProperty& property)
-
-{
-    BMC_LOG_DEBUG << "Complex Primitive capture, member name=" << memberName;
-    for (auto& value : property)
-    {
-        DBusPropertiesMap properties{
-            {memberName, value},
-        };
-        auto complexInstance = std::make_shared<DBusInstance>(
-            serviceName, objectPath, targetProperties, dbusQuery);
-        complexInstance->fillMembers(memberName, properties);
-        this->complexInstances.insert_or_assign(complexInstance->getHash(),
-                                                complexInstance);
-    }
-    return;
-}
-
 void DBusInstance::captureDBusAssociations(
     const InterfaceName& interfaceName,
     const DBusAssociationsType& associations)
@@ -612,13 +592,6 @@ void DBusInstance::resolveDBusVariant(const MemberName& memberName,
         {
             instance->supplementOrUpdate(memberName,
                                          DBusMemberInstance::FieldType(value));
-            return;
-        }
-        else if constexpr (std::is_same_v<std::vector<std::string>,
-                                          TProperty> ||
-                           std::is_same_v<std::vector<double>, TProperty>)
-        {
-            instance->captureComplexDBusProperty(memberName, value);
             return;
         }
         else if constexpr (std::is_same_v<DBusAssociationsType, TProperty>)

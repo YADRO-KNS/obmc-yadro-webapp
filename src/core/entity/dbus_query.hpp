@@ -145,9 +145,6 @@ class DBusInstance final :
     std::size_t getHash() const override;
     static std::size_t getHash(const ServiceName&, const ObjectPath&);
 
-    template <typename TProperty>
-    void captureComplexDBusProperty(const MemberName&, const TProperty&);
-
     void captureDBusAssociations(const InterfaceName&,
                                  const DBusAssociationsType&);
 

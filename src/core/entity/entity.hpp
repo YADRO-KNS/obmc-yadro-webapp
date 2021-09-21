@@ -93,9 +93,9 @@ class IEntity
         {
           public:
             using FieldType =
-                std::variant<std::string, int64_t,
-                             uint64_t, double, int32_t, uint32_t, int16_t,
-                             uint16_t, uint8_t, bool>;
+                std::variant<std::vector<std::string>, std::vector<double>,
+                             std::string, int64_t, uint64_t, double, int32_t,
+                             uint32_t, int16_t, uint16_t, uint8_t, bool>;
 
             virtual const FieldType& getValue() const noexcept = 0;
             virtual const std::string& getStringValue() const = 0;
