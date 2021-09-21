@@ -16,6 +16,7 @@
 #include <pcie_provider.hpp>
 #include <settings.hpp>
 #include <drive.hpp>
+#include <pid_control.hpp>
 
 namespace app
 {
@@ -236,6 +237,25 @@ void Application::initEntityMap()
                       NetworkEthInterface::relationToIp())
         .addQuery<dbus::DBusQueryBuilder>(dbusBrokerManager)
         ->addObject<NetworkEthInterface>()
+        .complete();
+    
+    /* Define PID entity */
+    entityManager.buildEntity(PID::entityName)
+        ->addMembers(PID::fields)
+        .addQuery<dbus::DBusQueryBuilder>(dbusBrokerManager)
+        ->addObject<PID>()
+        .complete();
+
+    /* Define PID ZONE entity */
+    entityManager.buildEntity(PIDZone::entityName)
+        ->addMembers({
+            PIDZone::fieldName,
+            PIDZone::fieldMinOutputPercent,
+            PIDZone::fieldFailsafePercent,
+        })
+        .addRelations(PID::entityName, PIDZone::relationToPID())
+        .addQuery<dbus::DBusQueryBuilder>(dbusBrokerManager)
+        ->addObject<PIDZone>()
         .complete();
 
     /* Define DRIVE entity */
