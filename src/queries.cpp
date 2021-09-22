@@ -15,6 +15,7 @@
 #include <version_provider.hpp>
 #include <pcie_provider.hpp>
 #include <settings.hpp>
+#include <drive.hpp>
 
 namespace app
 {
@@ -235,6 +236,13 @@ void Application::initEntityMap()
                       NetworkEthInterface::relationToIp())
         .addQuery<dbus::DBusQueryBuilder>(dbusBrokerManager)
         ->addObject<NetworkEthInterface>()
+        .complete();
+
+    /* Define DRIVE entity */
+    entityManager.buildEntity(Drive::entityName)
+        ->addMembers(Drive::fields)
+        .addQuery<dbus::DBusQueryBuilder>(dbusBrokerManager)
+        ->addObject<Drive>()
         .complete();
 
     /* Define SENSORS entity */
