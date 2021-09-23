@@ -31,7 +31,7 @@ class Drive final : public dbus::FindObjectDBusQuery
     static constexpr const char* propName = "PrettyName";
     static constexpr const char* propPresent = "Present";
     static constexpr const char* propCapacity = "Capacity";
-    static constexpr const char* propInterfaces = "Interfaces";
+    static constexpr const char* propInterfaces = "Protocol";
     static constexpr const char* propType = "Type";
     static constexpr const char* propRebuild = "Rebuilding";
 
@@ -147,7 +147,7 @@ class Drive final : public dbus::FindObjectDBusQuery
             auto lastSegmenPos = mediaTypeDirty.find_last_of('.');
             if (lastSegmenPos == std::string::npos)
             {
-                throw std::invalid_argument("Invalid meida type format");
+                throw std::invalid_argument("Invalid media type format");
             }
             auto mediaType = mediaTypeDirty.substr(lastSegmenPos + 1);
             if (mediaType == "Unknown")
