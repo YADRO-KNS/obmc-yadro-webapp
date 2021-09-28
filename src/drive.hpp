@@ -117,18 +117,13 @@ class Drive final : public dbus::FindObjectDBusQuery
     {
         try
         {
-            std::vector<std::string> result;
-            const auto& protocols = std::get<std::vector<std::string>>(value);
-            for (const auto& proto : protocols)
+            const auto& protocol = std::get<std::string>(value);
+            auto lastSegmenPos = protocol.find_last_of('.');
+            if (lastSegmenPos == std::string::npos)
             {
-                auto lastSegmenPos = proto.find_last_of('.');
-                if (lastSegmenPos == std::string::npos)
-                {
-                    continue;
-                }
-                result.push_back(proto.substr(lastSegmenPos + 1));
-                return DbusVariantType(result);
+                throw std::invalid_argument("Invalid protocol format");
             }
+            return DbusVariantType(protocol.substr(lastSegmenPos + 1));
         }
         catch (const std::exception& e)
         {
