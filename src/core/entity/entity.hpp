@@ -37,6 +37,7 @@ class IEntity;
 class IEntityMapper;
 class EntityManager;
 class EntitySupplementProvider;
+class Collection;
 
 using EntityPtr = std::shared_ptr<IEntity>;
 using EntityPtrConst = std::shared_ptr<const IEntity>;
@@ -81,6 +82,12 @@ class IEntity
 
     using MemberMap = std::map<const std::string, EntityMemberPtr>;
     using InstanceHash = std::size_t;
+
+    enum class Type {
+        object,
+        array,
+        reference
+    };
 
     class IEntityMember
     {
@@ -257,6 +264,13 @@ class IEntity
     virtual void fillEntity() = 0;
 
     virtual ~IEntity() = default;
+
+    /**
+     * @brief Get Type of the current Entity object.
+     * 
+     * @return IEntity::Type  - The type of Entity. 
+     */
+    virtual IEntity::Type getType() const = 0;
 };
 
 class Entity : public IEntity
@@ -490,6 +504,30 @@ class Entity : public IEntity
     {
         // nothing to do in the base entity;
     }
+
+    Type getType() const override;
+};
+
+/**
+ * @brief Class Collection provides the list of Entities specified object type.
+ *        The current abstraction is needed to explicitly define an Entity set.
+ */
+class Collection: public Entity
+{
+  public:
+    explicit Collection() = delete;
+    Collection(const Collection&) = delete;
+    Collection& operator=(const Collection&) = delete;
+    Collection(Collection&&) = delete;
+    Collection& operator=(Collection&&) = delete;
+
+    explicit Collection(const std::string& name) noexcept : Entity(name)
+    {
+    }
+
+    ~Collection() override = default;
+
+    Type getType() const override;
 };
 
 class EntitySupplementProvider :
@@ -572,6 +610,7 @@ class EntityManager final
 
     EntityBuilderPtr buildSupplementProvider(const std::string&);
 
+    EntityBuilderPtr buildCollection(const std::string&);
     EntityBuilderPtr buildEntity(const std::string&);
     template<class TEntity>
     EntityBuilderPtr buildEntity(const std::string& name)

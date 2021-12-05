@@ -346,6 +346,11 @@ const std::vector<IEntity::RelationPtr>& Entity::getRelations() const
     return relations;
 }
 
+Entity::Type Entity::getType() const
+{
+    return Type::object;
+}
+
 const IEntity::RelationPtr
     Entity::getRelation(const EntityName& entityName) const
 {
@@ -458,6 +463,13 @@ EntityManager::EntityBuilderPtr EntityManager::buildSupplementProvider(
 }
 
 EntityManager::EntityBuilderPtr
+    EntityManager::buildCollection(const std::string& name)
+{
+    return std::forward<EntityManager::EntityBuilderPtr>(
+        buildEntity<Collection>(name));
+}
+
+EntityManager::EntityBuilderPtr
     EntityManager::buildEntity(const std::string& name)
 {
     return std::forward<EntityManager::EntityBuilderPtr>(
@@ -497,6 +509,11 @@ const EntityPtr EntityManager::getProvider(const EntityName& providerName) const
         throw EntityException("The Provider <" + providerName + "> not found");
     }
     return it->second;
+}
+
+Collection::Type Collection::getType() const
+{
+    return Type::array;
 }
 
 } // namespace entity
