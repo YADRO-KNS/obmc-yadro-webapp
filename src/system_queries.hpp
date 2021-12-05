@@ -12,6 +12,7 @@
 #include <logger/logger.hpp>
 #include <status_provider.hpp>
 #include <version_provider.hpp>
+#include <decorator_asset.hpp>
 
 namespace app
 {
@@ -30,21 +31,6 @@ using namespace std::placeholders;
 
 using VariantType = dbus::DbusVariantType;
 using FieldSet = std::vector<std::string>;
-
-namespace general
-{
-namespace assets
-{
-
-constexpr const char* assetInterface =
-    "xyz.openbmc_project.Inventory.Decorator.Asset";
-
-constexpr const char* propertyManufacturer = "Manufacturer";
-constexpr const char* propertyModel = "Model";
-constexpr const char* propertyPartNumber = "PartNumber";
-constexpr const char* propertySerialNumber = "SerialNumber";
-} // namespace assets
-} // namespace general
 
 class AssetTag final : public dbus::FindObjectDBusQuery
 {
