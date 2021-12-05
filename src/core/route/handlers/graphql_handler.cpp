@@ -401,27 +401,31 @@ const json GqlObjectBuild::getFragment(std::optional<std::size_t> parentInstance
 
     try
     {
-        if (!getEntity())
+        auto entity = getEntity();
+        if (!entity)
         {
             return std::forward<const json>(fragment.back());
         }
-        else if (getEntity())
+        else
         {
             std::vector<entity::IEntity::ConditionPtr> conditions;
             if (this->relation && parentInstanceHash.has_value())
             {
                 BMC_LOG_DEBUG << "HASH:" << parentInstanceHash.value();
-                conditions = std::move(this->relation->getConditions(*parentInstanceHash));
+                conditions = std::move(
+                    this->relation->getConditions(*parentInstanceHash));
             }
             BMC_LOG_DEBUG << "Count conditions: " << conditions.size();
-            auto& instances = getEntity()->getInstances(conditions);
-            if (instances.size() == 1)
+            auto& instances = entity->getInstances(conditions);
+            if (instances.size() == 1 &&
+                entity->getType() != entity::IEntity::Type::array)
             {
                 BMC_LOG_DEBUG << "GQL: Fill a single instanced object";
                 result =
                     fragment.at(std::to_string(instances.back()->getHash()));
             }
-            else if (instances.size() > 1)
+            else if (instances.size() > 1 ||
+                     entity->getType() == entity::IEntity::Type::array)
             {
                 BMC_LOG_DEBUG << "GQL: Fill a list of the instanced objects";
                 result = json::array({});
