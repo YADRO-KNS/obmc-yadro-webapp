@@ -17,6 +17,7 @@
 #include <settings.hpp>
 #include <drive.hpp>
 #include <pid_control.hpp>
+#include <network_adapter.hpp>
 
 namespace app
 {
@@ -263,6 +264,13 @@ void Application::initEntityMap()
         ->addMembers(Drive::fields)
         .addQuery<dbus::DBusQueryBuilder>(dbusBrokerManager)
         ->addObject<Drive>()
+        .complete();
+
+    /* Define NETWORK ADAPTER entity */
+    entityManager.buildCollection(NetworkAdapter::entityName)
+        ->addMembers(NetworkAdapter::fields)
+        .addQuery<dbus::DBusQueryBuilder>(dbusBrokerManager)
+        ->addObject<NetworkAdapter>()
         .complete();
 
     /* Define SENSORS entity */
