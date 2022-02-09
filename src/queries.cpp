@@ -184,62 +184,35 @@ void Application::initEntityMap()
         .complete();
 
     /* Define NETWORK SYSTEM CONFIGURATION entity */
-    entityManager.buildEntity(definitions::network::config::entityNetConf)
-        ->addMembers({
-            definitions::network::config::fieldHostName,
-            definitions::network::config::fieldDefaultIPv4Gateway,
-            definitions::network::config::fieldDefaultIPv6Gateway,
-        })
+    entityManager.buildEntity(NetworkSysConfiguration::entityName)
+        ->addMembers(NetworkSysConfiguration::fields)
         .addQuery<dbus::DBusQueryBuilder>(dbusBrokerManager)
         ->addObject<NetworkSysConfiguration>()
         .complete();
 
     /* Define NETWORK DHCP CONFIGURATION entity */
-    entityManager.buildEntity(definitions::network::config::entityDHCPConf)
-        ->addMembers({
-            definitions::network::config::fieldDNSEnabled,
-            definitions::network::config::fieldHostNameEnabled,
-            definitions::network::config::fieldNTPEnabled,
-            definitions::network::config::fieldSendHostNameEnabled,
-        })
+    entityManager.buildEntity(NetworkDHCPConfiguration::entityName)
+        ->addMembers(NetworkDHCPConfiguration::fields)
         .addQuery<dbus::DBusQueryBuilder>(dbusBrokerManager)
         ->addObject<NetworkDHCPConfiguration>()
         .complete();
 
     /* Define NETWORK IP entity */
-    entityManager.buildEntity(definitions::network::ip::entityIpIface)
-        ->addMembers({
-            definitions::network::ip::fieldAddress,
-            definitions::network::ip::fieldGateway,
-            definitions::network::ip::fieldMask,
-            definitions::network::ip::fieldOrigin,
-            definitions::network::ip::fieldType,
-        })
+    entityManager.buildEntity(NetworkIPInterface::entityName)
+        ->addMembers(NetworkIPInterface::fields)
         .addQuery<dbus::DBusQueryBuilder>(dbusBrokerManager)
         ->addObject<NetworkIPInterface>()
         .complete();
 
     /* Define NETWORK ETHERNET entity */
-    entityManager.buildEntity(definitions::network::ethernet::entityEthIface)
-        ->addMembers({
-            definitions::network::ethernet::fieldAutoNeg,
-            definitions::network::ethernet::fieldDHCPEnabled,
-            definitions::network::ethernet::fieldDomainName,
-            definitions::network::ethernet::fieldIPv6AcceptRA,
-            definitions::network::ethernet::fieldInterfaceName,
-            definitions::network::ethernet::fieldLinkLocalAutoConf,
-            definitions::network::ethernet::fieldLinkUp,
-            definitions::network::ethernet::fieldNICEnabled,
-            definitions::network::ethernet::fieldNTPServers,
-            definitions::network::ethernet::fieldMACAddress,
-            definitions::network::ethernet::fieldStaticNameServers,
-        })
-        .addRelations(definitions::network::ip::entityIpIface,
+    entityManager.buildEntity(NetworkEthInterface::entityName)
+        ->addMembers(NetworkEthInterface::fields)
+        .addRelations(NetworkIPInterface::entityName,
                       NetworkEthInterface::relationToIp())
         .addQuery<dbus::DBusQueryBuilder>(dbusBrokerManager)
         ->addObject<NetworkEthInterface>()
         .complete();
-    
+
     /* Define PID entity */
     entityManager.buildEntity(PID::entityName)
         ->addMembers(PID::fields)
