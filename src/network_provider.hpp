@@ -24,10 +24,10 @@ using namespace app::query::dbus;
 using namespace std::placeholders;
 using namespace app::entity::obmc::definitions;
 
-static const DbusVariantType
-    formatStringValueFromDict(const std::map<std::string, std::string>& formatterDict,
-                   const PropertyName& propertyName,
-                   const DbusVariantType& value, DBusInstancePtr)
+static const DbusVariantType formatStringValueFromDict(
+    const std::map<std::string, std::string>& formatterDict,
+    const PropertyName& propertyName, const DbusVariantType& value,
+    DBusInstancePtr)
 {
     auto formattedValue = std::visit(
         [propertyName,
@@ -59,10 +59,19 @@ class NetworkSysConfiguration final : public dbus::FindObjectDBusQuery
         "xyz.openbmc_project.Network.SystemConfiguration";
 
     static constexpr const char* namePropertyHostName = "HostName";
-    static constexpr const char* namePropertyDefaultIPv4Gateway = "DefaultGateway";
-    static constexpr const char* namePropertyDefaultIPv6Gateway = "DefaultGateway6";
+    static constexpr const char* namePropertyDefaultIPv4Gateway =
+        "DefaultGateway";
+    static constexpr const char* namePropertyDefaultIPv6Gateway =
+        "DefaultGateway6";
+
+    static constexpr const char* fieldHostName = "HostName";
+    static constexpr const char* fieldDefaultIPv4Gateway = "DefaultIPv4Gateway";
+    static constexpr const char* fieldDefaultIPv6Gateway = "DefaultIPv6Gateway";
 
   public:
+    static const std::vector<std::string> fields;
+    static constexpr const char* entityName = "NetworkConfig";
+
     NetworkSysConfiguration() : dbus::FindObjectDBusQuery()
     {}
     ~NetworkSysConfiguration() override = default;
@@ -73,18 +82,9 @@ class NetworkSysConfiguration final : public dbus::FindObjectDBusQuery
             {
                 netSysConfigInterfaceName,
                 {
-                    {
-                        namePropertyHostName,
-                        network::config::fieldHostName,
-                    },
-                    {
-                        namePropertyDefaultIPv4Gateway,
-                        network::config::fieldDefaultIPv4Gateway,
-                    },
-                    {
-                        namePropertyDefaultIPv6Gateway,
-                        network::config::fieldDefaultIPv6Gateway,
-                    },
+                    {namePropertyHostName, fieldHostName},
+                    {namePropertyDefaultIPv4Gateway, fieldDefaultIPv4Gateway},
+                    {namePropertyDefaultIPv6Gateway, fieldDefaultIPv6Gateway},
                 },
             },
         };
@@ -108,6 +108,12 @@ class NetworkSysConfiguration final : public dbus::FindObjectDBusQuery
     }
 };
 
+const std::vector<std::string> NetworkSysConfiguration::fields = {
+    NetworkSysConfiguration::fieldHostName,
+    NetworkSysConfiguration::fieldDefaultIPv4Gateway,
+    NetworkSysConfiguration::fieldDefaultIPv6Gateway,
+};
+
 class NetworkDHCPConfiguration final : public dbus::FindObjectDBusQuery
 {
     static constexpr const char* networkServiceName =
@@ -116,11 +122,22 @@ class NetworkDHCPConfiguration final : public dbus::FindObjectDBusQuery
         "xyz.openbmc_project.Network.DHCPConfiguration";
 
     static constexpr const char* namePropertyDNSEnabled = "DNSEnabled";
-    static constexpr const char* namePropertyHostNameEnabled = "HostNameEnabled";
+    static constexpr const char* namePropertyHostNameEnabled =
+        "HostNameEnabled";
     static constexpr const char* namePropertyNTPEnabled = "NTPEnabled";
-    static constexpr const char* namePropertySendHostNameEnabled = "SendHostNameEnabled";
+    static constexpr const char* namePropertySendHostNameEnabled =
+        "SendHostNameEnabled";
+
+    static constexpr const char* fieldDNSEnabled = "DNSEnabled";
+    static constexpr const char* fieldHostNameEnabled = "HostNameEnabled";
+    static constexpr const char* fieldNTPEnabled = "NTPEnabled";
+    static constexpr const char* fieldSendHostNameEnabled =
+        "SendHostNameEnabled";
 
   public:
+    static const std::vector<std::string> fields;
+    static constexpr const char* entityName = "NetworkDHCPConfig";
+
     NetworkDHCPConfiguration() : dbus::FindObjectDBusQuery()
     {}
     ~NetworkDHCPConfiguration() override = default;
@@ -131,22 +148,10 @@ class NetworkDHCPConfiguration final : public dbus::FindObjectDBusQuery
             {
                 netDHCPConfigInterfaceName,
                 {
-                    {
-                        namePropertyDNSEnabled,
-                        network::config::fieldDNSEnabled,
-                    },
-                    {
-                        namePropertyHostNameEnabled,
-                        network::config::fieldHostNameEnabled,
-                    },
-                    {
-                        namePropertyNTPEnabled,
-                        network::config::fieldNTPEnabled,
-                    },
-                    {
-                        namePropertySendHostNameEnabled,
-                        network::config::fieldSendHostNameEnabled,
-                    },
+                    {namePropertyDNSEnabled, fieldDNSEnabled},
+                    {namePropertyHostNameEnabled, fieldHostNameEnabled},
+                    {namePropertyNTPEnabled, fieldNTPEnabled},
+                    {namePropertySendHostNameEnabled, fieldSendHostNameEnabled},
                 },
             },
         };
@@ -170,6 +175,13 @@ class NetworkDHCPConfiguration final : public dbus::FindObjectDBusQuery
     }
 };
 
+const std::vector<std::string> NetworkDHCPConfiguration::fields = {
+    NetworkDHCPConfiguration::fieldDNSEnabled,
+    NetworkDHCPConfiguration::fieldHostNameEnabled,
+    NetworkDHCPConfiguration::fieldNTPEnabled,
+    NetworkDHCPConfiguration::fieldSendHostNameEnabled,
+};
+
 class NetworkIPInterface final : public dbus::FindObjectDBusQuery
 {
     static constexpr const char* networkServiceName =
@@ -183,10 +195,19 @@ class NetworkIPInterface final : public dbus::FindObjectDBusQuery
     static constexpr const char* namePropertyPrefixLength = "PrefixLength";
     static constexpr const char* namePropertyType = "Type";
 
+    static constexpr const char* fieldAddress = "Address";
+    static constexpr const char* fieldGateway = "Gateway";
+    static constexpr const char* fieldOrigin = "Origin";
+    static constexpr const char* fieldMask = "SubnetMask";
+    static constexpr const char* fieldType = "Type";
+
     static const std::map<std::string, std::string> typeDict;
     static const std::map<std::string, std::string> originsDict;
 
   public:
+    static const std::vector<std::string> fields;
+    static constexpr const char* entityName = "IP";
+
     NetworkIPInterface() : dbus::FindObjectDBusQuery()
     {}
     ~NetworkIPInterface() override = default;
@@ -197,26 +218,11 @@ class NetworkIPInterface final : public dbus::FindObjectDBusQuery
             {
                 netIpInterfaceName,
                 {
-                    {
-                        namePropertyAddress,
-                        network::ip::fieldAddress,
-                    },
-                    {
-                        namePropertyGateway,
-                        network::ip::fieldGateway,
-                    },
-                    {
-                        namePropertyOrigin,
-                        network::ip::fieldOrigin,
-                    },
-                    {
-                        namePropertyPrefixLength,
-                        network::ip::fieldMask,
-                    },
-                    {
-                        namePropertyType,
-                        network::ip::fieldType,
-                    },
+                    {namePropertyAddress, fieldAddress},
+                    {namePropertyGateway, fieldGateway},
+                    {namePropertyOrigin, fieldOrigin},
+                    {namePropertyPrefixLength, fieldMask},
+                    {namePropertyType, fieldType},
                 },
             },
         };
@@ -245,16 +251,11 @@ class NetworkIPInterface final : public dbus::FindObjectDBusQuery
         static const FieldsFormattingMap formatters{
             {
                 namePropertyOrigin,
-                {
-                    std::bind(formatStringValueFromDict, originsDict, _1, _2,
-                              _3),
-                },
+                {std::bind(formatStringValueFromDict, originsDict, _1, _2, _3)},
             },
             {
                 namePropertyType,
-                {
-                    std::bind(formatStringValueFromDict, typeDict, _1, _2, _3),
-                },
+                {std::bind(formatStringValueFromDict, typeDict, _1, _2, _3)},
             },
         };
 
@@ -271,6 +272,12 @@ const std::map<std::string, std::string> NetworkIPInterface::originsDict{
     {"xyz.openbmc_project.Network.IP.AddressOrigin.DHCP", "DHCP"},
     {"xyz.openbmc_project.Network.IP.AddressOrigin.LinkLocal", "LinkLocal"},
     {"xyz.openbmc_project.Network.IP.AddressOrigin.SLAAC", "SLAAC"},
+};
+
+const std::vector<std::string> NetworkIPInterface::fields = {
+    NetworkIPInterface::fieldAddress, NetworkIPInterface::fieldGateway,
+    NetworkIPInterface::fieldMask,    NetworkIPInterface::fieldOrigin,
+    NetworkIPInterface::fieldType,
 };
 
 class NetworkEthInterface final : public dbus::FindObjectDBusQuery
@@ -298,9 +305,27 @@ class NetworkEthInterface final : public dbus::FindObjectDBusQuery
         "StaticNameServers";
     static constexpr const char* namePropertyMACAddress = "MACAddress";
 
+    static constexpr const char* fieldAutoNeg = "AutoNeg";
+    static constexpr const char* fieldDHCPEnabled = "DHCPEnabled";
+    static constexpr const char* fieldDomainName = "DomainName";
+    static constexpr const char* fieldIPv6AcceptRA = "IPv6AcceptRA";
+    static constexpr const char* fieldInterfaceName = "InterfaceName";
+    static constexpr const char* fieldLinkLocalAutoConf = "LinkLocalAutoConf";
+    static constexpr const char* fieldLinkUp = "LinkUp";
+    static constexpr const char* fieldNICEnabled = "NICEnabled";
+    static constexpr const char* fieldNTPServers = "NTPServers";
+    static constexpr const char* fieldNameservers = "Nameservers";
+    static constexpr const char* fieldSpeed = "Speed";
+    static constexpr const char* fieldStaticNameServers = "StaticNameServers";
+    static constexpr const char* fieldMACAddress = "MACAddress";
+
     static const std::map<std::string, std::string> dhcpConfDict;
     static const std::map<std::string, std::string> LinkTypeDict;
+
   public:
+    static const std::vector<std::string> fields;
+    static constexpr const char* entityName = "Ethernet";
+
     NetworkEthInterface() : dbus::FindObjectDBusQuery()
     {}
     ~NetworkEthInterface() override = default;
@@ -311,63 +336,24 @@ class NetworkEthInterface final : public dbus::FindObjectDBusQuery
             {
                 netEthInterfaceName,
                 {
-                    {
-                        namePropertyAutoNeg,
-                        network::ethernet::fieldAutoNeg,
-                    },
-                    {
-                        namePropertyDHCPEnabled,
-                        network::ethernet::fieldDHCPEnabled,
-                    },
-                    {
-                        namePropertyDomainName,
-                        network::ethernet::fieldDomainName,
-                    },
-                    {
-                        namePropertyIPv6AcceptRA,
-                        network::ethernet::fieldIPv6AcceptRA,
-                    },
-                    {
-                        namePropertyInterfaceName,
-                        network::ethernet::fieldInterfaceName,
-                    },
-                    {
-                        namePropertyLinkLocalAutoConf,
-                        network::ethernet::fieldLinkLocalAutoConf,
-                    },
-                    {
-                        namePropertyLinkUp,
-                        network::ethernet::fieldLinkUp,
-                    },
-                    {
-                        namePropertyNICEnabled,
-                        network::ethernet::fieldNICEnabled,
-                    },
-                    {
-                        namePropertyNTPServers,
-                        network::ethernet::fieldNTPServers,
-                    },
-                    {
-                        namePropertyNameservers,
-                        network::ethernet::fieldNameservers,
-                    },
-                    {
-                        namePropertySpeed,
-                        network::ethernet::fieldSpeed,
-                    },
-                    {
-                        namePropertyStaticNameServers,
-                        network::ethernet::fieldStaticNameServers,
-                    },
+                    {namePropertyAutoNeg, fieldAutoNeg},
+                    {namePropertyDHCPEnabled, fieldDHCPEnabled},
+                    {namePropertyDomainName, fieldDomainName},
+                    {namePropertyIPv6AcceptRA, fieldIPv6AcceptRA},
+                    {namePropertyInterfaceName, fieldInterfaceName},
+                    {namePropertyLinkLocalAutoConf, fieldLinkLocalAutoConf},
+                    {namePropertyLinkUp, fieldLinkUp},
+                    {namePropertyNICEnabled, fieldNICEnabled},
+                    {namePropertyNTPServers, fieldNTPServers},
+                    {namePropertyNameservers, fieldNameservers},
+                    {namePropertySpeed, fieldSpeed},
+                    {namePropertyStaticNameServers, fieldStaticNameServers},
                 },
             },
             {
                 netMACInterfaceName,
                 {
-                    {
-                        namePropertyMACAddress,
-                        network::ethernet::fieldMACAddress,
-                    },
+                    {namePropertyMACAddress, fieldMACAddress},
                 },
             },
         };
@@ -435,15 +421,15 @@ class NetworkEthInterface final : public dbus::FindObjectDBusQuery
             {
                 namePropertyDHCPEnabled,
                 {
-                    std::bind(formatStringValueFromDict, dhcpConfDict,
-                              _1, _2, _3),
+                    std::bind(formatStringValueFromDict, dhcpConfDict, _1, _2,
+                              _3),
                 },
             },
             {
                 namePropertyLinkLocalAutoConf,
                 {
-                    std::bind(formatStringValueFromDict, LinkTypeDict,
-                              _1, _2, _3),
+                    std::bind(formatStringValueFromDict, LinkTypeDict, _1, _2,
+                              _3),
                 },
             },
         };
@@ -491,6 +477,20 @@ const std::map<std::string, std::string> NetworkEthInterface::LinkTypeDict{
         "xyz.openbmc_project.Network.EthernetInterface.LinkLocalConf.none",
         "None",
     },
+};
+
+const std::vector<std::string> NetworkEthInterface::fields = {
+    NetworkEthInterface::fieldAutoNeg,
+    NetworkEthInterface::fieldDHCPEnabled,
+    NetworkEthInterface::fieldDomainName,
+    NetworkEthInterface::fieldIPv6AcceptRA,
+    NetworkEthInterface::fieldInterfaceName,
+    NetworkEthInterface::fieldLinkLocalAutoConf,
+    NetworkEthInterface::fieldLinkUp,
+    NetworkEthInterface::fieldNICEnabled,
+    NetworkEthInterface::fieldNTPServers,
+    NetworkEthInterface::fieldMACAddress,
+    NetworkEthInterface::fieldStaticNameServers,
 };
 
 } // namespace obmc
