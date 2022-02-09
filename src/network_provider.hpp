@@ -288,6 +288,8 @@ class NetworkEthInterface final : public dbus::FindObjectDBusQuery
         "xyz.openbmc_project.Network.EthernetInterface";
     static constexpr const char* netMACInterfaceName =
         "xyz.openbmc_project.Network.MACAddress";
+    static constexpr const char* netVLANInterfaceName =
+        "xyz.openbmc_project.Network.VLAN";
 
     static constexpr const char* namePropertyAutoNeg = "AutoNeg";
     static constexpr const char* namePropertyDHCPEnabled = "DHCPEnabled";
@@ -304,6 +306,8 @@ class NetworkEthInterface final : public dbus::FindObjectDBusQuery
     static constexpr const char* namePropertyStaticNameServers =
         "StaticNameServers";
     static constexpr const char* namePropertyMACAddress = "MACAddress";
+    static constexpr const char* namePropertyVLANId = "Id";
+    static constexpr const char* namePropertyVLANName = "InterfaceName";
 
     static constexpr const char* fieldAutoNeg = "AutoNeg";
     static constexpr const char* fieldDHCPEnabled = "DHCPEnabled";
@@ -318,6 +322,8 @@ class NetworkEthInterface final : public dbus::FindObjectDBusQuery
     static constexpr const char* fieldSpeed = "Speed";
     static constexpr const char* fieldStaticNameServers = "StaticNameServers";
     static constexpr const char* fieldMACAddress = "MACAddress";
+    static constexpr const char* fieldVLANId = "VLANId";
+    static constexpr const char* fieldVLANName = "VLANName";
 
     static const std::map<std::string, std::string> dhcpConfDict;
     static const std::map<std::string, std::string> LinkTypeDict;
@@ -354,6 +360,13 @@ class NetworkEthInterface final : public dbus::FindObjectDBusQuery
                 netMACInterfaceName,
                 {
                     {namePropertyMACAddress, fieldMACAddress},
+                },
+            },
+            {
+                netVLANInterfaceName,
+                {
+                    {namePropertyVLANId, fieldVLANId},
+                    {namePropertyVLANName, fieldVLANName},
                 },
             },
         };
@@ -491,6 +504,8 @@ const std::vector<std::string> NetworkEthInterface::fields = {
     NetworkEthInterface::fieldNTPServers,
     NetworkEthInterface::fieldMACAddress,
     NetworkEthInterface::fieldStaticNameServers,
+    NetworkEthInterface::fieldVLANId,
+    NetworkEthInterface::fieldVLANName,
 };
 
 } // namespace obmc
