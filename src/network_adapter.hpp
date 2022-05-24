@@ -101,54 +101,36 @@ class NetworkAdapter final : public dbus::FindObjectDBusQuery
         return criteria;
     }
 
-    static const DbusVariantType
-        formatEnabledField(const PropertyName& currentProp,
-                           const DbusVariantType& value,
-                           DBusInstancePtr instance)
+    void setEnabled(DBusInstancePtr& instance) const
     {
-        static const std::map<PropertyName, app::entity::MemberName>
-            buildPropRelation{
-                {propPresent, fieldFunctional},
-                {propFunctional, fieldPresent},
-            };
+        // default enabled
+        bool enabled = true;
         try
         {
-            auto targetRelatedFieldIt = buildPropRelation.find(currentProp);
-            if (targetRelatedFieldIt == buildPropRelation.end())
-            {
-                throw std::logic_error(
-                    "Can't find related network status field");
-            }
+            bool functional =
+                instance->getField(fieldFunctional)->getBoolValue();
+            bool present = instance->getField(fieldPresent)->getBoolValue();
 
-            bool targetFieldRemote =
-                instance->getField(targetRelatedFieldIt->second)
-                    ->getBoolValue();
-
-            instance->supplementOrUpdate(fieldEnabled, std::get<bool>(value) &&
-                                                           targetFieldRemote);
+            enabled = (functional && present);
         }
         catch (const std::exception& e)
         {
-            BMC_LOG_ERROR << "Failure formatting NetworkAdapter::enabledField: "
-                          << e.what();
-            instance->supplementOrUpdate(fieldEnabled, false);
+            // Some instance might haven't functional or present fields, because
+            // separate interfaces might incoming by separate instance-objects.
+            // So keep pass throught such cases.
         }
-        return value;
+        instance->supplementOrUpdate(fieldEnabled, enabled);
     }
 
-    const FieldsFormattingMap& getFormatters() const override
+    void supplementByStaticFields(DBusInstancePtr& instance) const override
     {
-        static const FieldsFormattingMap formatters{
-            {propPresent, {NetworkAdapter::formatEnabledField}},
-            {propFunctional, {NetworkAdapter::formatEnabledField}},
-        };
-
-        return formatters;
+        this->setEnabled(instance);
     }
 };
 
 const std::vector<std::string> NetworkAdapter::fields{
-    fieldName, fieldManufacturer, fieldModel, fieldEnabled, fieldMac,
+    fieldName, fieldManufacturer, fieldModel,   fieldEnabled,
+    fieldMac,  fieldFunctional,   fieldPresent,
 };
 
 } // namespace obmc
