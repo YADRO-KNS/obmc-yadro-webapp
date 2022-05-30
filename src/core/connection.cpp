@@ -3,8 +3,6 @@
 // Copyright (C) 2021 YADRO
 
 #include <core/connection.hpp>
-#include <http/headers.hpp>
-
 #include <phosphor-logging/log.hpp>
 
 namespace app
@@ -65,32 +63,10 @@ bool Connection::response()
         return false;
     }
 
-    const auto& responsePtr = router->process();
-    writeHeader(responsePtr);
-
-    out << *responsePtr;
+    out << *(router->process());
     out.flush();
 
     return true;
-}
-
-void Connection::writeHeader(const ResponseUni& responsePointer)
-{
-    using namespace app::http;
-    constexpr const char* headerDateFormat = "%a, %d %b %Y %H:%M:%S GMT";
-    auto status = responsePointer->getStatus();
-
-    out << headerStatus(status) << std::endl;
-
-    responsePointer->setHeader(headers::contentType,
-                               content_types::applicationJson);
-    responsePointer->setHeader(headers::contentLength,
-                               std::to_string(responsePointer->totalSize()));
-    responsePointer->setHeader(
-        headers::date,
-        app::helpers::utils::getFormattedCurrentDate(headerDateFormat));
-
-    out << responsePointer->getHeaders();
 }
 
 } // namespace core

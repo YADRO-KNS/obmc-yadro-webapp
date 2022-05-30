@@ -50,8 +50,20 @@ const ResponseUni& Router::process()
     }
 
     handler->run(getRequest(), getResponse());
-
+    setGeneralHeaders();
+    log<level::DEBUG>(getResponse()->getHead().c_str());
     return getResponse();
+}
+
+void Router::setGeneralHeaders()
+{
+    using namespace app::http;
+    constexpr const char* headerDateFormat = "%a, %d %b %Y %H:%M:%S GMT";
+    getResponse()->setHeader(headers::contentLength,
+                             std::to_string(getResponse()->totalSize()));
+    getResponse()->setHeader(
+        headers::date,
+        app::helpers::utils::getFormattedCurrentDate(headerDateFormat));
 }
 
 bool Router::preHandler()

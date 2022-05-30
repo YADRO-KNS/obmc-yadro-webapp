@@ -82,6 +82,8 @@ class Router
         return responseObject;
     }
 
+    void setGeneralHeaders();
+
   private:
     RequestPtr requestObject;
     ResponseUni responseObject;
