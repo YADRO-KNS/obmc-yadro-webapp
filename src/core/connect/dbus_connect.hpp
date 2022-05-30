@@ -1,187 +1,335 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021 YADRO
 
-#ifndef __DBUSCONNECT_H__
-#define __DBUSCONNECT_H__
+#pragma once
 
-#include <logger/logger.hpp>
-
-#include <sdbusplus/bus.hpp>
-#include <sdbusplus/exception.hpp>
+#include <config.h>
 
 #include <core/connect/connect.hpp>
+#include <sdbusplus/bus.hpp>
+#include <sdbusplus/bus/match.hpp>
+#include <phosphor-logging/log.hpp>
 
 #include <cstring>
 #include <functional>
 #include <memory>
+#include <thread>
+#include <iostream>
+#include <atomic>
+#include <chrono>
 
 namespace app
 {
 namespace connect
 {
 class DBusConnect;
-class IDBusConnectionPool;
+
+using namespace sdbusplus::bus;
+using namespace phosphor::logging;
 
 using DBusConnectUni = std::unique_ptr<DBusConnect>;
-using DBusConnectionPoolUni = std::unique_ptr<IDBusConnectionPool>;
-
-class DBusConnect : public IConnect
+/**
+ * @class DBusConnect
+ * @brief The base DBus connection class that is contains general logic of
+ *        query-observe dbus things.
+ *
+ */
+class DBusConnect : protected IConnect
 {
+    /** sdbusplus connection object wrapper around `sd_bus*` */
     std::unique_ptr<sdbusplus::bus::bus> sdbusConnect;
+    enum class DBusCallWindow
+    {
+        uninitialized = 0,
+        ready = 1 << 0U,
+        busy = 1 << 1U,
+        watch = 1 << 2U,
+    };
+    std::atomic<DBusCallWindow> dbusCallWindow;
+  private:
+    /**
+     * @brief DBus call may be requested from different threads and we must
+     *        protect dbus-resources access.
+     *        The DBusCallGuard performs non-blocking wait until configured
+     *        operation from anather thread will be completed.
+     */
+    template<typename TOpRet>
+    class DBusCallGuard
+    {
+        std::atomic<DBusCallWindow>& window;
+        std::function<TOpRet()> operation;
+        const uint8_t priority;
+
+      public:
+        DBusCallGuard(std::atomic<DBusCallWindow>& window,
+                      std::function<TOpRet()>&& operation, uint8_t priority = 5) :
+            window(window),
+            operation(operation), priority(priority)
+        {
+            if (priority == 0)
+            {
+                throw std::logic_error("Priority cannot be zero");
+            }
+        }
+
+        TOpRet operator()()
+        {
+            using namespace std::chrono;
+            using namespace std::chrono_literals;
+            auto windowReady = DBusCallWindow::ready;
+            while (!window.compare_exchange_weak(windowReady,
+                                                 DBusCallWindow::busy))
+            {
+                std::this_thread::sleep_for(priority * 100us);
+                windowReady = DBusCallWindow::ready;
+            }
+            return std::invoke(operation);
+        }
+
+        /**
+         * @brief Destroy the DBusCallGuard object
+         *        The configured operation may raise an exception and
+         *        the DBusCallWindow might be frozen in a busy state.
+         *        Destructor cared about safe reverting DBusCallWindow to ready
+         *        state.
+         */
+        ~DBusCallGuard()
+        {
+            window.store(DBusCallWindow::ready, std::memory_order_release);
+        }
+    };
+
   public:
     DBusConnect(const DBusConnect&) = delete;
     DBusConnect& operator=(const DBusConnect&) = delete;
     DBusConnect(DBusConnect&&) = delete;
     DBusConnect& operator=(DBusConnect&&) = delete;
 
-    explicit DBusConnect() = default;
+    explicit DBusConnect();
+    ~DBusConnect() noexcept override;
+    /**
+     * @brief Start observe DBus signals
+     *
+     */
+    void run();
+    /**
+     * @brief Terminate DBus signals observing
+     *
+     */
+    void terminate() noexcept;
 
-    std::unique_ptr<sdbusplus::bus::bus>& getConnect()
+    /** @brief Directly call DBus method with specified return type
+     *
+     * @tparam Ret                    - Type of method call result
+     * @tparam Args                   - A set of types of the dbus-method
+     *                                  parameters
+     *
+     * @param busName                 - DBus service name
+     * @param path                    - DBus object path
+     * @param interface               - DBus interface
+     * @param method                  - DBus method name
+     * @param args                    - DBus method parameters
+     *
+     * @throw std::runtime_error      - Faulture of thread call.
+     * @throw sdbusplus::exception_t  - DBus error
+     *
+     * @return auto                   - The yield of DBus method call.
+     */
+    template <typename Ret, typename... Args>
+    Ret callMethodAndRead(const std::string& busName, const std::string& path,
+                          const std::string& interface,
+                          const std::string& method, Args... args)
     {
-        if (!sdbusConnect)
+        bool isWatchThread =
+            thread && std::this_thread::get_id() == thread->get_id();
+        // There are cases where dbus-request might be processed from the
+        // dbus-wathcer thread. Those cases are not requred to be protected by
+        // the DBusCallGuard.
+        if (isWatchThread)
         {
-            throw app::core::exceptions::ObmcAppException(
-                "The DBus connection was lost");
+            return callMethodAndReadUnsafe<Ret, Args...>(
+                busName, path, interface, method, std::forward<Args>(args)...);
         }
-        return sdbusConnect;
+        DBusCallGuard<Ret> guard(
+            dbusCallWindow,
+            [&]() -> Ret {
+                return callMethodAndReadUnsafe<Ret, Args...>(
+                    busName, path, interface, method,
+                    std::forward<Args>(args)...);
+            },
+            1);
+        return guard();
     }
 
-    bool disconnect() override
+    /** @brief Directly call DBus method with specified return type
+     *
+     * @tparam Ret                    - Type of method call result
+     * @tparam Args                   - A set of types of the dbus-method
+     *                                  parameters
+     *
+     * @param busName                 - DBus service name
+     * @param path                    - DBus object path
+     * @param interface               - DBus interface
+     * @param method                  - DBus method name
+     * @param args                    - DBus method parameters
+     *
+     * @throw std::runtime_error      - Faulture of thread call.
+     * @throw sdbusplus::exception_t  - DBus error
+     *
+     * @return auto                   - The yield of DBus method call.
+     */
+    template <typename Ret, typename... Args>
+    Ret callMethodAndReadUnsafe(const std::string& busName, const std::string& path,
+                          const std::string& interface,
+                          const std::string& method, Args&&... args)
     {
-        if (sdbusConnect)
-        {
-            sdbusConnect.reset();
-        }
-        if (dbusConnect)
-        {
-            sd_bus_close(dbusConnect);
-            return true;
-        }
-
-        return false;
+        Ret resp;
+        getConnect()->wait(0);
+        auto reqMsg = getConnect()->new_method_call(
+            busName.c_str(), path.c_str(), interface.c_str(), method.c_str());
+        reqMsg.append(std::forward<Args>(args)...);
+        auto respMsg = getConnect()->call(reqMsg);
+        respMsg.read(resp);
+        return resp;
     }
 
-    ~DBusConnect() noexcept override
+    /**
+     * @brief Directly call DBus method
+     *
+     * @tparam Args                   - A set of types of the dbus-method
+     *                                  parameters
+     *
+     * @param guard                   - DBus request guard
+     * @param busName                 - DBus service name
+     * @param path                    - DBus object path
+     * @param interface               - DBus interface
+     * @param method                  - DBus method name
+     * @param args                    - DBus method parameters
+     *
+     * @throw std::runtime_error      - Faulture of thread call.
+     * @throw sdbusplus::exception_t  - DBus error
+     * @return auto                   - The yield of DBus method call.
+     */
+    template <typename... Args>
+    auto callMethod(const std::string& busName,
+                    const std::string& path, const std::string& interface,
+                    const std::string& method, Args&&... args)
     {
-        this->disconnect();
-    };
+        auto reqMsg = getConnect()->new_method_call(
+            busName.c_str(), path.c_str(), interface.c_str(), method.c_str());
+        reqMsg.append(std::forward<Args>(args)...);
+        getConnect()->call_noreply(reqMsg);
+    }
 
-    protected:
-        sd_bus* dbusConnect;
+    /**
+     * @brief Create a DBus signals watcher
+     *
+     * @param rule            - DBus rule to match signal
+     * @param handler         - The callback to handle signal
+     *
+     * @return match::match&& - The rvalue of sdbusplus::match::match_t
+     */
+    match::match createWatcher(const std::string& rule,
+                               match::match::callback_t handler);
+    /**
+     * @brief Get the Well-Known DBus-service name by specified dbus-unique name
+     *
+     * @param uniqueName          - DBus unique service name
+     * @return const std::string& - DBus well-known service name
+     */
+    const std::string& getWellKnownServiceName(const std::string uniqueName);
+    /**
+     * @brief Force update DBus well-known to unique service names dictionary
+     */
+    void updateWellKnownServiceNameDict();
+    /**
+     * @brief Create a Dbus Connection object
+     *
+     * @return DBusConnectUni
+     */
+    static DBusConnectUni createDbusConnection();
 
-        void initSdBusConnection() {
-            if (!dbusConnect) {
-                throw std::logic_error(
-                    "The dbus connection is not initialized");
-            }
-            if (sdbusConnect) {
-                throw std::logic_error(
-                    "The SDBus connection already initialized");
-            }
-            sdbusConnect = std::make_unique<sdbusplus::bus::bus>(dbusConnect);
-        }
+  protected:
+    /**
+     * @brief Main process of observing dbus signals.
+     */
+    void process();
+    /**
+     * @brief Initialize DBus connection.
+     */
+    inline void initSdBusConnection();
+    /**
+     * @brief Initialize DBus signal watcher to update well-known service names
+     *        dictionary.
+     */
+    inline void initServiceNamesWatcher();
+    /**
+     * @brief Get the DBus connection object
+     *
+     * @return std::unique_ptr<sdbusplus::bus::bus>& connection object
+     */
+    std::unique_ptr<sdbusplus::bus::bus>& getConnect();
+    /**
+     * @brief Force disconnect DBus connection
+     *
+     * @return true   - sucess
+     * @return false  - already disconnected
+     */
+    bool disconnect() noexcept override;
+    /**
+     * @brief Set the DBus well-known service name by its unique name.
+     *
+     * @param uniqueName      - DBus unique service name
+     * @param wellKnownName   - DBus well-known service name
+     */
+    void setServiceName(const std::string& uniqueName,
+                        const std::string& wellKnownName);
+  protected:
+    /** flag to indicate is dbus-signals watcher thread alive */
+    std::atomic_bool alive;
+    /** low-level dbus-connection object. */
+    sd_bus* dbusConnect;
+    /** dbus-signal watcher thread */
+    std::unique_ptr<std::thread> thread;
+    /** DBus unique to well-known service names dictionary */
+    std::map<std::string, std::string> serviceNamesDict;
 };
 
-class SystemDBusConnect : public DBusConnect
+/**
+ * @class SystemDBusConnect.
+ * @brief DBus connection to the System bus.
+ */
+class SystemDBusConnect final : public DBusConnect
 {
   public:
     SystemDBusConnect() noexcept
     {}
     ~SystemDBusConnect() override = default;
-
-    void connect() override
-    {
-        auto status = sd_bus_open_system(&dbusConnect);
-        if (status < 0)
-        {
-            throw std::runtime_error(
-                std::string("Can't establish dbus connection: ") +
-                std::strerror(-status));
-        }
-        BMC_LOG_DEBUG << "Establish DBus connection on system bus";
-        initSdBusConnection();
-    }
+    /** @inherit */
+    void connect() override;
 };
 
-class RemoteHostDbusConnect : public DBusConnect
+#ifdef BMC_DBUS_CONNECT_REMOTE
+/**
+ * @class RemoteHostDbusConnect.
+ * @brief DBus connection to the remote system via SSH
+ *
+ * @note  The non-secure way to connect DBus remote system DBus!
+ *        Use only for the debugging in the development mode.
+ */
+class RemoteHostDbusConnect final : public DBusConnect
 {
     const std::string hostname;
 
   public:
     RemoteHostDbusConnect(const std::string& dbusHostname) noexcept :
         hostname(dbusHostname)
-    {
-        BMC_LOG_DEBUG << "DBUS hostname:  " << hostname;
-    }
+    {}
     ~RemoteHostDbusConnect() override = default;
-
-    void connect() override
-    {
-        auto status = sd_bus_open_system_remote(&dbusConnect, hostname.c_str());
-        if (status < 0)
-        {
-            throw std::runtime_error(
-                std::string("Can't establish dbus connection: ") +
-                std::strerror(-status));
-        }
-        BMC_LOG_DEBUG << "Establish DBus connection to Host: " << hostname;
-        initSdBusConnection();
-    }
+    /** @inherit */
+    void connect() override;
 };
-
-class IDBusConnectionPool
-{
-public:
-    virtual ~IDBusConnectionPool() = default;
-
-    virtual const DBusConnectUni& getQueryConnection() const = 0;
-    virtual const DBusConnectUni& getWatcherConnection() const = 0;
-};
-
-class DBusConnectionPool final: public IDBusConnectionPool
-{
-    DBusConnectUni queryConnection;
-    DBusConnectUni watchConnection;
-public:
-    DBusConnectionPool(const DBusConnectionPool&) = delete;
-    DBusConnectionPool& operator=(const DBusConnectionPool&) = delete;
-    DBusConnectionPool(DBusConnectionPool&&) = delete;
-    DBusConnectionPool& operator=(DBusConnectionPool&&) = delete;
-
-    explicit DBusConnectionPool():
-        queryConnection(createDbusConnection()),
-        watchConnection(createDbusConnection())
-    {
-    }
-    ~DBusConnectionPool() override = default;
-
-    const DBusConnectUni& getQueryConnection() const override
-    {
-        return queryConnection;
-    }
-    const DBusConnectUni& getWatcherConnection() const override
-    {
-        return watchConnection;
-    }
-
-    static DBusConnectUni createDbusConnection()
-    {
-#ifdef BMC_DBUS_CONNECT_SYSTEM
-        connect::DBusConnectUni dbusConnect =
-            std::make_unique<app::connect::SystemDBusConnect>();
-#elif defined(BMC_DBUS_CONNECT_REMOTE)
-        connect::DBusConnectUni dbusConnect =
-            std::make_unique<app::connect::RemoteHostDbusConnect>(
-                BMC_DBUS_REMOTE_HOST);
-#else
-#error "Unknown DBus connection type"
 #endif
-        dbusConnect->connect();
-
-        return std::forward<connect::DBusConnectUni>(dbusConnect);
-    }
-};
 
 } // namespace connect
 } // namespace app
-#endif // __DBUSCONNECT_H__
