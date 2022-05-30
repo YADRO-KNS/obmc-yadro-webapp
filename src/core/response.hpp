@@ -54,7 +54,12 @@ class IResponse
      * @param status
      */
     virtual void setStatus(const statuses::Code&) = 0;
-
+    /**
+     * @brief Set the Content Type of response
+     * 
+     * @param contentType - the type of content contains at the response
+     */
+    virtual void setContentType(const std::string&) = 0;
     /**
      * @brief Set the HTTP Header
      *
@@ -68,7 +73,7 @@ class IResponse
      *
      * @return const std::string& the buffer of all headers.
      */
-    virtual const std::string getHeaders() const = 0;
+    virtual const std::string getHead() const = 0;
     /**
      * @brief Destroy the IResponse object
      *
@@ -77,7 +82,7 @@ class IResponse
 
     /**
      * @brief Add the response data which will be written to the output fastCGI
-     * pipe
+     *        pipe
      *
      * @param buffer data
      */
@@ -88,7 +93,7 @@ class IResponse
     virtual void clear() = 0;
 
     /**
-     * @brief Pipe of HTTP-body stream
+     * @brief Pipe of HTTP-payload stream
      *
      * @param os out stream
      * @param response target
@@ -96,6 +101,7 @@ class IResponse
      */
     friend std::ostream& operator<<(std::ostream& os, const IResponse& response)
     {
+        os << response.getHead();
         os << response.getBody();
         return os;
     }
@@ -106,7 +112,9 @@ class Response : public IResponse
     static constexpr const char* endHeaderLine = "\r\n";
 
   public:
-    explicit Response() : status(statuses::Code::NotFound){};
+    explicit Response() :
+        status(statuses::Code::NotFound),
+        contentType(content_types::textPlain){};
     Response(const Response&) = delete;
     Response(const Response&&) = delete;
 
@@ -124,11 +132,11 @@ class Response : public IResponse
     const std::string& getBody() const override;
 
     const statuses::Code& getStatus() override;
-
+    void setContentType(const std::string&) override;
     void setStatus(const statuses::Code&) override;
 
     void setHeader(const std::string&, const std::string&) override;
-    const std::string getHeaders() const override;
+    const std::string getHead() const override;
 
     void push(const std::string&) override;
 
@@ -138,6 +146,7 @@ class Response : public IResponse
     std::string headerBuffer;
     std::string internalBuffer;
     statuses::Code status;
+    std::string contentType;
 };
 
 } // namespace core
