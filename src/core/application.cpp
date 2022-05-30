@@ -3,32 +3,56 @@
 
 #include <core/application.hpp>
 #include <core/connection.hpp>
+#include <phosphor-logging/log.hpp>
+
 #include <core/route/handlers/graphql_handler.hpp>
 
 #include <csignal>
 #include <filesystem>
+
+#include <server.hpp>
+#include <chassis.hpp>
+#include <baseboard.hpp>
+#include <sensors.hpp>
+#include <settings.hpp>
+#include <network_interface.hpp>
+#include <network_adapter.hpp>
+#include <drive.hpp>
+#include <pid_control.hpp>
+#include <pcie.hpp>
+#include <power.hpp>
 
 namespace app
 {
 namespace core
 {
 
+using namespace phosphor::logging;
+
+void Application::initDBusConnect()
+{
+    dbusConnection = std::move(connect::DBusConnect::createDbusConnection());
+}
+
+void Application::runDBusObserve()
+{
+    dbusConnection->run();
+}
+
 void Application::configure()
 {
-    BMC_LOG_DEBUG << "configure";
-
     waitBootingBmc();
     registerAllRoutes();
+    initDBusConnect();
+    initEntities();
+    runDBusObserve();
+    // run observe dbus signals
+    // register handlers
+    std::signal(SIGINT, &Application::handleSignals);
 
     // TODO include IProtocol abstraction which incapsulate own specific
     // handlers. Need to remove a static class/methods.
     route::handlers::VisitorFactory::registerGqlVisitors();
-
-    this->initEntityMap();
-    this->initBrokers();
-
-    // register handlers
-    std::signal(SIGINT, &Application::handleSignals);
 }
 
 void Application::start()
@@ -48,13 +72,7 @@ void Application::start()
 
 void Application::terminate()
 {
-    dbusBrokerManager.terminate();
-}
-
-void Application::initBrokers()
-{
-    dbusBrokerManager.start();
-    BMC_LOG_DEBUG << "Start DBus broker";
+    dbusConnection.reset();
 }
 
 void Application::waitBootingBmc()
@@ -66,19 +84,54 @@ void Application::waitBootingBmc()
     // query to dbus-services which an incomplete state.
     while(std::filesystem::exists(bootingFilePath))
     {
+        log<level::INFO>("Wait for BMC boot completed...");
         std::this_thread::sleep_for(1s);
     }
+
+    log<level::INFO>("The BMC boot state is OK");
 }
 
 void Application::handleSignals(int signal)
 {
-    BMC_LOG_DEBUG << "Catch signal: " << strsignal(signal);
+    log<level::INFO>("Signal catched", entry("SIGNAL=%d", strsignal(signal)));
     if (SIGINT == signal)
     {
-        BMC_LOG_DEBUG << "SIGINT handle";
-
+        log<level::INFO>("Terminate application", entry("SIGNAL=SIGINT"));
         application.terminate();
     }
+}
+
+const connect::DBusConnectUni& Application::getDBusConnect() const
+{
+    if (!dbusConnection)
+    {
+        throw std::runtime_error("The DBus connection is not initialized.");
+    }
+    return dbusConnection;
+}
+
+void Application::initEntities()
+{
+    using namespace app::obmc::entity;
+    entityManager.buildEntity<Sensors>();
+    entityManager.buildEntity<Drive>();
+    entityManager.buildEntity<PCIeDevice>();
+    entityManager.buildEntity<PCIeFunction>();
+    entityManager.buildEntity<HostPower>();
+    entityManager.buildEntity<Server>();
+    entityManager.buildEntity<PIDZone>();
+    entityManager.buildEntity<PID>();
+    entityManager.buildEntity<Chassis>();
+    entityManager.buildEntity<Baseboard>();
+    entityManager.buildEntity<NetworkConfig>();
+    entityManager.buildEntity<NetworkDHCPConfig>();
+    entityManager.buildEntity<IP>();
+    entityManager.buildEntity<Ethernet>();
+    entityManager.buildEntity<NetAdapter>();
+    entityManager.buildEntity<Settings>();
+
+    entityManager.configure();
+    entityManager.update();
 }
 
 } // namespace core

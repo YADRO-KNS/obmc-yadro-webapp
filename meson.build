@@ -233,16 +233,14 @@ srcfiles_obmc_webapp = [
   'src/core/request.cpp',
   'src/core/router.cpp',
   'src/routes.cpp',
-  'src/queries.cpp',
   # protocol handlers
   'src/core/route/handlers/graphql_handler.cpp',
   # entities
   'src/core/entity/entity.cpp',
+  'src/core/entity/entity_manager.cpp',
   'src/core/entity/dbus_query.cpp',
   # brokers
-  'src/core/broker/dbus_broker.cpp',
-  # target entities
-  'src/system_queries.cpp',
+  'src/core/connect/dbus_connect.cpp',
 ]
 
 srcfiles_unittest = [
