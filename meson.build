@@ -186,6 +186,7 @@ obmc_webapp_dependencies += sdbusplus
 
 systemd = dependency('systemd', required : true)
 zlib = dependency('zlib', required : true)
+phosphor_logging_dep = dependency('phosphor-logging')
 
 fastcgipp = cxx.find_library('fastcgipp', required : false)
 if not fastcgipp.found()
@@ -208,7 +209,16 @@ if not graphqlparser.found()
   obmc_webapp_dependencies += [graphqlparser_inc]
 endif
 obmc_webapp_dependencies += [graphqlparser]
-obmc_webapp_dependencies += [atomic, openssl, systemd, zlib, threads]
+
+obmc_webapp_dependencies += [
+  atomic, 
+  openssl, 
+  systemd, 
+  zlib, 
+  threads,
+  sdbusplus,
+  phosphor_logging_dep, 
+]
 
 if cxx.has_header('nlohmann/json.hpp')
     nlohmann_json = declare_dependency()
@@ -287,9 +297,6 @@ if get_option('dbus-connect-type') == 'remote'
 )
 endif
 
-if cxx.has_header('phosphor-logging/log.hpp')
-  conf_data.set('LOG_ENGINE_PHOSPHOR', '')
-endif
 conf_data.set(dbus_connect_types[get_option('dbus-connect-type')], true)
 
 configure_file(output: 'config.h', configuration: conf_data)
