@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021 YADRO
 
-#ifndef __SERVICE_SESSION_H__
-#define __SERVICE_SESSION_H__
+#pragma once
 
 #include <core/exceptions.hpp>
 #include <core/helpers/utils.hpp>
@@ -343,4 +342,3 @@ class SessionStore
 } // namespace session
 } // namespace service
 } // namespace app
-#endif // __SERVICE_SESSION_H__

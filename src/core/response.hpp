@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021 YADRO
 
-#ifndef BMC_RESPONSE_HPP
-#define BMC_RESPONSE_HPP
+#pragma once
 
 #include <fastcgi++/http.hpp>
 #include <http/headers.hpp>
@@ -144,5 +143,3 @@ class Response : public IResponse
 } // namespace core
 
 } // namespace app
-
-#endif //! BMC_RESPONSE_HPP

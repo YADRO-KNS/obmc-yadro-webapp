@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021 YADRO
 
-#ifndef BMC_ROUTER_HPP
-#define BMC_ROUTER_HPP
+#pragma once
 
 #include <core/request.hpp>
 #include <core/response.hpp>
@@ -95,5 +94,3 @@ class Router
 } // namespace core
 
 } // namespace app
-
-#endif //! BMC_ROUTER_HPP
