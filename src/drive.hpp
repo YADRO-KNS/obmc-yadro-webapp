@@ -3,38 +3,29 @@
 
 #pragma once
 
-#include <system_queries.hpp>
+#include <phosphor-logging/log.hpp>
+
+#include <core/entity/dbus_query.hpp>
+#include <core/entity/entity.hpp>
+
+#include <common_fields.hpp>
+#include <formatters.hpp>
 
 namespace app
 {
-namespace query
-{
 namespace obmc
+{
+namespace entity
 {
 
 using namespace app::entity;
 using namespace app::query;
-using namespace app::query::dbus;
 
-using namespace std::placeholders;
-using namespace app::entity::obmc::definitions;
-
-class Drive final : public dbus::FindObjectDBusQuery
+class Drive final :
+    public entity::Collection,
+    public CachedSource,
+    public NamedEntity<Drive>
 {
-    static constexpr const char* invDriveIface =
-        "xyz.openbmc_project.Inventory.Item.Drive";
-    static constexpr const char* driveStateIface =
-        "xyz.openbmc_project.State.Drive";
-    static constexpr const char* invItemIface =
-        "xyz.openbmc_project.Inventory.Item";
-
-    static constexpr const char* propName = "PrettyName";
-    static constexpr const char* propPresent = "Present";
-    static constexpr const char* propCapacity = "Capacity";
-    static constexpr const char* propInterfaces = "Protocol";
-    static constexpr const char* propType = "Type";
-    static constexpr const char* propRebuild = "Rebuilding";
-
     static constexpr const char* fieldName = "Name";
     static constexpr const char* fieldEnabled = "Enabled";
     static constexpr const char* fieldCap = "Capacity";
@@ -42,140 +33,76 @@ class Drive final : public dbus::FindObjectDBusQuery
     static constexpr const char* fieldType = "MediaType";
     static constexpr const char* fieldUpdating = "Updating";
 
-  public:
-    static const std::vector<std::string> fields;
-    static constexpr const char* entityName = "Drive";
+    class Query final : public dbus::FindObjectDBusQuery
+    {
+        static constexpr const char* invDriveIface =
+            "xyz.openbmc_project.Inventory.Item.Drive";
+        static constexpr const char* driveStateIface =
+            "xyz.openbmc_project.State.Drive";
+        static constexpr const char* invItemIface =
+            "xyz.openbmc_project.Inventory.Item";
 
-    Drive() : dbus::FindObjectDBusQuery()
+        static constexpr const char* propName = "PrettyName";
+        static constexpr const char* propPresent = "Present";
+        static constexpr const char* propType = "Type";
+        static constexpr const char* propRebuild = "Rebuilding";
+
+      public:
+        Query() : dbus::FindObjectDBusQuery()
+        {}
+        ~Query() override = default;
+
+        /* clang-format off */
+        DBUS_QUERY_DECL_EP(
+            DBUS_QUERY_EP_IFACES(
+                general::assets::assetInterface,
+                DBUS_QUERY_EP_FIELDS_ONLY2(general::assets::manufacturer),
+                DBUS_QUERY_EP_FIELDS_ONLY2(general::assets::model),
+                DBUS_QUERY_EP_FIELDS_ONLY2(general::assets::serialNumber),
+                DBUS_QUERY_EP_FIELDS_ONLY2(general::assets::partNumber)),
+            DBUS_QUERY_EP_IFACES(invDriveIface,
+                DBUS_QUERY_EP_FIELDS_ONLY2(fieldCap),
+                DBUS_QUERY_EP_SET_FORMATTERS2(
+                    fieldProto,
+                    DBUS_QUERY_EP_CSTR(DBusEnumFormatter)),
+                DBUS_QUERY_EP_SET_FORMATTERS(
+                    propType, fieldType,
+                    DBUS_QUERY_EP_CSTR(DBusEnumFormatter))),
+            DBUS_QUERY_EP_IFACES(driveStateIface,
+                DBUS_QUERY_EP_FIELDS_ONLY(propRebuild,fieldUpdating)),
+            DBUS_QUERY_EP_IFACES(invItemIface,
+                DBUS_QUERY_EP_FIELDS_ONLY2(fieldName),
+                DBUS_QUERY_EP_FIELDS_ONLY(propPresent, fieldEnabled)))
+
+      protected:
+        DBUS_QUERY_DECLARE_CRITERIA(
+            "/xyz/openbmc_project/inventory",
+            DBUS_QUERY_CRIT_IFACES(invDriveIface),
+            noDepth, 
+            std::nullopt
+        )
+        /* clang-format on */
+
+        const DefaultFieldsValueDict& getDefaultFieldsValue() const
+        {
+            static const DefaultFieldsValueDict defaultFields{
+                {fieldUpdating, []() { return false; }},
+            };
+            return defaultFields;
+        }
+    };
+
+  public:
+    Drive() : Collection(), query(std::make_shared<Query>())
     {}
     ~Drive() override = default;
 
-    const dbus::DBusPropertyEndpointMap& getSearchPropertiesMap() const override
-    {
-        static const dbus::DBusPropertyEndpointMap dictionary{
-            {
-                general::assets::assetInterface,
-                {
-                    {general::assets::propertyManufacturer, fieldManufacturer},
-                    {general::assets::propertyModel, fieldModel},
-                    {general::assets::propertySerialNumber, fieldSerialNumber},
-                    {general::assets::propertyPartNumber, fieldPartNumber},
-                },
-            },
-            {
-                invDriveIface,
-                {
-                    {propCapacity, fieldCap},
-                    {propInterfaces, fieldProto},
-                    {propType, fieldType},
-                },
-            },
-            {
-                driveStateIface,
-                {
-                    {propRebuild, fieldUpdating},
-                },
-            },
-            {
-                invItemIface,
-                {
-                    {propName, fieldName},
-                    {propPresent, fieldEnabled},
-                },
-            },
-        };
-
-        return dictionary;
-    }
-
   protected:
-    const DBusObjectEndpoint& getQueryCriteria() const override
-    {
-        static const DBusObjectEndpoint criteria{
-            "/xyz/openbmc_project/inventory",
-            {invDriveIface},
-            noDepth,
-            std::nullopt,
-        };
-
-        return criteria;
-    }
-
-    const FieldsFormattingMap& getFormatters() const override
-    {
-        static const FieldsFormattingMap formatters{
-            {propInterfaces, {Drive::formatProtocols}},
-            {propType, {Drive::formatTypes}},
-        };
-
-        return formatters;
-    }
-
-    static const DbusVariantType formatProtocols(const PropertyName&,
-                                                 const DbusVariantType& value,
-                                                 DBusInstancePtr)
-    {
-        try
-        {
-            const auto& protocol = std::get<std::string>(value);
-            auto lastSegmenPos = protocol.find_last_of('.');
-            if (lastSegmenPos == std::string::npos)
-            {
-                throw std::invalid_argument("Invalid protocol format");
-            }
-            return DbusVariantType(protocol.substr(lastSegmenPos + 1));
-        }
-        catch (const std::exception& e)
-        {
-            BMC_LOG_ERROR << "Failure formatting Drive::protocol: " << e.what();
-        }
-        return std::string(Entity::EntityMember::fieldValueNotAvailable);
-    }
-
-    static const DbusVariantType formatTypes(const PropertyName&,
-                                             const DbusVariantType& value,
-                                             DBusInstancePtr)
-    {
-        try
-        {
-            const auto& mediaTypeDirty = std::get<std::string>(value);
-            auto lastSegmenPos = mediaTypeDirty.find_last_of('.');
-            if (lastSegmenPos == std::string::npos)
-            {
-                throw std::invalid_argument("Invalid media type format");
-            }
-            auto mediaType = mediaTypeDirty.substr(lastSegmenPos + 1);
-            if (mediaType == "Unknown")
-            {
-                return std::string(
-                    Entity::EntityMember::fieldValueNotAvailable);
-            }
-
-            return DbusVariantType(mediaType);
-        }
-        catch (const std::exception& e)
-        {
-            BMC_LOG_ERROR << "Failure formatting Drive::mediaType: "
-                          << e.what();
-        }
-        return std::string(Entity::EntityMember::fieldValueNotAvailable);
-    }
-
-    const DefaultFieldsValueDict& getDefaultFieldsValue() const
-    {
-        static const DefaultFieldsValueDict defaultFields{
-            {fieldUpdating, []() { return false; }},
-        };
-        return defaultFields;
-    }
+    ENTITY_DECL_QUERY(query)
+  private:
+    DBusQueryPtr query;
 };
 
-const std::vector<std::string> Drive::fields{
-    fieldName,       fieldManufacturer, fieldModel, fieldSerialNumber,
-    fieldPartNumber, fieldEnabled,      fieldCap,   fieldProto,
-    fieldType,       fieldUpdating,
-};
-
+} // namespace entity
 } // namespace obmc
-} // namespace query
 } // namespace app

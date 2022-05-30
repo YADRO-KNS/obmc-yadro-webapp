@@ -3,75 +3,71 @@
 
 #pragma once
 
-#include <logger/logger.hpp>
-#include <core/exceptions.hpp>
-
 #include <core/entity/dbus_query.hpp>
 #include <core/entity/entity.hpp>
 
-#include <definitions.hpp>
-
 namespace app
 {
-namespace query
-{
 namespace obmc
+{
+namespace entity
 {
 
 using namespace app::entity;
 using namespace app::query;
 using namespace app::query::dbus;
 
-using namespace std::placeholders;
-using namespace app::entity::obmc::definitions;
-
-class Settings final : public dbus::FindObjectDBusQuery
+class Settings final :
+    public entity::Entity,
+    public CachedSource,
+    public NamedEntity<Settings>
 {
-    static constexpr const char* settingsServiceName =
-        "xyz.openbmc_project.Settings";
-    static constexpr const char* webuiConfigInterfaceName =
-        "xyz.openbmc_project.WebUI.Configuration";
-    static constexpr const char* namePropertyTitleTemplate = "TitleTemplate";
+  public:
+    ENTITY_DECL_FIELD(std::string, TitleTemplate);
+
+  private:
+    class Query final : public dbus::FindObjectDBusQuery
+    {
+        static constexpr const char* settingsServiceName =
+            "xyz.openbmc_project.Settings";
+        static constexpr const char* webuiConfigInterfaceName =
+            "xyz.openbmc_project.WebUI.Configuration";
+
+      public:
+        Query() : dbus::FindObjectDBusQuery()
+        {}
+        ~Query() override = default;
+
+        /* clang-format off */
+        DBUS_QUERY_DECL_EP(
+            DBUS_QUERY_EP_IFACES(
+                webuiConfigInterfaceName,
+                DBUS_QUERY_EP_FIELDS_ONLY2(fieldTitleTemplate)
+            )
+        )
+
+      protected:
+        DBUS_QUERY_DECLARE_CRITERIA(
+            "/xyz/openbmc_project/",
+            DBUS_QUERY_CRIT_IFACES(webuiConfigInterfaceName),
+            noDepth,
+            settingsServiceName
+        )
+        /* clang-format on */
+    };
 
   public:
-    Settings() : dbus::FindObjectDBusQuery()
+    Settings() : Entity(), query(std::make_shared<Query>())
     {}
     ~Settings() override = default;
 
-    const dbus::DBusPropertyEndpointMap& getSearchPropertiesMap() const override
-    {
-        static const dbus::DBusPropertyEndpointMap dictionary{
-            {
-                webuiConfigInterfaceName,
-                {
-                    {
-                        namePropertyTitleTemplate,
-                        settings::fieldTitleTemplate,
-                    },
-                },
-            },
-        };
-
-        return dictionary;
-    }
-
   protected:
-    const DBusObjectEndpoint& getQueryCriteria() const override
-    {
-        static const DBusObjectEndpoint criteria{
-            "/xyz/openbmc_project/",
-            {
-                webuiConfigInterfaceName,
-            },
-            noDepth,
-            settingsServiceName,
-        };
+    ENTITY_DECL_QUERY(query)
 
-        return criteria;
-    }
+  private:
+    DBusQueryPtr query;
 };
 
+} // namespace entity
 } // namespace obmc
-} // namespace query
 } // namespace app
-
