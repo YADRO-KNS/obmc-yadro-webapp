@@ -325,6 +325,7 @@ void GraphqlRouter::run(const RequestPtr& request, ResponseUni& response)
 
     response->push(result.dump(2));
     response->setStatus(statuses::Code::OK);
+    response->setContentType(http::content_types::applicationJson);
 }
 
 // BUILDERS

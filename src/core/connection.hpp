@@ -36,7 +36,6 @@ class Connection :public Fastcgipp::Request<char>
     bool inProcessor() override;
 
   private:
-    void writeHeader(const ResponseUni&);
     size_t totalBytesRecived;
 
     RequestPtr request;
