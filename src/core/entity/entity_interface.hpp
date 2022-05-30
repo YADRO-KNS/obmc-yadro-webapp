@@ -13,6 +13,8 @@
 #include <variant>
 #include <functional>
 
+using namespace phosphor::logging;
+
 namespace app
 {
 namespace query

@@ -22,6 +22,8 @@ namespace app
 namespace entity
 {
 
+using namespace phosphor::logging;
+
 class EntitySupplementProvider;
 class Collection;
 using EntitySupplementProviderPtr = std::shared_ptr<EntitySupplementProvider>;

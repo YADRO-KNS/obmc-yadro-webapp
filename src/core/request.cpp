@@ -3,7 +3,6 @@
 // Copyright (C) 2021 YADRO
 
 #include <core/request.hpp>
-#include <logger/logger.hpp>
 
 #include <set>
 #include <string>

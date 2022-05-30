@@ -6,7 +6,7 @@
 #include <core/exceptions.hpp>
 #include <core/helpers/utils.hpp>
 
-#include <logger/logger.hpp>
+#include <phosphor-logging/log.hpp>
 
 #include <nlohmann/json.hpp>
 
@@ -18,6 +18,8 @@ namespace service
 {
 namespace session
 {
+
+using namespace phosphor::logging;
 
 struct UserSession;
 
@@ -91,8 +93,9 @@ struct UserSession
                 element.value().get_ptr<const std::string*>();
             if (thisValue == nullptr)
             {
-                BMC_LOG_ERROR << "Error reading persistent store.  Property "
-                          << element.key() << " was not of type string";
+                log<level::ERR>("Error reading persistent store.",
+                                entry("MSG=Property was not of type string"),
+                                entry("PROPERTY=%s", element.key().c_str()));
                 continue;
             }
             if (element.key() == "unique_id")
@@ -118,8 +121,9 @@ struct UserSession
 
             else
             {
-                BMC_LOG_ERROR << "Got unexpected property reading persistent file: "
-                          << element.key();
+                log<level::ERR>(
+                    "Got unexpected property reading persistent file",
+                    entry("PROPERTY=%s", element.key().c_str()));
                 continue;
             }
         }
@@ -130,8 +134,8 @@ struct UserSession
         if (userSession->uniqueId.empty() || userSession->username.empty() ||
             userSession->sessionToken.empty() || userSession->csrfToken.empty())
         {
-            BMC_LOG_DEBUG << "Session missing required security "
-                         "information, refusing to restore";
+            log<level::DEBUG>("Session missing required security information, "
+                              "refusing to restore");
             return nullptr;
         }
 
@@ -200,13 +204,13 @@ class SessionStore
         applySessionTimeouts();
         if (token.size() != sessionTokenSize)
         {
-            BMC_LOG_DEBUG << "Invalid token size";
+            log<level::DEBUG>("Invalid token size");
             return nullptr;
         }
         auto sessionIt = authTokens.find(std::string(token));
         if (sessionIt == authTokens.end())
         {
-            BMC_LOG_DEBUG << "Token not found";
+            log<level::DEBUG>("Token not found");
             return nullptr;
         }
         std::shared_ptr<UserSession> userSession = sessionIt->second;

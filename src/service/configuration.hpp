@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include <logger/logger.hpp>
+#include <phosphor-logging/log.hpp>
 #include <core/exceptions.hpp>
 #include <core/helpers/utils.hpp>
 
@@ -22,6 +22,8 @@ namespace service
 {
 namespace config
 {
+
+using namespace phosphor::logging;
 
 using ConfigFilePath = std::string;
 using ConfigFileName = std::string;
@@ -87,8 +89,7 @@ class ConfigFile
             auto data = nlohmann::json::parse(persistentFile, nullptr, false);
             if (data.is_discarded())
             {
-                BMC_LOG_ERROR
-                    << "Error parsing persistent data in json file.";
+                log<level::ERR>("Error parsing persistent data in json file");
             }
             else
             {
@@ -118,15 +119,16 @@ class ConfigFile
 
                             if (newSession == nullptr)
                             {
-                                BMC_LOG_ERROR << "Problem reading session "
-                                                    "from persistent store";
+                                log<level::ERR>("Problem reading session "
+                                                "from persistent store");
                                 continue;
                             }
                             newSession->storageType = storageType;
-                            BMC_LOG_DEBUG
-                                << "Restored session: " << newSession->csrfToken
-                                << " " << newSession->uniqueId << " "
-                                << newSession->sessionToken;
+
+                            log<level::DEBUG>(
+                                "Restored session",
+                                entry("SESSION_ID=%s",
+                                      newSession->uniqueId.c_str()));
                             session::SessionStore::getInstance().authTokens.emplace(
                                 newSession->sessionToken, newSession);
                         }
@@ -137,13 +139,15 @@ class ConfigFile
                             item.value().get_ptr<int64_t*>();
                         if (jTimeout == nullptr)
                         {
-                            BMC_LOG_DEBUG
-                                << "Problem reading session timeout value";
+                            log<level::DEBUG>(
+                                "Problem reading session timeout value");
                             continue;
                         }
                         std::chrono::seconds sessionTimeoutInseconds(*jTimeout);
-                        BMC_LOG_DEBUG << "Restored Session Timeout: "
-                                         << sessionTimeoutInseconds.count();
+                        log<level::DEBUG>(
+                            "Session timeout successfully restored",
+                            entry("TIMEOUT=%ld",
+                                  sessionTimeoutInseconds.count()));
                         session::SessionStore::getInstance().updateSessionTimeout(
                             sessionTimeoutInseconds);
                     }
