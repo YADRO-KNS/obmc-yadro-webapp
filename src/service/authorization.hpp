@@ -5,7 +5,7 @@
 
 #include <core/exceptions.hpp>
 #include <core/helpers/utils.hpp>
-#include <logger/logger.hpp>
+#include <phosphor-logging/log.hpp>
 #include <service/session.hpp>
 
 namespace app
@@ -15,6 +15,8 @@ namespace service
 namespace authorization
 {
 
+using namespace phosphor::logging;
+
 constexpr const char* xXSRFToken = "HTTP_X_XSRF_TOKEN";
 constexpr const char* xAuthToken = "HTTP_X_AUTH_TOKEN";
 constexpr const char* authBasic = "Basic ";
@@ -23,8 +25,8 @@ constexpr const char* cookieSession = "SESSION";
 
 static session::UserSessionPtr performTokenAuth(std::string_view auth_header)
 {
-    BMC_LOG_DEBUG << "[AuthMiddleware] Token authentication";
-
+    log<level::DEBUG>("[AuthMiddleware] Token authentication");
+                      
     std::string_view token = auth_header.substr(strlen(authToken));
     auto session =
         session::SessionStore::getInstance().loginSessionByToken(token);
@@ -34,7 +36,7 @@ static session::UserSessionPtr performTokenAuth(std::string_view auth_header)
 static session::UserSessionPtr
     performXtokenAuth(const app::core::RequestPtr& request)
 {
-    BMC_LOG_DEBUG << "[AuthMiddleware] X-Auth-Token authentication";
+    log<level::DEBUG>("[AuthMiddleware] X-Auth-Token authentication");
 
     try
     {
@@ -50,7 +52,7 @@ static session::UserSessionPtr
     }
     catch (std::out_of_range&)
     {
-        BMC_LOG_DEBUG << "The 'X-Auth-Token' header is not present";
+        log<level::DEBUG>("The 'X-Auth-Token' header is not present");
     }
     return nullptr;
 }
@@ -58,11 +60,11 @@ static session::UserSessionPtr
 static session::UserSessionPtr
     performCookieAuth(const app::core::RequestPtr& request)
 {
-    BMC_LOG_DEBUG << "[AuthMiddleware] Cookie authentication";
+    log<level::DEBUG>("[AuthMiddleware] Cookie authentication");
     auto sessionValueIt = request->environment().cookies.find(cookieSession);
     if (sessionValueIt == request->environment().cookies.end())
     {
-        BMC_LOG_DEBUG << "The 'SESSION' Cookie is not present";
+        log<level::DEBUG>("[AuthMiddleware] The 'SESSION' Cookie is not present");
         return nullptr;
     }
 
@@ -81,11 +83,6 @@ static session::UserSessionPtr
     {
         try
         {
-            for (auto& other: request->environment().others)
-            {
-                BMC_LOG_DEBUG << "Other header " << other.first << "="
-                          << other.second;
-            }
             std::string_view csrf =
                 request->environment().others.at(xXSRFToken);
             // Make sure both tokens are filled
@@ -107,7 +104,7 @@ static session::UserSessionPtr
         }
         catch (std::out_of_range&)
         {
-            BMC_LOG_DEBUG << "The 'X-XSRF-TOKEN' header is not present";
+            log<level::DEBUG>("The 'X-XSRF-TOKEN' header is not present");
             return nullptr;
         }
     }
@@ -151,7 +148,7 @@ static bool authenticate(const app::core::RequestPtr& request,
 
     if (request->isSessionEmpty())
     {
-        BMC_LOG_WARNING << "[AuthMiddleware] authorization failed";
+        log<level::WARNING>("[AuthMiddleware] authorization failed");
 
         response->setStatus(app::http::statuses::Code::Unauthorized);
         // only send the WWW-authenticate header if this isn't a xhr
