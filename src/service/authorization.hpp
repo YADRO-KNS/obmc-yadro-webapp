@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021 YADRO
 
-#ifndef __SERVICE_AUTHORIZATION_H__
-#define __SERVICE_AUTHORIZATION_H__
+#pragma once
 
 #include <core/exceptions.hpp>
 #include <core/helpers/utils.hpp>
@@ -179,4 +178,3 @@ static bool authenticate(const app::core::RequestPtr& request,
 } // namespace authorization
 } // namespace service
 } // namespace app
-#endif // __SERVICE_AUTHORIZATION_H__

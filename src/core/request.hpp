@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021 YADRO
 
-#ifndef BMC_REQUEST_HPP
-#define BMC_REQUEST_HPP
+#pragma once
 
 #include <fastcgi++/http.hpp>
 
@@ -77,5 +76,3 @@ using RequestPtr = std::shared_ptr<IRequest>;
 } // namespace core
 
 } // namespace app
-
-#endif //! BMC_REQUEST_HPP
