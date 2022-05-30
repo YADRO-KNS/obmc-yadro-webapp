@@ -1,22 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021 YADRO
 
-#ifndef __QUERY_DBUS_H__
-#define __QUERY_DBUS_H__
+#pragma once
 
-#include <core/broker/dbus_broker.hpp>
+#include <core/connect/dbus_connect.hpp>
 #include <core/entity/entity.hpp>
-#include <core/entity/query.hpp>
-#include <definitions.hpp>
-#include <logger/logger.hpp>
-#include <sdbusplus/bus.hpp>
 #include <sdbusplus/bus/match.hpp>
-#include <sdbusplus/exception.hpp>
 
 #include <functional>
 #include <map>
 #include <utility>
 #include <variant>
+#include <tuple>
+#include <utility>
 #include <vector>
 
 namespace app
@@ -27,16 +23,29 @@ namespace dbus
 {
 
 using namespace app::entity;
+using namespace app::connect;
+using namespace phosphor::logging;
+
+class IFormatter;
+class IValidator;
 
 using InterfaceName = std::string;
 using ServiceName = std::string;
 using PropertyName = std::string;
 using ObjectPath = std::string;
 
+using FormatterPtr = std::shared_ptr<IFormatter>;
+using ValidatorPtr = std::shared_ptr<IValidator>;
 using InterfaceList = std::vector<InterfaceName>;
 using DBusServiceInterfaces = std::map<ServiceName, InterfaceList>;
-using DBusPropertyMemberDict = std::map<PropertyName, app::entity::MemberName>;
-using DBusPropertyEndpointMap = std::map<InterfaceName, DBusPropertyMemberDict>;
+using DBusPropertyFormatters = std::vector<FormatterPtr>;
+using DBusPropertyValidators = std::vector<ValidatorPtr>;
+using DBusPropertyReflection = std::pair<PropertyName, MemberName>;
+using DBusPropertyCasters =
+    std::pair<DBusPropertyFormatters, DBusPropertyValidators>;
+using DBusPropertySetters =
+    std::vector<std::pair<DBusPropertyReflection, DBusPropertyCasters>>;
+using DBusPropertyEndpointMap = std::map<InterfaceName, DBusPropertySetters>;
 
 using DBusAssociationsType =
     std::vector<std::tuple<std::string, std::string, std::string>>;
@@ -49,9 +58,7 @@ using DBusInterfacesMap = std::map<InterfaceName, DBusPropertiesMap>;
 
 using DBusServiceObjects = std::vector<std::pair<ObjectPath, ServiceName>>;
 
-template <class TInstance>
 class DBusQuery;
-
 class DBusInstance;
 class DBusQueryBuilder;
 class FindObjectDBusQuery;
@@ -60,40 +67,75 @@ using DBusQueryBuilderUni = std::unique_ptr<DBusQueryBuilder>;
 using DBusQueryBuilderPtr = std::shared_ptr<DBusQueryBuilder>;
 using FindObjectDBusQueryPtr = std::shared_ptr<FindObjectDBusQuery>;
 using DBusInstancePtr = std::shared_ptr<DBusInstance>;
+using DBusInstanceWeak = std::weak_ptr<DBusInstance>;
 
-using EntityDBusQuery = DBusQuery<IEntity::InstancePtr>;
-using EntityDBusQueryConstWeakPtr = std::weak_ptr<const EntityDBusQuery>;
-using EntityDBusQueryPtr = std::shared_ptr<EntityDBusQuery>;
+using DBusQueryConstWeakPtr = std::weak_ptr<const DBusQuery>;
+using DBusQueryPtr = std::shared_ptr<DBusQuery>;
 
+constexpr const char* metaObjectPath = "__meta_field__object_path";
+constexpr const char* metaObjectService = "__meta_field__object_service";
+
+/**
+ * @class DBusInstance
+ * @brief The DBusInstance provide DBus objects' functions to resolve all
+ *        relevant properties and correct resolve/expand own values to IEntity
+ *        definition
+ */
 class DBusInstance final :
     public Entity::StaticInstance,
     public std::enable_shared_from_this<DBusInstance>
 {
+    /** @brief Type of instance hash */
     using InstanceHash = std::size_t;
-
+    /** @brief The DBus service of instance */
     const std::string serviceName;
+    /** @brief The DBus object path of instace*/
     const std::string objectPath;
+    /** @brief The EP configuration (properties, entity-members, formatters,
+     *         validators) 
+     */
     const DBusPropertyEndpointMap& targetProperties;
-    EntityDBusQueryConstWeakPtr dbusQuery;
-
+    /**
+     * @brief The weak-pointer to the query object that is obtained instace from
+     *        dbus
+     */
+    DBusQueryConstWeakPtr dbusQuery;
+    /**
+     * @brief Child instances of complex types
+     */
     std::map<InstanceHash, DBusInstancePtr> complexInstances;
+    /** 
+     * @brief watchers to observe the object/properties signals to
+     *        remove/update 
+     */
     std::vector<sdbusplus::bus::match::match> listeners;
-
   public:
     DBusInstance(const DBusInstance&) = delete;
     DBusInstance& operator=(const DBusInstance&) = delete;
     DBusInstance(DBusInstance&&) = delete;
     DBusInstance& operator=(DBusInstance&&) = delete;
 
-    explicit DBusInstance(
-        const std::string& inServiceName, const std::string& inObjectPath,
-        const DBusPropertyEndpointMap& targetPropertiesDict,
-        const EntityDBusQueryConstWeakPtr& queryObject) noexcept :
-        Entity::StaticInstance(Entity::EntityMember::fieldValueNotAvailable),
+    /**
+     * @brief Construct a new DBusInstance object
+     *
+     * @param inServiceName         - The DBus service name
+     * @param inObjectPath          - the DBus object path
+     * @param targetPropertiesDict  - The EP configuration (properties,
+     *                                entity-members, formatters, validators)
+     * @param queryObject           - The weak-pointer to the query that is
+     *                                obtained dbus-object
+     */
+    explicit DBusInstance(const std::string& inServiceName,
+                          const std::string& inObjectPath,
+                          const DBusPropertyEndpointMap& targetPropertiesDict,
+                          const DBusQueryConstWeakPtr& queryObject) noexcept :
+        Entity::StaticInstance(inServiceName + inObjectPath),
         serviceName(inServiceName), objectPath(inObjectPath),
         targetProperties(targetPropertiesDict), dbusQuery(queryObject)
     {
-        using namespace app::entity::obmc::definitions;
+        log<level::DEBUG>("Create DBus instance cache",
+                          entry("DBUS_SVC=%s", inServiceName.c_str()),
+                          entry("DBUS_OBJ=%s", inObjectPath.c_str()));
         try
         {
             this->supplement(metaObjectPath, objectPath);
@@ -101,91 +143,256 @@ class DBusInstance final :
         }
         catch (std::logic_error& ex)
         {
-            BMC_LOG_ERROR << "Fail to supplement DBusInstance by a default "
-                         "metadata fields. Error="
-                      << ex.what();
+            log<level::ERR>("Fail to create new DBus cache instance",
+                            entry("DBUS_SVC=%s", inServiceName.c_str()),
+                            entry("DBUS_OBJ=%s", inObjectPath.c_str()),
+                            entry("ERROR=%s", ex.what()));
         }
     }
-
+    /**
+     * @brief Destroy the DBusInstance
+     *
+     */
     virtual ~DBusInstance() = default;
 
+    /**
+     * @brief Get the object instances with expanded complex types(e.g.
+     *        associations)
+     *
+     * @return const std::vector<DBusInstancePtr>
+     */
     const std::vector<DBusInstancePtr> getComplexInstances() const;
 
+    /**
+     * @brief Fill the object instance by properties map
+     * 
+     * @return true     - sucess
+     * @return false    - fail
+     */
     bool fillMembers(const InterfaceName&, const DBusPropertiesMap&);
 
+    /**
+     * @brief Get the field by entity-member instance
+     *
+     * @return const IEntity::IEntityMember::InstancePtr&
+     */
     const IEntity::IEntityMember::InstancePtr&
         getField(const IEntity::EntityMemberPtr&) const override;
+
+    /**
+     * @brief Get the field by name
+     *
+     * @return const IEntity::IEntityMember::InstancePtr& object of query field
+     *                                                    instance
+     */
     const IEntity::IEntityMember::InstancePtr&
         getField(const MemberName&) const override;
-    const std::vector<MemberName>
-        getMemberNames() const override;
+    /**
+     * @brief Get the list of well-known members of instance that is origins
+     *        from an IEntity
+     *
+     * @note  The IEntity defines the set of fields. The each field should be
+     *        initialized from predefined source. DBusInstance contains DBus
+     *        endpoint configuration that is already having reflection property
+     *        name to the entity member name. Thun, we might provide the clean
+     *        list of end-IEntity-members from DBusInstance directly.
+     *
+     * @return const std::vector<MemberName>
+     */
+    const std::vector<MemberName> getMemberNames() const override;
 
+    /**
+     * @brief Check is psecified feild obtained from dbus
+     *
+     * @return true     - acquired
+     * @return false    - not found
+     */
     bool hasField(const MemberName&) const override;
-    // TODO(IK) Move to the IFormatter abstractions instead the
-    // FindObjectDBusQuery weak pointer.
+
+    /**
+     * @brief Obtain the properties from dbus of the specified interface
+     *
+     * @param DBusConnectUni             - connection to the DBus
+     * @param InterfaceName              - interface to obtain properties
+     * @return const DBusPropertiesMap   - The dictionary of properties
+     */
     const DBusPropertiesMap queryProperties(const connect::DBusConnectUni&,
                                             const InterfaceName&);
-
+    /**
+     * @brief Attach an custom watcher of dbus signals
+     */
     void bindListeners(const connect::DBusConnectUni&);
+    /**
+     * @brief Get the DBus object path
+     * 
+     * @return const ObjectPath&  the DBus object path
+     */
     const ObjectPath& getObjectPath() const;
+    /**
+     * @brief Get the DBus service name
+     * 
+     * @return const ServiceName& the DBus service name
+     */
     const ServiceName& getService() const;
-
+    /**
+     * @brief Suppliment Instance of specified MemberName by the value.
+     *        The DBus instance should not having exists specified field
+     *
+     * @param MemberName    - The field to add to the instance
+     * @param FieldType     - The valud to initialize field
+     */
     void supplement(
         const MemberName&,
         const IEntity::IEntityMember::IInstance::FieldType&) override;
-
+    /**
+     * @brief Update Instance of specified MemberName by the value.
+     *        If specified field is not initialized then it will be created.
+     *
+     * @param MemberName    - The field to add to the instance
+     * @param FieldType     - The valud to initialize field
+     */
     void supplementOrUpdate(
         const MemberName&,
         const IEntity::IEntityMember::IInstance::FieldType&) override;
-
+    /**
+     * @brief Update Instance by copy all members from specified destination
+     *        Instance.
+     *        If specified field is not initialized then it will be created.
+     *
+     * @param MemberName    - The field to add to the instance
+     * @param FieldType     - The valud to initialize field
+     */
     void supplementOrUpdate(const IEntity::InstancePtr&) override;
-
+    /**
+     * @brief Apply ICondition to the Instance to verify is the instance is
+     *        relevant to some condition.
+     *
+     * @return true     - condition passed
+     * @return false    - condition not passed
+     */
     bool checkCondition(const IEntity::ConditionPtr) const override;
-
-    std::size_t getHash() const override;
+    /**
+     * @brief Get the checksum of instance to uniquelly identity object
+     *        according IEntity.
+     *
+     * @return InstanceHash - the checksum
+     */
+    InstanceHash getHash() const override;
+    /**
+     * @brief Calculate a checksum origins on the ServiceName and ObjectPath
+     * 
+     * @param ServiceName   - the literal service name
+     * @param ObjectPath    - the literal object path
+     * 
+     * @return InstanceHash - the checksum
+     */
     static std::size_t getHash(const ServiceName&, const ObjectPath&);
-
+    /**
+     * @brief Parse DBus complex type to expand to the DBus associtaion
+     *
+     * @note The captured accosiation will be stored into complex-instances
+     *       dictionary and will be expanded to primitives by special
+     *       condition that will defined in the IEntity end-class.
+     *
+     * @param InterfaceName         - interface name to extract primitives from
+     *                                complex
+     * @param DBusAssociationsType  - The complex type that is interpert as DBus
+     *                                association
+     */
     void captureDBusAssociations(const InterfaceName&,
                                  const DBusAssociationsType&);
+    /**
+     * @brief Passthrow the specified DBusInstance field type to the IEntity
+     *        throw casting dbus-variant type to the IEntity general type.
+     * @param PropertyName - the field name to resolve type
+     * @param PropertyName - the value of specified dbus field
+     */
+    void resolveDBusVariant(const PropertyName&, const DbusVariantType&);
 
-    void resolveDBusVariant(const MemberName&, const DbusVariantType&);
-
-    const std::map<std::size_t, IEntity::InstancePtr> getComplex() const override;
+    /**
+     * @brief Get the instances that is extracted from complex dbus-type
+     *
+     * @return const std::map<std::size_t, 
+     *                    IEntity::InstancePtr> - map of complex instances
+     */
+    const std::map<std::size_t, IEntity::InstancePtr>
+        getComplex() const override;
+    /**
+     * @brief Checks is the DBusInstance origins from complex dbus-type
+     *
+     * @return true     - root instance
+     * @return false    - child instance from complex dbus-type
+     */
     bool isComplex() const override;
-
+    /**
+     * @brief Initialize members by default values
+     *        Some fields might required to initailze by predefined value to
+     *        avoid provide null-value if configured by endpoint map is not
+     *        obtained
+     */
     void initDefaultFieldsValue() override;
   protected:
-    const DBusPropertyMemberDict
-        getPropertyMemberDict(const InterfaceName&) const;
+    /**
+     * @brief Get setters for specified interfaces.
+     *        The setters dictionary origin from endpoint dictionary
+     *
+     * @param interface                   - interface name
+     * @return const DBusPropertySetters& - setters for the interface properties
+     */
+    const DBusPropertySetters&
+        dbusPropertySetters(const InterfaceName& interface) const;
 };
 
-class DBusMemberInstance final : public IEntity::IEntityMember::IInstance
+class DBusQuery : public IQuery
 {
-    FieldType value;
+#define DBUS_QUERY_CRIT_IFACES(...) __VA_ARGS__
+#define DBUS_QUERY_DECLARE_CRITERIA(p, ifaces, depth, svc)                     \
+    const DBusObjectEndpoint& getQueryCriteria() const override                \
+    {                                                                          \
+        static const DBusObjectEndpoint criteria{                              \
+            p,                                                                 \
+            {ifaces},                                                          \
+            depth,                                                             \
+            svc,                                                               \
+        };                                                                     \
+                                                                               \
+        return criteria;                                                       \
+    }
 
-  public:
-    DBusMemberInstance(const DBusMemberInstance&) = delete;
-    DBusMemberInstance& operator=(const DBusMemberInstance&) = delete;
-    DBusMemberInstance(DBusMemberInstance&&) = delete;
-    DBusMemberInstance& operator=(DBusMemberInstance&&) = delete;
+#define DBUS_QUERY_EP_CSTR(cstr, ...)                                          \
+    {                                                                          \
+        std::make_shared<cstr>(__VA_ARGS__)                                    \
+    }
+#define DBUS_QUERY_EP_SET(p, m, f, v)                                          \
+    {                                                                          \
+        {p, m}, {f, v}                                                         \
+    }
+#define DBUS_QUERY_EP_SET_FORMATTERS(p, m, f) DBUS_QUERY_EP_SET(p, m, f, {})
+#define DBUS_QUERY_EP_SET_VALIDATORS(p, m, v) DBUS_QUERY_EP_SET(p, m, {}, v)
+#define DBUS_QUERY_EP_SET_FORMATTERS2(m, f)                                    \
+    DBUS_QUERY_EP_SET_FORMATTERS(m, m, f)
+#define DBUS_QUERY_EP_SET_VALIDATORS2(m, v)                                    \
+    DBUS_QUERY_EP_SET_VALIDATORS(m, m, v)
+#define DBUS_QUERY_EP_SET2(member, f, v) DBUS_QUERY_EP_SET(member, member, f, v)
+#define DBUS_QUERY_EP_FIELDS_ONLY(prop, member)                                \
+    DBUS_QUERY_EP_SET(prop, member, {}, {})
+#define DBUS_QUERY_EP_FIELDS_ONLY2(member)                                     \
+    DBUS_QUERY_EP_FIELDS_ONLY(member, member)
+#define DBUS_QUERY_EP_IFACES(iface, ...)                                       \
+    {                                                                          \
+        iface,                                                                 \
+        {                                                                      \
+            __VA_ARGS__                                                        \
+        }                                                                      \
+    }
 
-    explicit DBusMemberInstance(FieldType initValue) noexcept : value(initValue)
-    {}
-    virtual ~DBusMemberInstance() = default;
-
-    const FieldType& getValue() const noexcept override;
-    const std::string& getStringValue() const override;
-    int getIntValue() const override;
-    double getFloatValue() const override;
-    bool getBoolValue() const override;
-    void setValue(const FieldType&) override;
-};
-
-template <class TInstance>
-class DBusQuery : public IQuery<TInstance, connect::DBusConnectUni>
-{
-    std::vector<sdbusplus::bus::match::match> observers;
-    static std::map<std::string, std::string> serviceNamesDict;
+#define DBUS_QUERY_DECL_EP(...)                                                \
+    const dbus::DBusPropertyEndpointMap& getSearchPropertiesMap()              \
+        const override                                                         \
+    {                                                                          \
+        static const dbus::DBusPropertyEndpointMap dictionary{__VA_ARGS__};    \
+        return dictionary;                                                     \
+    }
 
   public:
     using DefaultValueSetter =
@@ -210,81 +417,111 @@ class DBusQuery : public IQuery<TInstance, connect::DBusConnectUni>
         return emptyDefaultFieldsDict;
     }
 
-    void registerObjectCreationObserver(const connect::DBusConnectionPoolUni&,
-                                        entity::EntityPtr);
-    void registerObjectRemovingObserver(const connect::DBusConnectionPoolUni&,
-                                        entity::EntityPtr);
-
-    virtual void supplementByStaticFields(DBusInstancePtr&) const
+    virtual void supplementByStaticFields(const DBusInstancePtr&) const
     {}
 
-    virtual bool checkCriteria(const ObjectPath&,
-                               const InterfaceList&,
-                               std::optional<ServiceName> = std::nullopt) const = 0;
+    virtual bool
+        checkCriteria(const ObjectPath&, const InterfaceList&,
+                      std::optional<ServiceName> = std::nullopt) const = 0;
 
-    static void setServiceName(const std::string, const std::string);
-    static const ServiceName& getWellKnownServiceName(const std::string);
+    const QueryFields getFields() const override
+    {
+        const auto& searchEp = getSearchPropertiesMap();
+        QueryFields fields;
+
+        for (auto [_, setters] : searchEp)
+        {
+            for (auto [reflectionIt, _2] : setters)
+            {
+                fields.emplace_back(reflectionIt.second);
+            }
+        }
+
+        log<level::DEBUG>("Success to obtaining query fields",
+                          entry("COUNT=%ld", fields.size()));
+        return std::forward<const QueryFields>(fields);
+    }
+
+    void configure(std::reference_wrapper<IEntity> entity) override
+    {
+        registerObjectCreationObserver(entity);
+        registerObjectRemovingObserver(entity);
+    }
+
   protected:
     using FormatterFn = std::function<const DbusVariantType(
         const PropertyName&, const DbusVariantType&, DBusInstancePtr)>;
-    using FieldsFormattingMap =
-        std::map<PropertyName, std::vector<FormatterFn>>;
 
-    virtual const FieldsFormattingMap& getFormatters() const;
+    const DBusPropertyFormatters&
+        getFormatters(const PropertyName& property) const;
+    const DBusPropertyValidators&
+        getValidators(const PropertyName& property) const;
     virtual const DBusPropertyEndpointMap& getSearchPropertiesMap() const = 0;
 
-    virtual EntityDBusQueryConstWeakPtr getWeakPtr() const = 0;
-    virtual EntityDBusQueryPtr getSharedPtr() = 0;
+    virtual DBusQueryConstWeakPtr getWeakPtr() const = 0;
+    virtual DBusQueryPtr getSharedPtr() = 0;
 
-    virtual DBusInstancePtr createInstance(const connect::DBusConnectUni&,
-                                           const ServiceName&,
+    virtual DBusInstancePtr createInstance(const ServiceName&,
                                            const ObjectPath&,
                                            const InterfaceList&);
 
     void addObserver(sdbusplus::bus::match::match&&);
 
     virtual const ObjectPath& getObjectPathNamespace() const = 0;
+
+    void
+        registerObjectCreationObserver(std::reference_wrapper<entity::IEntity>);
+    void
+        registerObjectRemovingObserver(std::reference_wrapper<entity::IEntity>);
+
+  protected:
+    const DBusConnectUni& getConnect();
+    const DBusConnectUni& getConnect() const;
+
+  private:
+    std::vector<sdbusplus::bus::match::match> observers;
 };
 
-class DBusQueryBuilder final
+class IFormatter
 {
-    EntityManager::EntityBuilderPtr entityBuilder;
-    EntityPtr entity;
-    app::broker::DBusBrokerManager& manager;
-
   public:
-    explicit DBusQueryBuilder(EntityManager::EntityBuilderPtr entityBuilderPtr,
-                              EntityPtr targetEntity,
-                              app::broker::DBusBrokerManager& dbusManager) :
-        entityBuilder(entityBuilderPtr),
-        entity(targetEntity), manager(dbusManager)
+    virtual ~IFormatter() = default;
+
+    virtual const DbusVariantType format(const PropertyName& property,
+                                         const DbusVariantType& value) = 0;
+};
+
+class IValidator
+{
+  public:
+    virtual ~IValidator() = default;
+
+    virtual const DbusVariantType validate(const PropertyName& property,
+                                           const DbusVariantType& value) = 0;
+};
+
+class DBusAction : public IQuery
+{
+  public:
+    DBusAction(const DBusAction&) = delete;
+    DBusAction& operator=(const DBusAction&) = delete;
+    DBusAction(DBusAction&&) = delete;
+    DBusAction& operator=(DBusAction&&) = delete;
+
+    explicit DBusAction() = default;
+    ~DBusAction() override = default;
+
+    const entity::IEntity::InstanceCollection process() override;
+    const QueryFields getFields() const override
     {
+        return {};
     }
 
-    virtual ~DBusQueryBuilder() = default;
-
-    template <class TDBusQuery, typename... TArgs>
-    DBusQueryBuilder& addObject(TArgs&&... args)
-    {
-        using namespace app::entity::obmc::definitions;
-        static_assert(
-            std::is_base_of_v<EntityDBusQuery, TDBusQuery>,
-            "This is not a query");
-        auto dbusQuery = std::make_shared<TDBusQuery>();
-        auto broker = std::make_shared<app::broker::EntityDbusBroker>(
-            entity, dbusQuery, args...);
-        manager.bind(std::move(broker));
-        // default metadata fields
-        entityBuilder->addMembers({metaObjectPath, metaObjectService});
-
-        return *this;
-    }
-
-    EntityManager::EntityBuilderPtr complete();
+  protected:
 };
 
 class FindObjectDBusQuery :
-    public EntityDBusQuery,
+    public DBusQuery,
     public std::enable_shared_from_this<FindObjectDBusQuery>
 {
   public:
@@ -302,10 +539,11 @@ class FindObjectDBusQuery :
     {}
     ~FindObjectDBusQuery() override = default;
 
-    std::vector<IEntity::InstancePtr> process(const connect::DBusConnectUni&) override;
+    const entity::IEntity::InstanceCollection process() override;
 
-    bool checkCriteria(const ObjectPath&, const InterfaceList&,
-                       std::optional<ServiceName> = std::nullopt) const override;
+    bool
+        checkCriteria(const ObjectPath&, const InterfaceList&,
+                      std::optional<ServiceName> = std::nullopt) const override;
 
   protected:
     static constexpr int32_t noDepth = 0U;
@@ -314,12 +552,12 @@ class FindObjectDBusQuery :
     virtual constexpr const DBusObjectEndpoint& getQueryCriteria() const = 0;
 
     const ObjectPath& getObjectPathNamespace() const override;
-    EntityDBusQueryConstWeakPtr getWeakPtr() const override;
-    EntityDBusQueryPtr getSharedPtr() override;
+    DBusQueryConstWeakPtr getWeakPtr() const override;
+    DBusQueryPtr getSharedPtr() override;
 };
 
 class GetObjectDBusQuery :
-    public EntityDBusQuery,
+    public DBusQuery,
     public std::enable_shared_from_this<GetObjectDBusQuery>
 {
     const ServiceName serviceName;
@@ -328,26 +566,28 @@ class GetObjectDBusQuery :
   public:
     explicit GetObjectDBusQuery(const ServiceName& service,
                                 const ObjectPath& path) noexcept :
-        EntityDBusQuery(), serviceName(service), objectPath(path)
+        DBusQuery(),
+        serviceName(service), objectPath(path)
     {}
     ~GetObjectDBusQuery() override = default;
 
-    std::vector<IEntity::InstancePtr> process(const connect::DBusConnectUni&) override;
+    const entity::IEntity::InstanceCollection process() override;
 
-    bool checkCriteria(const ObjectPath&, const InterfaceList&,
-                       std::optional<ServiceName> = std::nullopt) const override;
+    bool
+        checkCriteria(const ObjectPath&, const InterfaceList&,
+                      std::optional<ServiceName> = std::nullopt) const override;
 
   protected:
     const ObjectPath& getObjectPathNamespace() const override;
 
     virtual const InterfaceList& searchInterfaces() const = 0;
 
-    EntityDBusQueryConstWeakPtr getWeakPtr() const override;
-    EntityDBusQueryPtr getSharedPtr() override;
+    DBusQueryConstWeakPtr getWeakPtr() const override;
+    DBusQueryPtr getSharedPtr() override;
 };
 
 class IntrospectServiceDBusQuery :
-    public EntityDBusQuery,
+    public DBusQuery,
     public std::enable_shared_from_this<IntrospectServiceDBusQuery>
 {
     const std::string serviceName;
@@ -360,18 +600,18 @@ class IntrospectServiceDBusQuery :
     {}
     ~IntrospectServiceDBusQuery() override = default;
 
-    std::vector<IEntity::InstancePtr> process(const connect::DBusConnectUni&) override;
+    const entity::IEntity::InstanceCollection process() override;
 
-    bool checkCriteria(const ObjectPath&, const InterfaceList&,
-                       std::optional<ServiceName> = std::nullopt) const override;
+    bool
+        checkCriteria(const ObjectPath&, const InterfaceList&,
+                      std::optional<ServiceName> = std::nullopt) const override;
 
   protected:
-    EntityDBusQueryConstWeakPtr getWeakPtr() const override;
-    EntityDBusQueryPtr getSharedPtr() override;
+    DBusQueryConstWeakPtr getWeakPtr() const override;
+    DBusQueryPtr getSharedPtr() override;
     const ObjectPath& getObjectPathNamespace() const override;
 };
 
 } // namespace dbus
 } // namespace query
 } // namespace app
-#endif // __QUERY_DBUS_H__

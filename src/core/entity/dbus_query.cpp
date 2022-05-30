@@ -2,8 +2,14 @@
 // Copyright (C) 2021 YADRO
 
 #include <core/entity/dbus_query.hpp>
+
+#include <core/connect/dbus_connect.hpp>
 #include <core/exceptions.hpp>
 #include <core/helpers/utils.hpp>
+#include <core/application.hpp>
+
+#include <sdbusplus/exception.hpp>
+#include <common_fields.hpp>
 
 namespace app
 {
@@ -12,14 +18,7 @@ namespace query
 namespace dbus
 {
 using namespace app::core::exceptions;
-
-template <class TInstance>
-std::map<std::string, std::string> DBusQuery<TInstance>::serviceNamesDict;
-
-EntityManager::EntityBuilderPtr DBusQueryBuilder::complete()
-{
-    return std::move(this->entityBuilder);
-}
+using namespace app::connect;
 
 std::size_t FindObjectDBusQuery::DBusObjectEndpoint::getHash() const
 {
@@ -38,38 +37,31 @@ std::size_t FindObjectDBusQuery::DBusObjectEndpoint::getHash() const
             (hashService << 3));
 }
 
-std::vector<IEntity::InstancePtr>
-    FindObjectDBusQuery::process(const connect::DBusConnectUni& dbusConnection)
+const entity::IEntity::InstanceCollection FindObjectDBusQuery::process()
 {
     using DBusSubTreeOut =
         std::vector<std::pair<std::string, DBusServiceInterfaces>>;
     std::vector<DBusInstancePtr> dbusInstances;
-
-    auto mapperCall = dbusConnection->getConnect()->new_method_call(
-        "xyz.openbmc_project.ObjectMapper",
-        "/xyz/openbmc_project/object_mapper",
-        "xyz.openbmc_project.ObjectMapper", "GetSubTree");
-
-    mapperCall.append(getQueryCriteria().path);
-    mapperCall.append(getQueryCriteria().depth);
-    mapperCall.append(getQueryCriteria().interfaces);
-
     DBusSubTreeOut mapperResponse;
     try
     {
-        dbusConnection->getConnect()->call(mapperCall).read(mapperResponse);
+        mapperResponse = getConnect()->callMethodAndRead<DBusSubTreeOut>(
+            "xyz.openbmc_project.ObjectMapper",
+            "/xyz/openbmc_project/object_mapper",
+            "xyz.openbmc_project.ObjectMapper", "GetSubTree",
+            getQueryCriteria().path, getQueryCriteria().depth,
+            getQueryCriteria().interfaces);
     }
-    catch (sdbusplus::exception_t& ex)
+    catch (const sdbusplus::exception_t& ex)
     {
-        BMC_LOG_CRITICAL << "Can't query objects (" << ex.what() << ") for criteria:";
-        BMC_LOG_CRITICAL << "[FindObject] path=" << getQueryCriteria().path;
-        for (auto& interface: getQueryCriteria().interfaces)
-        {
-            BMC_LOG_CRITICAL << "[FindObject] iface=" << interface;
-        }
+        log<level::DEBUG>(
+            "Fail to process DBus query (global searching objects by criteria)",
+            entry("DBUS_PATH=%s", getQueryCriteria().path.c_str()),
+            entry("DBUS_DEPTH=%d", getQueryCriteria().depth),
+            entry("IFACES=%ld", getQueryCriteria().interfaces.size()),
+            entry("ERROR=%s", ex.what()));
     }
 
-    BMC_LOG_DEBUG << "DBus Objects read sucess.";
     for (auto& [objectPath, serviceInfoList] : mapperResponse)
     {
         for (auto& [serviceName, interfaces] : serviceInfoList)
@@ -77,20 +69,22 @@ std::vector<IEntity::InstancePtr>
             if (getQueryCriteria().service.has_value() &&
                 getQueryCriteria().service.value() != serviceName)
             {
-                BMC_LOG_DEBUG << "Skip service " << serviceName
-                          << " because it was not specified";
                 continue;
             }
-            BMC_LOG_DEBUG << "Emplace new entity instance.";
-            auto instance = this->createInstance(dbusConnection, serviceName,
-                                                 objectPath, interfaces);
+            auto instance =
+                this->createInstance(serviceName, objectPath, interfaces);
             dbusInstances.push_back(instance);
+            instance->bindListeners(getConnect());
         }
     }
 
-    BMC_LOG_DEBUG
-        << "Process Found DBus Object query is sucess. Count instance: "
-        << dbusInstances.size();
+    log<level::DEBUG>(
+        "Acquire dbus-objects is complete.",
+        entry("COUNT=%ld", dbusInstances.size()),
+        entry("DBUS_PATH=%s", getQueryCriteria().path.c_str()),
+        entry("DBUS_DEPTH=%d", getQueryCriteria().depth),
+        entry("IFACES=%ld", getQueryCriteria().interfaces.size()));
+
     std::vector<IEntity::InstancePtr> result(dbusInstances.begin(),
                                              dbusInstances.end());
     return result;
@@ -106,9 +100,6 @@ bool FindObjectDBusQuery::checkCriteria(
         getQueryCriteria().service.has_value() &&
         *optionalServiceName != *getQueryCriteria().service)
     {
-        BMC_LOG_DEBUG << "[Check criteria] Bad service: "
-                      << *optionalServiceName << "|"
-                      << *getQueryCriteria().service;
         return false;
     }
 
@@ -116,12 +107,6 @@ bool FindObjectDBusQuery::checkCriteria(
         app::helpers::utils::countExtraSegmentsOfPath(
             getQueryCriteria().path, objectPath) > getQueryCriteria().depth)
     {
-        BMC_LOG_DEBUG << "[Check criteria] Bad depth: "
-                      << getQueryCriteria().depth << "|"
-                      << app::helpers::utils::countExtraSegmentsOfPath(
-                             getQueryCriteria().path, objectPath)
-                      << "(" << getQueryCriteria().path << ", " << objectPath
-                      << ")";
         return false;
     }
 
@@ -136,33 +121,29 @@ bool FindObjectDBusQuery::checkCriteria(
         });
     if (!hasValidInterfaceForCriteria)
     {
-        BMC_LOG_DEBUG
-            << "[Check criteria] Bad interface list: no interface matched";
         return false;
     }
 
     return true;
 }
 
-EntityDBusQueryConstWeakPtr FindObjectDBusQuery::getWeakPtr() const
+DBusQueryConstWeakPtr FindObjectDBusQuery::getWeakPtr() const
 {
     return weak_from_this();
 }
 
-EntityDBusQueryPtr FindObjectDBusQuery::getSharedPtr()
+DBusQueryPtr FindObjectDBusQuery::getSharedPtr()
 {
     return shared_from_this();
 }
 
-std::vector<IEntity::InstancePtr>
-    GetObjectDBusQuery::process(const connect::DBusConnectUni& connect)
+const entity::IEntity::InstanceCollection GetObjectDBusQuery::process()
 {
-    std::vector<IEntity::InstancePtr> result;
-    BMC_LOG_DEBUG << "Emplace new entity instance.";
-    IEntity::InstancePtr instance = this->createInstance(
-        connect, serviceName, objectPath, searchInterfaces());
+    IEntity::InstanceCollection result;
+    auto instance = createInstance(serviceName, objectPath, searchInterfaces());
     result.emplace_back(instance);
-    return std::forward<std::vector<IEntity::InstancePtr>>(result);
+    instance->bindListeners(getConnect());
+    return std::forward<IEntity::InstanceCollection>(result);
 }
 
 bool GetObjectDBusQuery::checkCriteria(
@@ -199,12 +180,12 @@ const ObjectPath& GetObjectDBusQuery::getObjectPathNamespace() const
     return this->objectPath;
 }
 
-EntityDBusQueryConstWeakPtr GetObjectDBusQuery::getWeakPtr() const
+DBusQueryConstWeakPtr GetObjectDBusQuery::getWeakPtr() const
 {
     return weak_from_this();
 }
 
-EntityDBusQueryPtr GetObjectDBusQuery::getSharedPtr()
+DBusQueryPtr GetObjectDBusQuery::getSharedPtr()
 {
     return shared_from_this();
 }
@@ -214,26 +195,24 @@ const ObjectPath& FindObjectDBusQuery::getObjectPathNamespace() const
     return this->getQueryCriteria().path;
 }
 
-std::vector<IEntity::InstancePtr>
-    IntrospectServiceDBusQuery::process(const connect::DBusConnectUni& dbusConnection)
+const IEntity::InstanceCollection IntrospectServiceDBusQuery::process()
 {
     using ObjectValueTree =
         std::map<sdbusplus::message::object_path, DBusInterfacesMap>;
-    std::vector<DBusInstancePtr> dbusInstances;
+    IEntity::InstanceCollection dbusInstances;
     ObjectValueTree interfacesResponse;
-
-    auto mapperCall = dbusConnection->getConnect()->new_method_call(
-        serviceName.c_str(), "/", "org.freedesktop.DBus.ObjectManager",
-        "GetManagedObjects");
 
     try
     {
-        dbusConnection->getConnect()->call(mapperCall).read(interfacesResponse);
+        interfacesResponse = getConnect()->callMethodAndRead<ObjectValueTree>(
+            serviceName.c_str(), "/", "org.freedesktop.DBus.ObjectManager",
+            "GetManagedObjects");
     }
     catch (const std::exception& e)
     {
-        BMC_LOG_CRITICAL << "Failed to GetManagedObjects of " << serviceName
-                         << ": " << e.what();
+        log<level::DEBUG>("Fail to process DBus query (service introspect)",
+                          entry("DBUS_SVC=%s", serviceName.c_str()),
+                          entry("ERROR=%s", e.what()));
     }
     for (auto& [objectPath, interfaces] : interfacesResponse)
     {
@@ -245,14 +224,14 @@ std::vector<IEntity::InstancePtr>
         {
             instance->fillMembers(interfaceName, propertiesMap);
         }
+        supplementByStaticFields(instance);
         dbusInstances.push_back(instance);
+        instance->bindListeners(getConnect());
     }
 
-    BMC_LOG_DEBUG << "Process Found DBus Object query is sucess.";
-
-    std::vector<IEntity::InstancePtr> result(dbusInstances.begin(),
-                                             dbusInstances.end());
-    return std::forward<std::vector<IEntity::InstancePtr>>(result);
+    log<level::DEBUG>("Service introspect is successfull",
+                      entry("DBUS_SVC=%s", serviceName.c_str()));
+    return std::forward<IEntity::InstanceCollection>(dbusInstances);
 }
 
 bool IntrospectServiceDBusQuery::checkCriteria(
@@ -284,39 +263,12 @@ bool IntrospectServiceDBusQuery::checkCriteria(
     return true;
 }
 
-template <class TInstance>
-void DBusQuery<TInstance>::setServiceName(const std::string uniqueName,
-                                          const std::string wellKnownName)
-{
-    static std::mutex mutex;
-    std::lock_guard<std::mutex> lock(mutex);
-    BMC_LOG_DEBUG << "Set Well-Known service name [" << uniqueName << "] "
-              << wellKnownName;
-    serviceNamesDict.insert_or_assign(uniqueName, wellKnownName);
-}
-
-template <class TInstance>
-const ServiceName&
-    DBusQuery<TInstance>::getWellKnownServiceName(const std::string uniqueName)
-{
-    using namespace std::literals;
-
-    size_t tryCount = 0;
-    while (serviceNamesDict.find(uniqueName) == serviceNamesDict.end() &&
-           tryCount < 15)
-    {
-        tryCount++;
-        std::this_thread::sleep_for(1s);
-    }
-    return serviceNamesDict.at(uniqueName);
-}
-
-EntityDBusQueryConstWeakPtr IntrospectServiceDBusQuery::getWeakPtr() const
+DBusQueryConstWeakPtr IntrospectServiceDBusQuery::getWeakPtr() const
 {
     return weak_from_this();
 }
 
-EntityDBusQueryPtr IntrospectServiceDBusQuery::getSharedPtr()
+DBusQueryPtr IntrospectServiceDBusQuery::getSharedPtr()
 {
     return shared_from_this();
 }
@@ -327,29 +279,35 @@ const ObjectPath& IntrospectServiceDBusQuery::getObjectPathNamespace() const
     return globalNamespace;
 }
 
-template <class TInstance>
-DBusInstancePtr DBusQuery<TInstance>::createInstance(
-    const connect::DBusConnectUni& connect, const ServiceName& serviceName,
-    const ObjectPath& objectPath, const InterfaceList& interfaces)
+DBusInstancePtr DBusQuery::createInstance(const ServiceName& serviceName,
+                                          const ObjectPath& objectPath,
+                                          const InterfaceList& interfaces)
 {
-    auto entityInstance = std::make_shared<DBusInstance>(
+    auto instance = std::make_shared<DBusInstance>(
         serviceName, objectPath, getSearchPropertiesMap(), getWeakPtr());
-
-    BMC_LOG_DEBUG << "ObjectPath='" << objectPath << "', Service='" << serviceName
-              << "'";
     for (auto& interface : interfaces)
     {
-        auto properties = entityInstance->queryProperties(connect, interface);
-        entityInstance->fillMembers(interface, properties);
+        auto properties = instance->queryProperties(getConnect(), interface);
+        instance->fillMembers(interface, properties);
     }
 
-    return std::forward<DBusInstancePtr>(entityInstance);
+    supplementByStaticFields(instance);
+    return std::forward<DBusInstancePtr>(instance);
 }
 
-template <class TInstance>
-void DBusQuery<TInstance>::addObserver(sdbusplus::bus::match::match&& observer)
+void DBusQuery::addObserver(sdbusplus::bus::match::match&& observer)
 {
     observers.push_back(std::move(observer));
+}
+
+const DBusConnectUni& DBusQuery::getConnect()
+{
+    return app::core::application.getDBusConnect();
+}
+
+const DBusConnectUni& DBusQuery::getConnect() const
+{
+    return app::core::application.getDBusConnect();
 }
 
 const std::vector<DBusInstancePtr> DBusInstance::getComplexInstances() const
@@ -367,26 +325,25 @@ bool DBusInstance::fillMembers(
     const std::map<PropertyName, DbusVariantType>& properties)
 {
     auto self = shared_from_this();
-    auto propertyMemberDict = getPropertyMemberDict(interfaceName);
-    if (propertyMemberDict.empty())
+    const auto queryShr = dbusQuery.lock();
+    auto propertySetters = dbusPropertySetters(interfaceName);
+    if (propertySetters.empty() || !queryShr)
     {
-        BMC_LOG_DEBUG << "Properties of interface not provided: " << interfaceName;
         return false;
     }
 
-    for (auto& [propertyName, memberName] : propertyMemberDict)
+    for (auto& [propertyReflection, setters] : propertySetters)
     {
-        auto findProperty = properties.find(propertyName);
+        auto findProperty = properties.find(propertyReflection.first);
         if (findProperty == properties.end())
         {
             continue;
         }
-        auto formattedValue = dbusQuery.lock()->processFormatters(
-            propertyName, findProperty->second, shared_from_this());
+        auto formattedValue = queryShr->processFormatters(
+            propertyReflection.first, findProperty->second, self);
 
-        this->resolveDBusVariant(memberName, formattedValue);
+        this->resolveDBusVariant(propertyReflection.second, formattedValue);
     }
-    dbusQuery.lock()->supplementByStaticFields(self);
     return true;
 }
 
@@ -414,68 +371,80 @@ bool DBusInstance::hasField(const MemberName& memberName) const
 }
 
 const DBusPropertiesMap
-    DBusInstance::queryProperties(const connect::DBusConnectUni& dbusConnection,
+    DBusInstance::queryProperties(const connect::DBusConnectUni& connect,
                                   const InterfaceName& interface)
 {
-    std::map<PropertyName, DbusVariantType> properties;
+   DBusPropertiesMap properties;
 
-    BMC_LOG_DEBUG << "Create DBUs 'GetAll' properties call. Service='"
-              << serviceName << "', ObjectPath='" << objectPath
-              << "', Interface='" << interface << "'";
+   log<level::DEBUG>("Query properties of DBus instance cache",
+                     entry("DBUS_SVC=%s", serviceName.c_str()),
+                     entry("DBUS_OBJ=%s", objectPath.c_str()),
+                     entry("DBUS_IFACE=%s", interface.c_str()));
 
-    sdbusplus::message::message getProperties =
-        dbusConnection->getConnect()->new_method_call(
-            this->serviceName.c_str(), this->objectPath.c_str(),
-            "org.freedesktop.DBus.Properties", "GetAll");
-    getProperties.append(interface);
-
-    try
-    {
-        dbusConnection->getConnect()->call(getProperties).read(properties);
-        BMC_LOG_DEBUG << "DBus Properties read SUCCESS. Count properties: "
-                      << properties.size();
+   try
+   {
+       return std::forward<const DBusPropertiesMap>(
+           connect->callMethodAndRead<DBusPropertiesMap>(
+               serviceName, objectPath, "org.freedesktop.DBus.Properties",
+               "GetAll", interface));
     }
     catch (const std::exception& e)
     {
         // Don't rase CRITICAL log level because the GetAll might processing for
         // object which already deleted by service.
-        BMC_LOG_DEBUG << "Failed to GetAll properties. PATH=" << objectPath
-                         << ", INTF=" << interface << ": " << e.what();
+        log<level::DEBUG>("Failed to GetAll properties",
+                          entry("DBUS_SVC=%s", serviceName.c_str()),
+                          entry("DBUS_OBJ=%s", objectPath.c_str()),
+                          entry("DBUS_IFACE=%s", interface.c_str()),
+                          entry("ERROR=%s", e.what()));
     }
 
-    return std::forward<const DBusPropertiesMap>(properties);
+    return DBusPropertiesMap();
 }
 
 void DBusInstance::bindListeners(const connect::DBusConnectUni& connection)
 {
     using namespace sdbusplus::bus::match;
 
-    auto self = shared_from_this();
+    auto selfWeak = weak_from_this();
 
     for (auto [interface, _] : targetProperties)
     {
-        match matcher(
-            *connection->getConnect(),
+        auto matcher = connection->createWatcher(
             rules::propertiesChanged(this->getObjectPath(), interface),
-            [self](sdbusplus::message::message& message) {
+            [selfWeak, queryPtr = dbusQuery](sdbusplus::message::message& message) {
                 std::map<PropertyName, DbusVariantType> changedValues;
                 InterfaceName interfaceName;
+                auto self = selfWeak.lock();
+                if (!self)
+                {
+                    return;
+                }
                 try
                 {
                     message.read(interfaceName, changedValues);
                 }
                 catch (const std::exception& e)
                 {
-                    BMC_LOG_CRITICAL << "Failed to read message of "
-                                        "PropertiesChanged signal, PATH="
-                                     << message.get_path()
-                                     << ": " << e.what();
+                    log<level::ERR>("Failed to process DBus signal handler",
+                                    entry("SIGNAL=PropertyChanged"),
+                                    entry("DBUS_OBJ=%s", message.get_path()),
+                                    entry("ERROR=%s", e.what()));
                 }
                 self->fillMembers(interfaceName, changedValues);
+                auto query = queryPtr.lock();
+                if (query)
+                {
+                    query->supplementByStaticFields(self);
+                }
             });
-        BMC_LOG_DEBUG << "Registried watcher for Object=" << this->getObjectPath()
-                  << ", Interface=" << interface;
-        listeners.emplace_back(std::forward<match>(matcher));
+
+        log<level::DEBUG>("The DBus signal watcher successfully registered",
+                          entry("SIGNAL=PropertyChanged"),
+                          entry("DBUS_OBJ=%s", getObjectPath().c_str()),
+                          entry("DBUS_IFACE=%s", interface.c_str()));
+        listeners.emplace_back(
+            std::forward<sdbusplus::bus::match::match>(matcher));
     }
 }
 
@@ -503,17 +472,12 @@ void DBusInstance::supplementOrUpdate(const MemberName& memberName,
 
 void DBusInstance::supplementOrUpdate(const IEntity::InstancePtr& destination)
 {
-    using namespace app::query::dbus::obmc::definitions;
-    BMC_LOG_DEBUG << "count destination members: "
-              << destination->getMemberNames().size();
     for (auto& memberName : destination->getMemberNames())
     {
-        if (memberName.starts_with(metaFieldPrefix))
+        if (memberName.starts_with("__meta_"))
         {
             continue;
         }
-        BMC_LOG_DEBUG << "Merge Field: " << memberName << " of instance "
-                  << this->objectPath;
         this->supplementOrUpdate(memberName,
                                  destination->getField(memberName)->getValue());
     }
@@ -542,19 +506,25 @@ void DBusInstance::captureDBusAssociations(
     const InterfaceName& interfaceName,
     const DBusAssociationsType& associations)
 {
-    using namespace app::entity::obmc::definitions::supplement_providers;
+    using namespace app::obmc::entity::relations;
+    log<level::DEBUG>("Disclosing an DBUs association",
+                      entry("ASSOC_IFACE=%s", interfaceName.c_str()));
 
-    BMC_LOG_DEBUG << "Complex Association values process, member name="
-              << interfaceName;
-
+    const auto queryShr = dbusQuery.lock();
+    if (!queryShr)
+    {
+        return;
+    }
     this->complexInstances.clear();
     // Since the complex association is a disclose of shadow one DBus Property,
     // we should clear outdated instances with the same specified interface
     for (auto& [source, destination, destObjectPath] : associations)
     {
-        BMC_LOG_DEBUG << "Loop association: Source=" << source
-                  << ", Destination=" << destination
-                  << ", ObjectPath=" << destObjectPath;
+        log<level::DEBUG>(
+            "Strip an association down into members of child instance",
+            entry("SOURCE=%s", source.c_str()),
+            entry("DESTINATION=%s", destination.c_str()),
+            entry("DEST_OBJ=%s", destObjectPath.c_str()));
         // The object path is used to calc the instance unique CRC, and it
         // should be unique. Build complex (valid) dbus path by concatenation
         // `dest-object + dest-name + source`.
@@ -567,13 +537,14 @@ void DBusInstance::captureDBusAssociations(
             serviceName, complexAssocDummyPath, targetProperties,
             dbusQuery);
         DBusPropertiesMap properties{
-            {relations::fieldSource, source},
-            {relations::fieldDestination, destination},
-            {relations::fieldEndpoint, destObjectPath},
+            {fieldSource, source},
+            {fieldDestination, destination},
+            {fieldEndpoint, destObjectPath},
         };
         // Don't care about outdated instances. The 'fillMemeber' method now be
         // able to update stored instances.
         childInstance->fillMembers(interfaceName, properties);
+        queryShr->supplementByStaticFields(childInstance);
 
         this->complexInstances.insert_or_assign(childInstance->getHash(),
                                                 childInstance);
@@ -587,11 +558,13 @@ void DBusInstance::resolveDBusVariant(const MemberName& memberName,
     auto visitCallback = [instance = self, memberName](auto&& value) {
         using TProperty = std::decay_t<decltype(value)>;
 
-        if constexpr (std::is_constructible_v<DBusMemberInstance::FieldType,
-                                              TProperty>)
+        if constexpr (std::is_constructible_v<
+                          Entity::EntityMember::StaticInstance::FieldType,
+                          TProperty>)
         {
-            instance->supplementOrUpdate(memberName,
-                                         DBusMemberInstance::FieldType(value));
+            instance->supplementOrUpdate(
+                memberName,
+                Entity::EntityMember::StaticInstance::FieldType(value));
             return;
         }
         else if constexpr (std::is_same_v<DBusAssociationsType, TProperty>)
@@ -621,95 +594,57 @@ bool DBusInstance::isComplex() const
 
 void DBusInstance::initDefaultFieldsValue()
 {
-    auto& defaultFields = dbusQuery.lock()->getDefaultFieldsValue();
+    const auto queryShr = dbusQuery.lock();
+    if (!queryShr)
+    {
+        return;
+    }
+    const auto& defaultFields = queryShr->getDefaultFieldsValue();
 
-    for (auto& [memberName, memberValueSetter] : defaultFields)
+    for (const auto& [memberName, memberValueSetter] : defaultFields)
     {
         this->supplementOrUpdate(memberName, std::invoke(memberValueSetter));
     }
 }
 
-const DBusPropertyMemberDict
-    DBusInstance::getPropertyMemberDict(const InterfaceName& interface) const
+const DBusPropertySetters&
+    DBusInstance::dbusPropertySetters(const InterfaceName& interface) const
 {
     auto findInterface = this->targetProperties.find(interface);
     if (findInterface == this->targetProperties.end())
     {
-        BMC_LOG_DEBUG << "Interface '" << interface << "' missmatch. Skipping";
-        return DBusPropertyMemberDict();
+        static const DBusPropertySetters noSetters;
+        return noSetters;
     }
 
     return std::move(findInterface->second);
 }
 
-const IEntity::IEntityMember::IInstance::FieldType&
-    DBusMemberInstance::getValue() const noexcept
-{
-    return value;
-}
-
-const std::string& DBusMemberInstance::getStringValue() const
-{
-    return std::get<std::string>(value);
-}
-
-int DBusMemberInstance::getIntValue() const
-{
-    return std::get<int>(value);
-}
-
-double DBusMemberInstance::getFloatValue() const
-{
-    return std::get<double>(value);
-}
-
-bool DBusMemberInstance::getBoolValue() const
-{
-    return std::get<bool>(value);
-}
-
-void DBusMemberInstance::setValue(const FieldType& value)
-{
-    this->value = value;
-}
-
-template <class TInstance>
-const DbusVariantType
-    DBusQuery<TInstance>::processFormatters(const PropertyName& property,
-                                            const DbusVariantType& value,
-                                            DBusInstancePtr target) const
+const DbusVariantType DBusQuery::processFormatters(const PropertyName& property,
+                                                   const DbusVariantType& value,
+                                                   DBusInstancePtr) const
 
 {
-    if (getFormatters().empty())
-    {
-        BMC_LOG_DEBUG << "No formatters";
-        return std::move(value);
-    }
-
-    auto findFormattersIt = getFormatters().find(property);
-    if (getFormatters().end() == findFormattersIt)
+    const auto& formatters = getFormatters(property);
+    if (formatters.empty())
     {
         return std::move(value);
     }
 
-    BMC_LOG_DEBUG << "Found formatter for Property=" << property;
     DbusVariantType formattedValue(value);
-
-    for (auto& formatter : findFormattersIt->second)
+    for (auto formatter: formatters)
     {
-        formattedValue =
-            std::invoke(formatter, property, formattedValue, target);
+        formattedValue = formatter->format(property, formattedValue);
     }
 
     return formattedValue;
 }
 
-template <class TInstance>
-void DBusQuery<TInstance>::registerObjectCreationObserver(
-    const connect::DBusConnectionPoolUni& pool, entity::EntityPtr entity)
+void DBusQuery::registerObjectCreationObserver(
+    std::reference_wrapper<entity::IEntity> entity)
 {
     using namespace sdbusplus::bus::match;
-    auto handler = [&pool, dbusQueryShr = this->getSharedPtr(),
+    auto handler = [dbusQueryShr = this->getSharedPtr(),
                     actualProperties = std::ref(this->getSearchPropertiesMap()),
                     entity](sdbusplus::message::message& message) {
         DBusInterfacesMap interfacesAdded;
@@ -722,60 +657,74 @@ void DBusQuery<TInstance>::registerObjectCreationObserver(
         }
         catch (sdbusplus::exception_t& ex)
         {
-            BMC_LOG_CRITICAL << "Can't read added interfaces signal: "
-                             << ex.what();
+            log<level::ERR>("Failed to process DBus signal handler",
+                                    entry("SIGNAL=InterfaceAdded"),
+                                    entry("DBUS_OBJ=%s", message.get_path()),
+                                    entry("ERROR=%s", ex.what()));
             return;
         }
 
         const std::string& objectPathStr = objectPath.str;
-        const ServiceName serviceName =
-            getWellKnownServiceName(message.get_sender());
-
-        for (auto& [interfaceName, _] : interfacesAdded)
+        try
         {
-            interfacesList.push_back(interfaceName);
+            const ServiceName serviceName =
+                dbusQueryShr->getConnect()->getWellKnownServiceName(
+                    message.get_sender());
+
+            for (auto& [interfaceName, _] : interfacesAdded)
+            {
+                interfacesList.push_back(interfaceName);
+            }
+
+            if (!dbusQueryShr->checkCriteria(objectPath, interfacesList,
+                                             serviceName))
+            {
+                return;
+            }
+            // fill actual properties from statically defined map.
+            // this is must have because the interfacesAdded might missing a
+            // required interfeses.
+            interfacesList.clear();
+            for (auto& [interfaceName, _] : actualProperties.get())
+            {
+                interfacesList.push_back(interfaceName);
+            }
+
+            log<level::DEBUG>(
+                "Create instance from 'InterfaceAdded' signal handler",
+                entry("SIGNAL=InterfaceAdded"),
+                entry("DBUS_OBJ=%s", message.get_path()));
+
+            auto entityInstance = dbusQueryShr->createInstance(
+                serviceName, objectPathStr, interfacesList);
+
+            auto newInstance = entity.get().mergeInstance(entityInstance);
+            auto dbusInstance =
+                std::dynamic_pointer_cast<dbus::DBusInstance>(newInstance);
+            if (!dbusInstance)
+            {
+                throw std::logic_error("At the DBusBroker the entity query "
+                                       "accepted instance which is "
+                                       "not DBusInstance.");
+            }
+            dbusInstance->bindListeners(dbusQueryShr->getConnect());
         }
-
-        if (!dbusQueryShr->checkCriteria(objectPath, interfacesList,
-                                          serviceName))
+        catch (const std::runtime_error& e)
         {
+            log<level::DEBUG>("Can't handle interfacesAdded signal",
+                              entry("ERROR=%s", e.what()),
+                              entry("SIGNAL=InterfaceAdded"),
+                              entry("DBUS_OBJ=%s", message.get_path()));
             return;
         }
-        // fill actual properties from statically defined map.
-        // this is must have because the interfacesAdded might missed a required
-        // interfeses.
-        interfacesList.clear();
-        for (auto& [interfaceName, _] : actualProperties.get())
-        {
-            interfacesList.push_back(interfaceName);
-        }
-
-        BMC_LOG_DEBUG << "Create instance from `interfacesAdded` signal";
-        auto entityInstance = dbusQueryShr->createInstance(
-            pool->getQueryConnection(), serviceName, objectPathStr, interfacesList);
-
-        auto newInstance = entity->mergeInstance(entityInstance);
-        auto dbusInstance =
-            std::dynamic_pointer_cast<dbus::DBusInstance>(newInstance);
-        if (!dbusInstance)
-        {
-            throw std::logic_error("At the DBusBroker the entity query "
-                                   "accepted instance which is "
-                                   "not DBusInstance.");
-        }
-        dbusInstance->bindListeners(pool->getWatcherConnection());
     };
 
-    match observer(*pool->getWatcherConnection()->getConnect(),
-                   rules::interfacesAdded(), std::move(handler));
-
-    BMC_LOG_DEBUG << "registerObjectCreationObserver";
-    addObserver(std::forward<match>(observer));
+    addObserver(getConnect()->createWatcher(rules::interfacesAdded(),
+                                            std::move(handler)));
 }
 
-template <class TInstance>
-void DBusQuery<TInstance>::registerObjectRemovingObserver(
-    const connect::DBusConnectionPoolUni& pool, entity::EntityPtr entity)
+void DBusQuery::registerObjectRemovingObserver(
+    std::reference_wrapper<entity::IEntity> entity)
 {
     using namespace sdbusplus::bus::match;
 
@@ -790,42 +739,86 @@ void DBusQuery<TInstance>::registerObjectRemovingObserver(
         }
         catch (sdbusplus::exception_t& ex)
         {
-            BMC_LOG_CRITICAL << "Can't read removed interfaces signal: "
-                             << ex.what();
+            log<level::ERR>("Failed to process DBus signal handler",
+                            entry("SIGNAL=InterfaceRemoved"),
+                            entry("DBUS_OBJ=%s", message.get_path()),
+                            entry("ERROR=%s", ex.what()));
             return;
         }
 
         const std::string& objectPathStr = objectPath.str;
-        const ServiceName serviceName =
-            getWellKnownServiceName(message.get_sender());
-        auto instanceHash = DBusInstance::getHash(serviceName, objectPathStr);
-
-        BMC_LOG_DEBUG << "Interface removed: " << serviceName << "|"
-                  << objectPathStr;
-        if (!dbusQueryWeak.lock()->checkCriteria(objectPath, removedInterfaces,
-                                                 serviceName))
+        try
         {
+            const ServiceName serviceName =
+                dbusQueryWeak.lock()->getConnect()->getWellKnownServiceName(
+                    message.get_sender());
+            auto instanceHash =
+                DBusInstance::getHash(serviceName, objectPathStr);
+
+            log<level::DEBUG>(
+                "Remove instance from 'InterfaceRemoved' signal handler",
+                entry("SIGNAL=InterfaceRemoved"),
+                entry("DBUS_OBJ=%s", message.get_path()));
+
+            if (!dbusQueryWeak.lock()->checkCriteria(
+                    objectPath, removedInterfaces, serviceName))
+            {
+                return;
+            }
+
+            entity.get().removeInstance(instanceHash);
+        }
+        catch (const std::runtime_error& e)
+        {
+            log<level::DEBUG>("Can't handle interfaceRemoved signal",
+                              entry("ERROR=%s", e.what()),
+                              entry("SIGNAL=InterfaceRemoved"),
+                              entry("DBUS_OBJ=%s", message.get_path()));
             return;
         }
-
-        entity->removeInstance(instanceHash);
     };
 
-    BMC_LOG_DEBUG << "registerObjectRemovingObserver";
-    match observer(*pool->getWatcherConnection()->getConnect(),
-                   rules::interfacesRemoved(), std::move(handler));
-    addObserver(std::forward<match>(observer));
+    addObserver(this->getConnect()->createWatcher(rules::interfacesRemoved(),
+                                            std::move(handler)));
 }
 
-template <class TInstance>
-const DBusQuery<TInstance>::FieldsFormattingMap&
-    DBusQuery<TInstance>::getFormatters() const
+const DBusPropertyFormatters&
+    DBusQuery::getFormatters(const PropertyName& property) const
 {
-    static const FieldsFormattingMap noFormattes;
-    return noFormattes;
+    const auto& eps = getSearchPropertiesMap();
+    for (auto& [_, setters] : eps)
+    {
+        for (auto& [reflection, casters]: setters)
+        {
+            if(reflection.first != property)
+            {
+                continue;
+            }
+            return casters.first;
+        }
+    }
+    throw QueryException("casters should be initialized an each setter");
 }
 
-template class DBusQuery<IEntity::InstancePtr>;
+const DBusPropertyValidators&
+    DBusQuery::getValidators(const PropertyName& property) const
+{
+    static const DBusPropertyValidators noValidators;
+    
+    const auto& eps = getSearchPropertiesMap();
+    for(auto& [_, setters] : eps)
+    {
+        for (auto& [reflection, casters]: setters)
+        {
+            if(reflection.first != property)
+            {
+                continue;
+            }
+            return casters.second;
+        }
+    }
+    return noValidators;
+}
 
 } // namespace dbus
 } // namespace query
