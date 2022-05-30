@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021 YADRO
 
-#ifndef BMC_CONNECTION_HPP
-#define BMC_CONNECTION_HPP
+#pragma once
 
 #include <fastcgi++/request.hpp>
 #include <core/response.hpp>
@@ -47,5 +46,3 @@ class Connection :public Fastcgipp::Request<char>
 } // namespace entity
 
 } // namespace app
-
-#endif //!BMC_CONNECTION_HPP

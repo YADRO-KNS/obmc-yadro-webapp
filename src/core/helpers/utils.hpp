@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021 YADRO
 
-#ifndef __HELPERS_UTILS_H__
-#define __HELPERS_UTILS_H__
+#pragma once
 
 #include <openssl/crypto.h>
 #include <openssl/evp.h>
@@ -141,5 +140,3 @@ inline const std::string toLower(const std::string& data)
 } // namespace utils
 } // namespace helpers
 } // namespace app
-
-#endif // __HELPERS_UTILS_H__

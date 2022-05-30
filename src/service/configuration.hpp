@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021 YADRO
 
-#ifndef __CONFIGURATION_H__
-#define __CONFIGURATION_H__
+#pragma once
 
 #include <logger/logger.hpp>
 #include <core/exceptions.hpp>
@@ -174,4 +173,3 @@ inline ConfigFile& getConfig()
 } // namespace config
 } // namespace service
 } // namespace app
-#endif // __CONFIGURATION_H__
