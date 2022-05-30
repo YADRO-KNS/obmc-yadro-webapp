@@ -4,5 +4,17 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive \
     apt-get install -y libpam0g-dev libssl-dev zlib1g-dev pkg-config xxd cmake \
     libgtest-dev libgmock-dev ninja-build python3 autoconf-archive autoconf \
     build-essential git libsystemd-dev systemd libtinyxml2-dev python3-wheel python3-pip \
-    python3-yaml python3-mako python3-inflection python3-setuptools lighttpd meson python2.7
-RUN pip3 install meson==0.57.2
+    python3-yaml python3-mako python3-inflection python3-setuptools lighttpd meson python2.7 \
+    gdb valgrind
+RUN pip3 install ctypesgen meson==0.58.0
+
+COPY subprojects/*.patch /usr/src/
+
+RUN cd /usr/src && \
+    git clone https://github.com/graphql/libgraphqlparser.git && \
+    cd libgraphqlparser && \
+    git checkout e8e8d4314825be5068193bc02113aeaf49530307 && \
+    git apply --index /usr/src/*.patch && \
+    mkdir build && cd build && \
+    cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr .. &&\
+    make -j4 && make install
