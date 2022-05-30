@@ -1,0 +1,36 @@
+From dfdb202c54fae0d12799c96a951fe065d20f0e7b Mon Sep 17 00:00:00 2001
+From: Igor Kononenko <i.kononenko@yadro.com>
+Date: Mon, 24 May 2021 15:03:16 +0300
+Subject: [PATCH] build: fix bison parser includes
+
+Signed-off-by: Igor Kononenko <i.kononenko@yadro.com>
+---
+ CMakeLists.txt | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index ab176db..ae3f86b 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -18,7 +18,9 @@ FIND_PACKAGE(BISON 3)
+ FIND_PACKAGE(FLEX)
+ IF (BISON_FOUND)
+   BISON_TARGET(graphqlparser_bison parser.ypp ${CMAKE_CURRENT_BINARY_DIR}/parser.tab.cpp)
+-  SET(BISON_LOCATION_HEADER ${CMAKE_CURRENT_BINARY_DIR}/location.hh)
++  SET(BISON_LOCATION_HEADER
++    ${CMAKE_CURRENT_BINARY_DIR}/location.hh
++    ${CMAKE_CURRENT_BINARY_DIR}/position.hh)
+ ELSE()
+   SET(BISON_graphqlparser_bison_OUTPUT_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/parser.tab.cpp)
+   SET(BISON_graphqlparser_bison_OUTPUT_HEADER ${CMAKE_CURRENT_BINARY_DIR}/parser.tab.hpp)
+@@ -28,7 +30,9 @@ ELSE()
+     ${CMAKE_CURRENT_BINARY_DIR}/location.hh
+     ${CMAKE_CURRENT_BINARY_DIR}/position.hh
+     ${CMAKE_CURRENT_BINARY_DIR}/stack.hh)
+-  SET(BISON_LOCATION_HEADER ${CMAKE_CURRENT_BINARY_DIR}/location.hh)
++  SET(BISON_LOCATION_HEADER
++    ${CMAKE_CURRENT_BINARY_DIR}/location.hh
++    ${CMAKE_CURRENT_BINARY_DIR}/position.hh)
+   FILE(COPY
+     ${CMAKE_CURRENT_SOURCE_DIR}/parsergen/parser.tab.cpp
+     ${CMAKE_CURRENT_SOURCE_DIR}/parsergen/parser.tab.hpp

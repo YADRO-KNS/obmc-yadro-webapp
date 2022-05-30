@@ -1,0 +1,603 @@
+From 0b009f3e053fd8ecc2b1e97ef7b49d5e8a7f6854 Mon Sep 17 00:00:00 2001
+From: Igor Kononenko <i.kononenko@yadro.com>
+Date: Tue, 13 Apr 2021 11:56:22 +0300
+Subject: [PATCH] ast: Add support the Python 3 version.
+
+Signed-off-by: Igor Kononenko <i.kononenko@yadro.com>
+---
+ CMakeLists.txt                 |  6 +--
+ ast/c.py                       | 14 +++----
+ ast/c_impl.py                  | 18 ++++-----
+ ast/c_visitor_impl.py          |  6 +--
+ ast/cxx.py                     | 88 +++++++++++++++++++++---------------------
+ ast/cxx_impl.py                | 22 +++++------
+ ast/cxx_json_visitor_header.py |  6 +--
+ ast/cxx_json_visitor_impl.py   | 24 ++++++------
+ ast/cxx_visitor.py             | 26 ++++++-------
+ ast/js.py                      | 16 ++++----
+ 10 files changed, 113 insertions(+), 113 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index ab176db..0f612d1 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -7,9 +7,9 @@ INCLUDE(version)
+ 
+ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11")
+ 
+-FIND_PACKAGE(PythonInterp 2 REQUIRED)
+-IF (NOT PYTHON_VERSION_MAJOR EQUAL 2)
+-  MESSAGE(FATAL_ERROR "Python 2 is required.")
++FIND_PACKAGE(PythonInterp 3 REQUIRED)
++IF (NOT PYTHON_VERSION_MAJOR EQUAL 3)
++  MESSAGE(FATAL_ERROR "Python 3 is required.")
+ ENDIF()
+ 
+ FIND_PROGRAM(CTYPESGEN_FOUND ctypesgen.py)
+diff --git a/ast/c.py b/ast/c.py
+index 3a60ebf..f1a3758 100644
+--- a/ast/c.py
++++ b/ast/c.py
+@@ -60,7 +60,7 @@ class Printer(object):
+     self._current_type = None
+ 
+   def start_file(self):
+-    print C_LICENSE_COMMENT + '''/** @generated */
++    print (C_LICENSE_COMMENT + '''/** @generated */
+ 
+ #pragma once
+ 
+@@ -68,30 +68,30 @@ class Printer(object):
+ extern "C" {
+ #endif
+ 
+-'''
++''')
+ 
+   def end_file(self):
+-    print '''
++    print ('''
+ 
+ #ifdef __cplusplus
+ }
+ #endif
+-'''
++''')
+ 
+   def start_type(self, name):
+     # Forward declarations for AST nodes.
+     st_name = struct_name(name)
+-    print 'struct ' + st_name + ';'
++    print ('struct ' + st_name + ';')
+     self._current_type = name
+ 
+   def field(self, type, name, nullable, plural):
+-    print field_prototype(self._current_type, type, name, nullable, plural) + ';'
++    print (field_prototype(self._current_type, type, name, nullable, plural) + ';')
+ 
+   def end_type(self, name):
+     print
+ 
+   def start_union(self, name):
+-    print 'struct ' + struct_name(name) + ';'
++    print ('struct ' + struct_name(name) + ';')
+ 
+   def union_option(self, option):
+     pass
+diff --git a/ast/c_impl.py b/ast/c_impl.py
+index f82299d..5ef9cbd 100644
+--- a/ast/c_impl.py
++++ b/ast/c_impl.py
+@@ -15,13 +15,13 @@ class Printer(object):
+     self._current_type = None
+ 
+   def start_file(self):
+-    print C_LICENSE_COMMENT + '''/** @generated */
++    print(C_LICENSE_COMMENT + '''/** @generated */
+ 
+ #include "GraphQLAst.h"
+ #include "../Ast.h"
+ 
+ using namespace facebook::graphql::ast;  // NOLINT
+-'''
++''')
+ 
+   def end_file(self):
+     pass
+@@ -30,23 +30,23 @@ using namespace facebook::graphql::ast;  // NOLINT
+     self._current_type = name
+ 
+   def field(self, type, name, nullable, plural):
+-    print field_prototype(self._current_type, type, name, nullable, plural) + ' {'
+-    print '  const auto *realNode = reinterpret_cast<const %s *>(node);' % self._current_type
++    print (field_prototype(self._current_type, type, name, nullable, plural) + ' {')
++    print ('  const auto *realNode = reinterpret_cast<const %s *>(node);' % self._current_type)
+     title_name = title(name)
+     call_get = 'realNode->get%s()' % title_name
+     if plural:
+       if nullable:
+-        print '  return %s ? %s->size() : 0;' % (call_get, call_get)
++        print ('  return %s ? %s->size() : 0;' % (call_get, call_get))
+       else:
+-        print '  return %s.size();' % call_get
++        print ('  return %s.size();' % call_get)
+     else:
+       if type in ['string', 'OperationKind', 'boolean']:
+-        print '  return %s;' % call_get
++        print ('  return %s;' % call_get)
+       else:
+         fmt = '  return reinterpret_cast<const struct %s *>(%s%s);'
+-        print fmt % (struct_name(type), '' if nullable else '&', call_get)
++        print (fmt % (struct_name(type), '' if nullable else '&', call_get))
+ 
+-    print '}'
++    print ('}')
+ 
+   def end_type(self, name):
+     pass
+diff --git a/ast/c_visitor_impl.py b/ast/c_visitor_impl.py
+index cab7062..55d985c 100644
+--- a/ast/c_visitor_impl.py
++++ b/ast/c_visitor_impl.py
+@@ -14,8 +14,8 @@ class Printer(object):
+     self._types = []
+ 
+   def start_file(self):
+-    print C_LICENSE_COMMENT + '/** @generated */'
+-    print '#define FOR_EACH_CONCRETE_TYPE(MACRO) \\'
++    print (C_LICENSE_COMMENT + '/** @generated */')
++    print ('#define FOR_EACH_CONCRETE_TYPE(MACRO) \\')
+ 
+   def start_type(self, name):
+     self._types.append(name)
+@@ -27,7 +27,7 @@ class Printer(object):
+     pass
+ 
+   def end_file(self):
+-    print ' \\\n'.join('MACRO(%s, %s)' % (name, snake(name)) for name in self._types)
++    print (' \\\n'.join('MACRO(%s, %s)' % (name, snake(name)) for name in self._types))
+ 
+   def start_union(self, name):
+     pass
+diff --git a/ast/cxx.py b/ast/cxx.py
+index 3706cad..149d679 100644
+--- a/ast/cxx.py
++++ b/ast/cxx.py
+@@ -3,7 +3,7 @@
+ # This source code is licensed under the MIT license found in the
+ # LICENSE file in the root directory of this source tree.
+ 
+-import cStringIO as StringIO
++from io import StringIO
+ 
+ from casing import title
+ from license import C_LICENSE_COMMENT
+@@ -16,12 +16,12 @@ class Printer(object):
+     # HACK: Defer everything we print so that forward declarations for
+     # all classes come first. Avoids having to do 2 passes over the
+     # input file.
+-    self._deferredOutput = StringIO.StringIO()
++    self._deferredOutput = StringIO()
+ 
+     self._fields = []
+ 
+   def start_file(self):
+-    print C_LICENSE_COMMENT + '''/** @generated */
++    print (C_LICENSE_COMMENT + '''/** @generated */
+ #pragma once
+ 
+ #include "AstNode.h"
+@@ -40,14 +40,14 @@ namespace ast {
+ struct CDeleter {
+   void operator()(const char *p) const { free((void *)p); }
+ };
+-'''
++''')
+ 
+   def end_file(self):
+-    print
+-    print self._deferredOutput.getvalue()
+-    print '}'
+-    print '}'
+-    print '}'
++    print ()
++    print (self._deferredOutput.getvalue())
++    print ('}')
++    print ('}')
++    print ('}')
+ 
+   def _base_class(self, type):
+     return self._bases.get(type, 'Node')
+@@ -56,8 +56,8 @@ struct CDeleter {
+     self._type_name = name
+     base = self._base_class(name)
+     # non-deferred!
+-    print 'class %s;' % name
+-    print >> self._deferredOutput, 'class %s : public %s {' % (name, base)
++    print ('class %s;' % name)
++    print ('class %s : public %s {' % (name, base), file=self._deferredOutput)
+     self._fields = []
+ 
+   def field(self, type, name, nullable, plural):
+@@ -67,18 +67,18 @@ struct CDeleter {
+ 
+   def end_type(self, name):
+     self._print_fields()
+-    print >> self._deferredOutput, ' public:'
++    print (' public:', file=self._deferredOutput)
+     self._print_constructor()
+-    print >> self._deferredOutput
++    print (file=self._deferredOutput)
+     self._print_destructor_prototype()
+-    print >> self._deferredOutput
++    print (file=self._deferredOutput)
+     self._print_noncopyable()
+-    print >> self._deferredOutput
++    print (file=self._deferredOutput)
+     self._print_getters()
+-    print >> self._deferredOutput, '  void accept(visitor::AstVisitor *visitor) const override;'
+-    print >> self._deferredOutput, '};'
+-    print >> self._deferredOutput
+-    print >> self._deferredOutput
++    print ('  void accept(visitor::AstVisitor *visitor) const override;',file=self._deferredOutput)
++    print ('};', file=self._deferredOutput)
++    print (file=self._deferredOutput)
++    print (file=self._deferredOutput)
+     self._type_name = None
+     self._fields = []
+ 
+@@ -95,7 +95,7 @@ struct CDeleter {
+       storage_type = self._storage_type(type)
+       if plural:
+         storage_type = 'std::unique_ptr<std::vector<%s>>' % storage_type
+-      print >> self._deferredOutput, '  %s %s_;' % (storage_type, name)
++      print ('  %s %s_;' % (storage_type, name), file=self._deferredOutput)
+ 
+   def _ctor_singular_type(self, type):
+     if type == 'string':
+@@ -109,28 +109,28 @@ struct CDeleter {
+     return 'std::vector<%s> *' % self._storage_type(type)
+ 
+   def _print_constructor(self):
+-    print >> self._deferredOutput, '  explicit %s(' % self._type_name
+-    print >> self._deferredOutput, '      const yy::location &location%s' % (',' if self._fields else '')
++    print ('  explicit %s(' % self._type_name, file=self._deferredOutput)
++    print ('      const yy::location &location%s' % (',' if self._fields else ''), file=self._deferredOutput)
+     def ctor_arg(type, name, plural):
+       if plural:
+         ctor_type = self._ctor_plural_type(type)
+       else:
+         ctor_type = self._ctor_singular_type(type)
+       return '      %s %s' % (ctor_type, name)
+-    print >> self._deferredOutput, ',\n'.join(ctor_arg(type, name, plural)
+-                     for (type, name, nullable, plural) in self._fields)
+-    print >> self._deferredOutput, '  )'
++    print (',\n'.join(ctor_arg(type, name, plural)
++                     for (type, name, nullable, plural) in self._fields), file=self._deferredOutput)
++    print ('  )', file=self._deferredOutput)
+     def ctor_init(type, name, plural):
+       # Strings are const char *, just pass.
+       # Vectors are passed by pointer and we take ownership.
+       # Node types are passed in by pointer and we take ownership.
+       value = name
+       return '    %s_(%s)' % (name, value)
+-    print >> self._deferredOutput, '  : %s(location)%s' % (self._base_class(self._type_name), ',' if self._fields else '')
+-    print >> self._deferredOutput, ',\n'.join(ctor_init(type, name, plural)
++    print ('  : %s(location)%s' % (self._base_class(self._type_name), ',' if self._fields else ''), file=self._deferredOutput)
++    print (',\n'.join(ctor_init(type, name, plural)
+                      for (type, name, nullable, plural)
+-                     in self._fields)
+-    print >> self._deferredOutput, '  {}'
++                     in self._fields), file=self._deferredOutput)
++    print ('  {}', file=self._deferredOutput)
+ 
+   def _getter_type(self, type, nullable, plural):
+     if plural and nullable:
+@@ -163,31 +163,31 @@ struct CDeleter {
+ 
+   def _print_getters(self):
+     for (type, name, nullable, plural) in self._fields:
+-      print >> self._deferredOutput, '  %s get%s() const' % (
++      print ('  %s get%s() const' % (
+         self._getter_type(type, nullable, plural),
+-        title(name))
+-      print >> self._deferredOutput, '  { return %s; }' % (
+-        self._getter_value_to_return(name + '_', type, nullable, plural))
+-      print >> self._deferredOutput
++        title(name)), file=self._deferredOutput)
++      print ('  { return %s; }' % (
++        self._getter_value_to_return(name + '_', type, nullable, plural)), file=self._deferredOutput)
++      print (file=self._deferredOutput)
+ 
+   def _print_destructor_prototype(self):
+-    print >> self._deferredOutput, '  ~%s() {}' % self._type_name
++    print ('  ~%s() {}' % self._type_name, file=self._deferredOutput)
+ 
+   def _print_noncopyable(self):
+-    print >> self._deferredOutput, '  %s(const %s&) = delete;' % (
+-      self._type_name, self._type_name)
+-    print >> self._deferredOutput, '  %s& operator=(const %s&) = delete;' % (
+-      self._type_name, self._type_name)
++    print ('  %s(const %s&) = delete;' % (
++      self._type_name, self._type_name), file=self._deferredOutput)
++    print ('  %s& operator=(const %s&) = delete;' % (
++      self._type_name, self._type_name), file=self._deferredOutput)
+ 
+   def start_union(self, name):
+     self._type_name = name
+     # non-deferred!
+-    print 'class %s;' % name
+-    print >> self._deferredOutput, 'class %s : public Node {' % name
+-    print >> self._deferredOutput, ' public:'
++    print ('class %s;' % name)
++    print ('class %s : public Node {' % name, file=self._deferredOutput)
++    print (' public:', file=self._deferredOutput)
+     self._print_constructor()
+-    print >> self._deferredOutput, '};'
+-    print >> self._deferredOutput
++    print ('};', file=self._deferredOutput)
++    print (file=self._deferredOutput)
+ 
+   def union_option(self, type):
+     assert type not in self._bases, '%s cannot appear in more than one union!' % type
+diff --git a/ast/cxx_impl.py b/ast/cxx_impl.py
+index ab161c6..90fe348 100644
+--- a/ast/cxx_impl.py
++++ b/ast/cxx_impl.py
+@@ -10,7 +10,7 @@ class Printer(object):
+     pass
+ 
+   def start_file(self):
+-    print C_LICENSE_COMMENT + '''/** @generated */
++    print (C_LICENSE_COMMENT + '''/** @generated */
+ 
+ #include "Ast.h"
+ #include "AstVisitor.h"
+@@ -18,17 +18,17 @@ class Printer(object):
+ namespace facebook {
+ namespace graphql {
+ namespace ast {
+-'''
++''')
+ 
+   def end_file(self):
+-    print '}  // namespace ast'
+-    print '}  // namespace graphql'
+-    print '}  // namespace facebook'
++    print ('}  // namespace ast')
++    print ('}  // namespace graphql')
++    print ('}  // namespace facebook')
+ 
+   def start_type(self, name):
+-    print '''void %s::accept(visitor::AstVisitor *visitor) const {
++    print ('''void %s::accept(visitor::AstVisitor *visitor) const {
+   if (visitor->visit%s(*this)) {
+-''' % (name, name)
++''' % (name, name))
+ 
+   def field(self, type, name, nullable, plural):
+     if type in ['OperationKind', 'string', 'boolean']:
+@@ -38,18 +38,18 @@ namespace ast {
+       accept = '{ for (const auto &x : *%s_) { x->accept(visitor); } }' % name
+       if nullable:
+         accept = 'if (%s_) %s' % (name, accept)
+-      print '    ' + accept
++      print ('    ' + accept)
+     else:
+       accept = '%s_->accept(visitor);' % name
+       if nullable:
+         accept = 'if (%s_) { %s }' % (name, accept)
+-      print '    ' + accept
++      print ('    ' + accept)
+ 
+   def end_type(self, name):
+-    print '''  }
++    print ('''  }
+   visitor->endVisit%s(*this);
+ }
+-''' % name
++''' % name)
+ 
+   def start_union(self, name):
+     pass
+diff --git a/ast/cxx_json_visitor_header.py b/ast/cxx_json_visitor_header.py
+index fca744f..8b3496e 100644
+--- a/ast/cxx_json_visitor_header.py
++++ b/ast/cxx_json_visitor_header.py
+@@ -12,7 +12,7 @@ class Printer(object):
+     self._anyFieldIsANode = False
+ 
+   def start_file(self):
+-    print C_LICENSE_COMMENT + '/** @generated */'
++    print (C_LICENSE_COMMENT + '/** @generated */')
+ 
+   def end_file(self):
+     pass
+@@ -23,8 +23,8 @@ class Printer(object):
+   def end_type(self, name):
+     titleName = title(name)
+     if self._anyFieldIsANode:
+-      print 'bool visit%s(const %s &node) override;' % (titleName, titleName)
+-    print 'void endVisit%s(const %s &node) override;' % (titleName, titleName)
++      print ('bool visit%s(const %s &node) override;' % (titleName, titleName))
++    print ('void endVisit%s(const %s &node) override;' % (titleName, titleName))
+     print
+ 
+   def field(self, type, name, nullable, plural):
+diff --git a/ast/cxx_json_visitor_impl.py b/ast/cxx_json_visitor_impl.py
+index 0df2bac..23835bc 100644
+--- a/ast/cxx_json_visitor_impl.py
++++ b/ast/cxx_json_visitor_impl.py
+@@ -12,7 +12,7 @@ class Printer(object):
+     self._fields = []
+ 
+   def start_file(self):
+-    print C_LICENSE_COMMENT + '/** @generated */'
++    print (C_LICENSE_COMMENT + '/** @generated */')
+ 
+   def end_file(self):
+     pass
+@@ -30,13 +30,13 @@ class Printer(object):
+     anyFieldIsANode = any(type not in ('string, boolean')
+                           for (type, _, _ ,_) in self._fields)
+     if anyFieldIsANode:
+-      print '''bool JsonVisitor::visit%s(const %s &node) {
++      print ('''bool JsonVisitor::visit%s(const %s &node) {
+   visitNode();
+   return true;
+ }
+-''' % (titleName, titleName)
+-    print '''void JsonVisitor::endVisit%(tn)s(const %(tn)s &node) {
+-  NodeFieldPrinter fields(*this, "%(tn)s", node);''' % {'tn': titleName}
++''' % (titleName, titleName))
++    print ('''void JsonVisitor::endVisit%(tn)s(const %(tn)s &node) {
++  NodeFieldPrinter fields(*this, "%(tn)s", node);''' % {'tn': titleName})
+ 
+     for (type, fieldName, nullable, plural) in self._fields:
+       funcName = None
+@@ -48,7 +48,7 @@ class Printer(object):
+         funcName = 'printSingularBooleanField'
+       elif not nullable and not plural:
+         # Special case: singular object fields don't need the value passed.
+-        print '  fields.printSingularObjectField("%s");' % fieldName
++        print ('  fields.printSingularObjectField("%s");' % fieldName)
+         continue
+       else:
+         nullable_str = 'Nullable' if nullable else ''
+@@ -56,19 +56,19 @@ class Printer(object):
+         funcName = 'print%s%sField' % (nullable_str, plural_str)
+ 
+       assert funcName is not None
+-      print '  fields.%s("%s", node.get%s());' % (
+-        funcName, fieldName, title(fieldName))
++      print ('  fields.%s("%s", node.get%s());' % (
++        funcName, fieldName, title(fieldName)))
+ 
+     if anyFieldIsANode:
+-      print '''
++      print ('''
+   endVisitNode(fields.finishPrinting());
+ }
+-'''
++''')
+     else:
+-      print '''
++      print ('''
+   printed_.back().emplace_back(fields.finishPrinting());
+ }
+-'''
++''')
+ 
+   def start_union(self, name):
+     pass
+diff --git a/ast/cxx_visitor.py b/ast/cxx_visitor.py
+index f1b7029..fcb1d2e 100644
+--- a/ast/cxx_visitor.py
++++ b/ast/cxx_visitor.py
+@@ -11,7 +11,7 @@ class Printer(object):
+     pass
+ 
+   def start_file(self):
+-    print C_LICENSE_COMMENT + '''/** @generated */
++    print (C_LICENSE_COMMENT + '''/** @generated */
+ 
+ #pragma once
+ 
+@@ -25,28 +25,28 @@ namespace visitor {
+ class AstVisitor {
+ public:
+   virtual ~AstVisitor() {}
+-'''
++''')
+ 
+   def end_file(self):
+-    print '};' # end AstVisitor
+-    print
+-    print '}'
+-    print '}'
+-    print '}'
+-    print '}'
++    print ('};') # end AstVisitor
++    print ()
++    print ('}')
++    print ('}')
++    print ('}')
++    print ('}')
+ 
+   def start_type(self, name):
+     titleName = title(name)
+     camelName = camel(titleName)
+-    print '  virtual bool visit%s(const %s &%s) { return true; }' % (
++    print ('  virtual bool visit%s(const %s &%s) { return true; }' % (
+       titleName,
+       titleName,
+-      camelName)
+-    print '  virtual void endVisit%s(const %s &%s) { }' % (
++      camelName))
++    print ('  virtual void endVisit%s(const %s &%s) { }' % (
+       titleName,
+       titleName,
+-      camelName)
+-    print
++      camelName))
++    print ()
+ 
+   def end_type(self, name):
+     pass
+diff --git a/ast/js.py b/ast/js.py
+index 0b0dd26..27d12a1 100644
+--- a/ast/js.py
++++ b/ast/js.py
+@@ -9,7 +9,7 @@ class Printer(object):
+     pass
+ 
+   def start_file(self):
+-    print '''/* @flow */
++    print ('''/* @flow */
+ /* @generated */
+ /* jshint ignore:start */
+ 
+@@ -26,21 +26,21 @@ type Node = {
+   end?: ?number;
+ };
+ 
+-type OperationKind = 'query' | 'mutation' | 'subscription';'''
++type OperationKind = 'query' | 'mutation' | 'subscription';''')
+ 
+   def end_file(self):
+     pass
+ 
+   def start_type(self, name):
+     print
+-    print 'type %s = Node & {' % name
++    print ('type %s = Node & {' % name)
+     kind = name
+     if kind == 'GenericType':
+       kind = 'Type'
+-    print '  kind: \'%s\';' % kind
++    print ('  kind: \'%s\';' % kind)
+ 
+   def end_type(self, name):
+-    print '}'
++    print ('}')
+ 
+   def _js_type(self, type, plural):
+     if plural:
+@@ -50,7 +50,7 @@ type OperationKind = 'query' | 'mutation' | 'subscription';'''
+   def field(self, type, name, nullable, plural):
+     nullable_char = '?' if nullable else ''
+     js_type = self._js_type(type, plural)
+-    print '  %(name)s%(nullable_char)s: %(nullable_char)s%(js_type)s;' % locals()
++    print ('  %(name)s%(nullable_char)s: %(nullable_char)s%(js_type)s;' % locals())
+ 
+   def start_union(self, name):
+     print ('type %s = ' % name),
+@@ -60,6 +60,6 @@ type OperationKind = 'query' | 'mutation' | 'subscription';'''
+     self._current_options.append(type)
+ 
+   def end_union(self, name):
+-    print '\n  | '.join(self._current_options)
+-    print
++    print ('\n  | '.join(self._current_options))
++    print ()
+     self._current_options = None
