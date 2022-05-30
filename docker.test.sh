@@ -19,8 +19,14 @@ CID=$(docker create \
              ${PASSTTY_OPT} \
              --interactive \
              --env HOME=/source/build/ \
+             --env "$SSH_AUTH_SOCK:/ssh-agent" \
+             --env "SSH_AUTH_SOCK=/ssh-agent" \
              --volume ${SOURCE_DIR}:/source:Z \
+             --tmpfs /tmp --tmpfs /run --tmpfs /run/lock \
+             --privileged -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
+             -v /run/systemd/journal/socket:/run/systemd/journal/socket \
              -p 18081:18081 \
+             -p 30022:22 \
              ${DLCACHE_OPT} \
              --workdir ${SOURCE_DIR} \
              ${DOCKER_IMAGE} \
