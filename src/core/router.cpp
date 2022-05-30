@@ -4,7 +4,7 @@
 
 #include <core/router.hpp>
 
-#include <logger/logger.hpp>
+#include <phosphor-logging/log.hpp>
 
 #include <nlohmann/json.hpp>
 
@@ -15,6 +15,8 @@ namespace app
 {
 namespace core
 {
+
+using namespace phosphor::logging;
 
 Router::RouteMap Router::routerHandlers;
 
@@ -31,8 +33,10 @@ const ResponseUni& Router::process()
     service::config::getConfig().readData();
     if (!app::service::authorization::authenticate(getRequest(), getResponse()))
     {
-        BMC_LOG_INFO << "Unauthorized access from "
-                 << getRequest()->environment().remoteAddress;
+        log<level::INFO>(
+            "Unauthorized access registried",
+            entry("REMOTE=%s",
+                  getRequest()->environment().remoteAddress.m_data.data()));
         return getResponse();
     }
 
@@ -60,7 +64,7 @@ bool Router::preHandler()
         {
             // Route no found. Immediate exit, but give the chanse to handle
             // that for the process()
-            BMC_LOG_DEBUG << "Route no found. Pass throught";
+            log<level::DEBUG>("Route no found. Pass throught");
             return true;
         }
         this->handler = builder->second(builder->first);
