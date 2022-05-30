@@ -147,26 +147,6 @@ struct UserSession
         return userSession;
     }
 
-    // While BMC is not ready users are not permitted to log in.
-    bool isPermitted() const
-    {
-        namespace fs = std::filesystem;
-
-        try
-        {
-            if (!fs::exists("/run/bmc-booting"))
-            {
-                return true;
-            }
-        }
-        catch (const std::exception& e)
-        {
-            BMC_LOG_ERROR << "Unable to check /run/bmc-booting, " << e.what()
-                      << "\n";
-        }
-
-        return false;
-    }
 };
 
 struct AuthConfigMethods
