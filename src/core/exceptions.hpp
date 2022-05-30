@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021 YADRO
 
-#ifndef __EXCEPTIONS_H__
-#define __EXCEPTIONS_H__
+#pragma once
 
 #include <stdexcept>
 #include <string>
@@ -46,5 +45,3 @@ class InvalidType: public ObmcAppException
 } // namespace exceptions
 } // namespace core
 } // namespace app
-
-#endif // __EXCEPTIONS_H__

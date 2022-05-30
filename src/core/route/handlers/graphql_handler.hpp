@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021 YADRO
 
-#ifndef __GRAPHQL_HANDLER_H__
-#define __GRAPHQL_HANDLER_H__
+#pragma once
 
 #include <graphqlparser/AstNode.h>
 #include <graphqlparser/AstVisitor.h>
@@ -304,5 +303,3 @@ class VisitorFactory final
 } // namespace route
 } // namespace core
 } // namespace app
-
-#endif // __GRAPHQL_HANDLER_H__
