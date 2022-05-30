@@ -4,7 +4,6 @@
 
 #include <core/response.hpp>
 
-#include <logger/logger.hpp>
 #include <http/headers.hpp>
 
 namespace app

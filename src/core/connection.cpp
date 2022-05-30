@@ -4,22 +4,24 @@
 
 #include <core/connection.hpp>
 #include <http/headers.hpp>
-#include <logger/logger.hpp>
+
+#include <phosphor-logging/log.hpp>
 
 namespace app
 {
 namespace core
 {
 
+using namespace phosphor::logging;
+
 Connection::Connection() :
     Fastcgipp::Request<char>(maxBodySizeByte), totalBytesRecived(0), request(),
     router()
 {}
 
-void Connection::inHandler(int bytesReceived)
+void Connection::inHandler(int postSize)
 {
-    BMC_LOG_DEBUG << "In handler, bytes count=" << bytesReceived;
-    totalBytesRecived += static_cast<size_t>(bytesReceived);
+    log<level::DEBUG>("Accpeted new request", entry("POST_SIZE=%d", postSize));
     if (!request)
     {
         request = std::make_shared<app::core::Request>(this->environment());
@@ -28,17 +30,18 @@ void Connection::inHandler(int bytesReceived)
 
 bool Connection::inProcessor()
 {
-    BMC_LOG_DEBUG << "Custom 'Content Type' detected";
+    log<level::DEBUG>(
+        "Request: process new request",
+        entry("CONTENT_TYPE=%s", environment().contentType.c_str()));
+    if (!request)
+    {
+        log<level::ERR>("Request: not initialized");
+        return false;
+    }
 
     if (environment().contentType.empty())
     {
-        BMC_LOG_ALERT << "Unknown Content Type. Immediate close";
-        return false;
-    }
-    BMC_LOG_DEBUG << "Content Type: " << environment().contentType;
-    if (!request)
-    {
-        BMC_LOG_CRITICAL << "The request not initialized.";
+        log<level::ERR>("Request: empty content-type");
         return false;
     }
 
@@ -54,23 +57,18 @@ bool Connection::inProcessor()
 
 bool Connection::response()
 {
-    BMC_LOG_DEBUG << "New Connection. Response";
     using namespace Fastcgipp::Http;
 
     if (!router)
     {
-        BMC_LOG_CRITICAL << "The route handler not initialized.";
+        log<level::ERR>("Response: router not initialized");
         return false;
     }
 
-    BMC_LOG_DEBUG << "Process Route.";
     const auto& responsePtr = router->process();
-    BMC_LOG_DEBUG << "Write Headers.";
     writeHeader(responsePtr);
-    BMC_LOG_DEBUG << "Write response to out.";
 
     out << *responsePtr;
-    BMC_LOG_DEBUG << "Immediate flush data.";
     out.flush();
 
     return true;
@@ -82,7 +80,6 @@ void Connection::writeHeader(const ResponseUni& responsePointer)
     constexpr const char* headerDateFormat = "%a, %d %b %Y %H:%M:%S GMT";
     auto status = responsePointer->getStatus();
 
-    BMC_LOG_DEBUG << "Write status header." << static_cast<int>(status);
     out << headerStatus(status) << std::endl;
 
     responsePointer->setHeader(headers::contentType,
