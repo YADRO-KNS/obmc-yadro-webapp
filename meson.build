@@ -65,7 +65,6 @@ add_project_arguments(
   '-Wunused',
   '-Woverloaded-virtual',
   '-Wconversion',
-  '-Wsign-conversion',
   '-Wno-attributes',
   ]),
   language: 'cpp'
@@ -176,39 +175,19 @@ atomic =  cxx.find_library('atomic', required: true)
 openssl = dependency('openssl', required : true)
 threads = dependency('threads')
 
-sdbusplus = dependency('sdbusplus',required : false)
-if not sdbusplus.found()
-  sdbusplus_proj = subproject('sdbusplus', required: true)
-  sdbusplus = sdbusplus_proj.get_variable('sdbusplus_dep')
-  sdbusplus = sdbusplus.as_system('system')
-endif
-obmc_webapp_dependencies += sdbusplus
-
+sdbusplus_dep = dependency('sdbusplus')
 systemd = dependency('systemd', required : true)
 zlib = dependency('zlib', required : true)
 phosphor_logging_dep = dependency('phosphor-logging')
 
 fastcgipp = cxx.find_library('fastcgipp', required : false)
 if not fastcgipp.found()
-  fastcgipp_cmake_opt = cmake.subproject_options()
-  fastcgipp_cmake_opt.append_compile_args('cpp', '-Wno-error=unused-parameter', '-Wno-error=sign-conversion', '-Wno-error=pedantic')
-  fastcgipp_proj  = cmake.subproject('fastcgi++', options: fastcgipp_cmake_opt, required: true)
+  fastcgipp_proj  = cmake.subproject('fastcgi++', required: true)
   fastcgipp = fastcgipp_proj.dependency('fastcgipp')
 endif
 obmc_webapp_dependencies += fastcgipp
 
-graphqlparser = cxx.find_library('graphqlparser', required : false)
-if not graphqlparser.found()
-  graphqlparser_cmake_opt = cmake.subproject_options()
-  graphqlparser_cmake_opt.append_compile_args('cpp', '-Wno-error=unused-parameter')
-  graphqlparser = cmake.subproject('graphqlparser', options: graphqlparser_cmake_opt, required: true)
-  graphqlparser = graphqlparser.dependency('graphqlparser')
-  graphqlparser_inc = declare_dependency(
-    include_directories: ['subprojects', 'subprojects/graphqlparser']
-  )
-  obmc_webapp_dependencies += [graphqlparser_inc]
-endif
-obmc_webapp_dependencies += [graphqlparser]
+graphqlparser = cxx.find_library('graphqlparser', required : true)
 
 obmc_webapp_dependencies += [
   atomic, 
@@ -216,7 +195,8 @@ obmc_webapp_dependencies += [
   systemd, 
   zlib, 
   threads,
-  sdbusplus,
+  graphqlparser,
+  sdbusplus_dep,
   phosphor_logging_dep, 
 ]
 
