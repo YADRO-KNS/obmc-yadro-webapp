@@ -21,6 +21,11 @@ const statuses::Code& Response::getStatus()
     return this->status;
 }
 
+void Response::setContentType(const std::string& contentType)
+{
+    this->contentType = contentType;
+}
+
 void Response::setStatus(const statuses::Code& status)
 {
     this->status = status;
@@ -31,9 +36,12 @@ void Response::setHeader(const std::string& headerName, const std::string& value
     headerBuffer += (app::http::header(headerName, value) + endHeaderLine);
 }
 
-const std::string Response::getHeaders() const
+const std::string Response::getHead() const
 {
-    return (headerBuffer + endHeaderLine);
+    const auto contentTypeHeader =
+        app::http::header(headers::contentType, contentType) + endHeaderLine;
+    return (headerStatus(status) + endHeaderLine + contentTypeHeader +
+            headerBuffer + endHeaderLine);
 }
 
 const std::string& Response::getBody() const
