@@ -5,6 +5,7 @@
 .vscode
 /include/config.h
 .ssh
+ssh
 
 # Created by https://www.toptal.com/developers/gitignore/api/osx,linux,windows,pycharm,intellij,visualstudio,visualstudiocode,eclipse,meson
 # Edit at https://www.toptal.com/developers/gitignore?templates=osx,linux,windows,pycharm,intellij,visualstudio,visualstudiocode,eclipse,meson
@@ -197,6 +198,7 @@ fabric.properties
 # subproject directories
 /subprojects/*
 !/subprojects/*.wrap
+!/subprojects/*.patch
 
 # Meson Directories
 meson-logs
