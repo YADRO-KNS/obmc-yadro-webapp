@@ -149,14 +149,6 @@ static bool authenticate(const app::core::RequestPtr& request,
         }
     }
 
-    if (!request->isSessionEmpty() && !request->getSession()->isPermitted())
-    {
-        BMC_LOG_WARNING << "[AuthMiddleware] authorization temporary restricted";
-        throw app::core::exceptions::ObmcAppException(
-            "authorization temporary restricted");
-        return false;
-    }
-
     if (request->isSessionEmpty())
     {
         BMC_LOG_WARNING << "[AuthMiddleware] authorization failed";
