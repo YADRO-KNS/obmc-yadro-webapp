@@ -1,0 +1,14 @@
+components:
+  schemas:
+    JobService_JobService:
+      anyOf:
+      - $ref: http://redfish.dmtf.org/schemas/v1/odata-v4.yaml#/components/schemas/odata-v4_idRef
+      - $ref: http://redfish.dmtf.org/schemas/v1/JobService.v1_0_4.yaml#/components/schemas/JobService_v1_0_4_JobService
+      description: The JobService schema contains properties for scheduling and execution
+        of operations, represents the properties for the job service itself, and has
+        links to jobs managed by the job service.
+      x-longDescription: This resource shall represent a job service for a Redfish
+        implementation.
+title: '#JobService.JobService'
+x-copyright: Copyright 2014-2022 DMTF. For the full DMTF copyright policy, see http://www.dmtf.org/about/policies/copyright
+x-owningEntity: DMTF

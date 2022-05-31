@@ -1,0 +1,105 @@
+{
+    "$id": "http://redfish.dmtf.org/schemas/v1/OemPower.v1_0_0.json",
+    "$schema": "http://redfish.dmtf.org/schemas/v1/redfish-schema-v1.json",
+    "copyright": "Copyright 2014-2019 DMTF. For the full DMTF copyright policy, see http://www.dmtf.org/about/policies/copyright",
+    "definitions": {
+        "PowerSupplies": {
+            "additionalProperties": false,
+            "description": "OEM Extension for Power",
+            "longDescription": "OEM Extension for Power to support PMBus specific properties.",
+            "patternProperties": {
+                "^([a-zA-Z_][a-zA-Z0-9_]*)?@(odata|Redfish|Message)\\.[a-zA-Z_][a-zA-Z0-9_]*$": {
+                    "description": "This property shall specify a valid odata or Redfish property.",
+                    "type": [
+                        "array",
+                        "boolean",
+                        "integer",
+                        "number",
+                        "null",
+                        "object",
+                        "string"
+                    ]
+                }
+            },
+            "properties": {
+                "CrpsMfrFWRevision": {
+                    "description": "The CRPS manufacturer firmware revision provided via PMBus.",
+                    "longDescription": "The CRPS manufacturer firmware revision provided via PMBus.",
+                    "readonly": true,
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "PmbusMfrDate": {
+                    "description": "The manufacturer firmware build date that is provided via PMBus.",
+                    "longDescription": "The manufacturer firmware build date that is provided via PMBus.",
+                    "readonly": true,
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "PmbusMfrID": {
+                    "description": "The manufacturer ID provided via PMBus.",
+                    "longDescription": "The manufacturer ID provided via PMBus.",
+                    "readonly": true,
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "PmbusMfrLocation": {
+                    "description": "The manufacturer Location provided via PMBus.",
+                    "longDescription": "The manufacturer Location provided via PMBus.",
+                    "readonly": true,
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "PmbusMfrModel": {
+                    "description": "The manufacturer Model provided via PMBus.",
+                    "longDescription": "The manufacturer Model provided via PMBus.",
+                    "readonly": true,
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "PmbusMfrRevision": {
+                    "description": "The manufacturer revision provided via PMBus.",
+                    "longDescription": "The manufacturer revision provided via PMBus.",
+                    "readonly": true,
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "PmbusMfrSerial": {
+                    "description": "The manufacturer Serial provided via PMBus.",
+                    "longDescription": "The manufacturer Serial provided via PMBus.",
+                    "readonly": true,
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "PmbusRevision": {
+                    "description": "The PMBus revision.",
+                    "longDescription": "The PMBus revision.",
+                    "readonly": true,
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                }
+                
+            },
+            "type": "object"
+        }
+    },
+    "owningEntity": "Yadro",
+    "release": "1.0",
+    "title": "#OemPower.v1_0_0"
+}
