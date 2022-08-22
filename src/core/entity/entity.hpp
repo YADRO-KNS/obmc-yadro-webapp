@@ -62,14 +62,17 @@ class Entity : virtual public IEntity
         static const Entity::ProviderRulesDict providers{__VA_ARGS__};         \
         return providers;                                                      \
     }
-#define ENTITY_DECL_RELATION(dest, rule)                                       \
+
+#define ENTITY_DEF_RELATION(dest, rules)                                       \
+    Relation::build<dest>(getEntityManager().getEntity(getName()), rules)
+#define ENTITY_DEF_RELATION2(dest, rules)                                      \
+    Relation::build(getEntityManager().getEntity(getName()),                   \
+                    getEntityManager().getEntity(#dest), rules)
+
+#define ENTITY_DECL_RELATIONS(...)                                             \
     const std::vector<IEntity::RelationPtr>& getRelations() const override     \
     {                                                                          \
-        auto relation = std::make_shared<Relation>(                            \
-            getEntityManager().getEntity(getName()),                           \
-            getEntityManager().getEntity<dest>());                             \
-        relation->addConditionBuildRules(rule);                                \
-        static const Relations relations{relation};                            \
+        static const Relations relations{__VA_ARGS__};                         \
         return relations;                                                      \
     }
 
@@ -248,19 +251,34 @@ class Entity : virtual public IEntity
         static const ConditionPtr buildEqual(const std::string& fieldName,
                                              TRightValue value)
         {
+            return build<Equal<TRightValue>, TRightValue>(fieldName, value);
+        }
+
+        template <typename TRightValue>
+        static const ConditionPtr buildNonEqual(const std::string& fieldName,
+                                             TRightValue value)
+        {
+            return build<NonEqual<TRightValue>, TRightValue>(fieldName, value);
+        }
+
+      protected:
+        bool fieldValueCompare(const IEntity::IInstance&) const;
+
+        template <class TComparer, typename TRightValue>
+        static const ConditionPtr build(const std::string& fieldName,
+                                        TRightValue value)
+        {
             if constexpr (std::is_enum_v<TRightValue>)
             {
                 return std::make_shared<Condition>(
-                    fieldName, static_cast<int>(value), Equal<TRightValue>());
+                    fieldName, static_cast<int>(value), TComparer());
             }
             else
             {
                 return std::make_shared<Condition>(fieldName, value,
-                                                   Equal<TRightValue>());
+                                                   TComparer());
             }
         }
-      protected:
-        bool fieldValueCompare(const IEntity::IInstance&) const;
     };
 
     class Relation : public IRelation
