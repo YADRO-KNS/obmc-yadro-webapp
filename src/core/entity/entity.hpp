@@ -116,19 +116,35 @@ class Entity : virtual public IEntity
             const std::string& getStringValue() const override
             {
                 static const std::string naVal(fieldValueNotAvailable);
-                return isNull() ? naVal : std::get<std::string>(getValue());
+                if (!std::holds_alternative<std::string>(getValue()) || isNull())
+                {
+                    return naVal;
+                }
+                return std::get<std::string>(getValue());
             }
             int getIntValue() const override
             {
-                return isNull() ? 0 : std::get<int>(getValue());
+                if (!std::holds_alternative<int>(getValue()) || isNull())
+                {
+                    return 0;
+                }
+                return std::get<int>(getValue());
             }
             double getFloatValue() const override
             {
-                return isNull() ? 0.0 : std::get<double>(getValue());
+                if (!std::holds_alternative<double>(getValue()) || isNull())
+                {
+                    return 0.0;
+                }
+                return std::get<double>(getValue());
             }
             bool getBoolValue() const override
             {
-                return isNull() ? false : std::get<bool>(getValue());
+                if (!std::holds_alternative<bool>(getValue()) || isNull())
+                {
+                    return false;
+                }
+                return std::get<bool>(getValue());
             }
             bool isNull() const override
             {
