@@ -110,6 +110,8 @@ void Application::initEntities()
 {
     using namespace app::obmc::entity;
     entityManager.buildEntity<Sensors>();
+    entityManager.buildEntity<Processor>();
+    entityManager.buildEntity<ProcessorSummary>();
     entityManager.buildEntity<Drive>();
     entityManager.buildEntity<NetAdapter>();
     entityManager.buildEntity<Settings>();
