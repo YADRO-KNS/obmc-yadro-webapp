@@ -33,14 +33,13 @@ bool Connection::inProcessor()
         entry("CONTENT_TYPE=%s", environment().contentType.c_str()));
     if (!request)
     {
-        log<level::ERR>("Request: not initialized");
-        return false;
+        log<level::DEBUG>("Request: not initialized");
+        inHandler(0);
     }
 
     if (environment().contentType.empty())
     {
-        log<level::ERR>("Request: empty content-type");
-        return false;
+        log<level::DEBUG>("Request: empty content-type");
     }
 
     if (!router)

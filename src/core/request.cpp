@@ -28,7 +28,7 @@ bool Request::validate()
         "text/plain",
     };
 
-    return !environment().contentType.empty() &&
+    return environment().contentType.empty() ||
            allowedContentTypes.contains(environment().contentType);
 }
 
@@ -45,6 +45,21 @@ const service::session::UserSessionPtr& Request::getSession() const
 bool Request::isSessionEmpty() const
 {
     return !this->userSession;
+}
+
+const std::string Request::getUriPath() const
+{
+    constexpr const char* delimiter = "/";
+    const auto& pathInfo = environment().pathInfo;
+    std::ostringstream uri;
+    uri << delimiter;
+
+    if (!pathInfo.empty())
+    {
+        std::copy(pathInfo.begin(), pathInfo.end(),
+                  std::ostream_iterator<std::string>(uri, delimiter));
+    }
+    return uri.str();
 }
 
 } // namespace core

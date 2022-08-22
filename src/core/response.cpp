@@ -5,6 +5,7 @@
 #include <core/response.hpp>
 
 #include <http/headers.hpp>
+#include <core/helpers/utils.hpp>
 
 namespace app
 {
