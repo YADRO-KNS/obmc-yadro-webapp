@@ -111,20 +111,21 @@ void Application::initEntities()
     using namespace app::obmc::entity;
     entityManager.buildEntity<Sensors>();
     entityManager.buildEntity<Drive>();
+    entityManager.buildEntity<NetAdapter>();
+    entityManager.buildEntity<Settings>();
     entityManager.buildEntity<PCIeDevice>();
     entityManager.buildEntity<PCIeFunction>();
     entityManager.buildEntity<HostPower>();
-    entityManager.buildEntity<Server>();
     entityManager.buildEntity<PIDZone>();
     entityManager.buildEntity<PID>();
-    entityManager.buildEntity<Chassis>();
-    entityManager.buildEntity<Baseboard>();
     entityManager.buildEntity<NetworkConfig>();
     entityManager.buildEntity<NetworkDHCPConfig>();
     entityManager.buildEntity<IP>();
     entityManager.buildEntity<Ethernet>();
-    entityManager.buildEntity<NetAdapter>();
-    entityManager.buildEntity<Settings>();
+
+    entityManager.buildEntity<Chassis>();
+    entityManager.buildEntity<Baseboard>();
+    entityManager.buildEntity<Server>();
 
     entityManager.configure();
     entityManager.update();
