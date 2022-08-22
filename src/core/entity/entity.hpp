@@ -76,6 +76,57 @@ class Entity : virtual public IEntity
         return relations;                                                      \
     }
 
+#define ENTITY_DECL_RESET_FIELD(name)                                          \
+    static void resetField##name(const InstancePtr instance)                   \
+    {                                                                          \
+        instance->supplementOrUpdate(field##name, std::nullptr_t(nullptr));    \
+    }
+#define ENTITY_DECL_FIELD_DEF(type, name, defval)                              \
+    static constexpr const char* field##name = #name;                          \
+    static type getField##name(const InstancePtr instance)                     \
+    {                                                                          \
+        if (instance->getField(field##name)->isNull())                         \
+        {                                                                      \
+            return defval;                                                     \
+        }                                                                      \
+        auto value = instance->getField(field##name)->getValue();              \
+        return std::get<type>(value);                                          \
+    }                                                                          \
+    static void setField##name(const InstancePtr instance, const type value)   \
+    {                                                                          \
+        instance->supplementOrUpdate(field##name, value);                      \
+    }                                                                          \
+    ENTITY_DECL_RESET_FIELD(name)
+
+#define ENTITY_DECL_FIELD(type, name)                                          \
+    ENTITY_DECL_FIELD_DEF(type, name,                                          \
+                          Entity::EntityMember::fieldValueNotAvailable)
+
+#define ENTITY_DECL_FIELD_ENUM(type, name, defval)                             \
+    static constexpr const char* field##name = #name;                          \
+    static type getField##name(const InstancePtr instance)                     \
+    {                                                                          \
+        if (instance->getField(field##name)->isNull())                         \
+        {                                                                      \
+            return type::defval;                                               \
+        }                                                                      \
+        auto value = instance->getField(field##name)->getValue();              \
+        if constexpr (!std::is_enum_v<type>)                                   \
+        {                                                                      \
+            throw std::logic_error("The defined entity field is not enum");    \
+        }                                                                      \
+        return static_cast<type>(std::get<int>(value));                        \
+    }                                                                          \
+    static void setField##name(const InstancePtr instance, const type value)   \
+    {                                                                          \
+        if constexpr (!std::is_enum_v<type>)                                   \
+        {                                                                      \
+            throw std::logic_error("The defined entity field is not enum");    \
+        }                                                                      \
+        instance->supplementOrUpdate(field##name, static_cast<int>(value));    \
+    }                                                                          \
+    ENTITY_DECL_RESET_FIELD(name)
+
     using InstancesHashmap = std::map<InstanceHash, InstancePtr>;
     MemberMap members;
     InstancesHashmap instances;
