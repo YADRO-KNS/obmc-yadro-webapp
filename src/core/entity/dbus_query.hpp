@@ -396,8 +396,10 @@ class DBusQuery : public IQuery
 
   public:
     using DefaultValueSetter =
-        std::function<IEntity::IEntityMember::IInstance::FieldType()>;
-    using DefaultFieldsValueDict = std::map<MemberName, DefaultValueSetter>;
+        std::function<IEntity::IEntityMember::IInstance::FieldType(
+            const IEntity::InstancePtr&)>;
+    using DefaultFieldsValueDict =
+        std::unordered_map<MemberName, DefaultValueSetter>;
 
     DBusQuery(const DBusQuery&) = delete;
     DBusQuery& operator=(const DBusQuery&) = delete;
