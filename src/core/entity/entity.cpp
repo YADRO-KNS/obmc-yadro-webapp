@@ -15,30 +15,30 @@ namespace entity
 using namespace exceptions;
 using namespace phosphor::logging;
 
-const MemberName Entity::EntityMember::getName() const noexcept
+const MemberName BaseEntity::EntityMember::getName() const noexcept
 {
     return name;
 }
 
 const IEntity::IEntityMember::InstancePtr&
-    Entity::EntityMember::getInstance() const
+    BaseEntity::EntityMember::getInstance() const
 {
     return this->instance;
 }
 
-void Entity::Relation::addConditionBuildRules(const RelationRulesList& rules)
+void BaseEntity::Relation::addConditionBuildRules(const RelationRulesList& rules)
 {
     conditionBuildRules.insert(conditionBuildRules.end(), rules.begin(),
                                rules.end());
 }
 
-const EntityPtr Entity::Relation::getDestinationTarget() const
+const EntityPtr BaseEntity::Relation::getDestinationTarget() const
 {
     return destination;
 }
 
 const std::vector<IEntity::ConditionPtr>
-    Entity::Relation::getConditions(InstanceHash sourceInstanceHash) const
+    BaseEntity::Relation::getConditions(InstanceHash sourceInstanceHash) const
 {
     std::vector<IEntity::ConditionPtr> conditions;
     for(auto [memberSource, memberDest, compareLiteral]: conditionBuildRules)
@@ -76,14 +76,14 @@ IEntity::IRelation::LinkWay Entity::Relation::getLinkWay() const
     return linkWay;
 }
 
-const IEntity::IEntityMember::InstancePtr& Entity::StaticInstance::getField(
+const IEntity::IEntityMember::InstancePtr& BaseEntity::StaticInstance::getField(
     const IEntity::EntityMemberPtr& entityMember) const
 {
     return getField(entityMember->getName());
 }
 
 const IEntity::IEntityMember::InstancePtr&
-    Entity::StaticInstance::getField(const MemberName& entityMemberName) const
+    BaseEntity::StaticInstance::getField(const MemberName& entityMemberName) const
 {
     auto findInstanceIt = memberInstances.find(entityMemberName);
     if (findInstanceIt == memberInstances.end())
@@ -94,7 +94,7 @@ const IEntity::IEntityMember::InstancePtr&
     return findInstanceIt->second;
 }
 
-const std::vector<MemberName> Entity::StaticInstance::getMemberNames() const
+const std::vector<MemberName> BaseEntity::StaticInstance::getMemberNames() const
 {
     std::vector<MemberName> result;
     for (auto& [memberName, memberInstance] : memberInstances)
@@ -105,7 +105,7 @@ const std::vector<MemberName> Entity::StaticInstance::getMemberNames() const
     return std::forward<const std::vector<MemberName>>(result);
 }
 
-void Entity::StaticInstance::supplement(
+void BaseEntity::StaticInstance::supplement(
     const MemberName& member,
     const IEntity::IEntityMember::IInstance::FieldType& value)
 {
@@ -117,7 +117,7 @@ void Entity::StaticInstance::supplement(
     }
 }
 
-void Entity::StaticInstance::supplementOrUpdate(const MemberName& memberName,
+void BaseEntity::StaticInstance::supplementOrUpdate(const MemberName& memberName,
                                 const IEntity::IEntityMember::IInstance::FieldType& value)
 {
     if (hasField(memberName))
@@ -129,7 +129,7 @@ void Entity::StaticInstance::supplementOrUpdate(const MemberName& memberName,
     supplement(memberName, value);
 }
 
-void Entity::StaticInstance::supplementOrUpdate(
+void BaseEntity::StaticInstance::supplementOrUpdate(
     const IEntity::InstancePtr& destination)
 {
     for (auto& memberName : destination->getMemberNames())
@@ -139,40 +139,40 @@ void Entity::StaticInstance::supplementOrUpdate(
     }
 }
 
-bool Entity::StaticInstance::hasField(const MemberName& memberName) const
+bool BaseEntity::StaticInstance::hasField(const MemberName& memberName) const
 {
     return memberInstances.find(memberName) != memberInstances.end();
 }
 
-bool Entity::StaticInstance::checkCondition(
+bool BaseEntity::StaticInstance::checkCondition(
     const IEntity::ConditionPtr condition) const
 {
     return !condition || condition->check(*this);
 }
 
-const std::map<std::size_t, IEntity::InstancePtr> Entity::StaticInstance::getComplex() const
+const std::map<std::size_t, IEntity::InstancePtr> BaseEntity::StaticInstance::getComplex() const
 {
     return std::map<std::size_t, IEntity::InstancePtr>();
 }
 
-bool Entity::StaticInstance::isComplex() const
+bool BaseEntity::StaticInstance::isComplex() const
 {
     return false;
 }
 
-void Entity::StaticInstance::initDefaultFieldsValue()
+void BaseEntity::StaticInstance::initDefaultFieldsValue()
 {
     // nothing to do
 }
 
-std::size_t Entity::StaticInstance::getHash() const
+std::size_t BaseEntity::StaticInstance::getHash() const
 {
     auto hash = std::hash<std::string>{}(identity);
     return hash;
 }
 
 const IEntity::IEntityMember::InstancePtr&
-    Entity::StaticInstance::instanceNotFound() const
+    BaseEntity::StaticInstance::instanceNotFound() const
 {
     static IEntity::IEntityMember::InstancePtr notAvailable =
         std::make_shared<Entity::EntityMember::StaticInstance>();
@@ -180,7 +180,7 @@ const IEntity::IEntityMember::InstancePtr&
     return notAvailable;
 }
 
-void Entity::Condition::addRule(
+void BaseEntity::Condition::addRule(
     const MemberName& destinationMember,
     const IEntity::IEntityMember::IInstance::FieldType& value,
     CompareCallback compareCallback)
@@ -199,11 +199,13 @@ void BaseEntity::Condition::addRule(const MemberName& destinationMember,
             return compareCallback(instance);
         });
 }
+
+bool BaseEntity::Condition::check(const IEntity::IInstance& sourceInstance) const
 {
     return fieldValueCompare(sourceInstance);
 }
 
-bool Entity::Condition::fieldValueCompare(
+bool BaseEntity::Condition::fieldValueCompare(
     const IEntity::IInstance& sourceInstance) const
 {
     bool result = true;
@@ -218,13 +220,13 @@ bool Entity::Condition::fieldValueCompare(
     return result;
 }
 
-Entity::Entity() noexcept
+BaseEntity::BaseEntity() noexcept
 {
     this->createMember(app::query::dbus::metaObjectPath);
     this->createMember(app::query::dbus::metaObjectService);
 }
 
-bool Entity::addMember(const EntityMemberPtr& memberPtr)
+bool BaseEntity::addMember(const EntityMemberPtr& memberPtr)
 {
     if (!memberPtr)
     {
@@ -245,13 +247,13 @@ bool Entity::addMember(const EntityMemberPtr& memberPtr)
     return initialized;
 }
 
-bool Entity::createMember(const MemberName& member)
+bool BaseEntity::createMember(const MemberName& member)
 {
     return addMember(std::make_shared<Entity::EntityMember>(member));    
 }
 
 const IEntity::EntityMemberPtr
-    Entity::getMember(const MemberName& memberName) const
+    BaseEntity::getMember(const MemberName& memberName) const
 {
     auto it = this->members.find(memberName);
     if (it == this->members.end())
@@ -275,7 +277,7 @@ const IEntity::EntityMemberPtr
     return it->second;
 }
 
-const IEntity::InstancePtr Entity::getInstance(std::size_t hash) const
+const IEntity::InstancePtr BaseEntity::getInstance(std::size_t hash) const
 {
     auto findInstanceIt = this->instances.find(hash);
     if (findInstanceIt == instances.end())
@@ -287,7 +289,7 @@ const IEntity::InstancePtr Entity::getInstance(std::size_t hash) const
 }
 
 const std::vector<IEntity::InstancePtr>
-    Entity::getInstances(const ConditionsList& conditions) const
+    BaseEntity::getInstances(const ConditionsList& conditions) const
 {
     // FIXME need optimization to prevent high load on CPU per request
     std::vector<IEntity::InstancePtr> result;
@@ -327,7 +329,7 @@ const std::vector<IEntity::InstancePtr>
     return std::forward<const std::vector<IEntity::InstancePtr>>(result);
 }
 
-void Entity::setInstances(std::vector<InstancePtr> instancesList)
+void BaseEntity::setInstances(std::vector<InstancePtr> instancesList)
 {
     for (auto& inputInstance : instancesList)
     {
@@ -336,7 +338,7 @@ void Entity::setInstances(std::vector<InstancePtr> instancesList)
     }
 }
 
-IEntity::InstancePtr Entity::mergeInstance(InstancePtr instance)
+IEntity::InstancePtr BaseEntity::mergeInstance(InstancePtr instance)
 {
     InstancesHashmap::iterator foundIt = instances.find(instance->getHash());
     if (foundIt == instances.end())
@@ -349,7 +351,7 @@ IEntity::InstancePtr Entity::mergeInstance(InstancePtr instance)
     return foundIt->second;
 }
 
-void Entity::removeInstance(InstanceHash hash)
+void BaseEntity::removeInstance(InstanceHash hash)
 {
     auto instance = this->instances.extract(hash);
     log<level::DEBUG>("Entity instance successfully removed",
@@ -357,13 +359,13 @@ void Entity::removeInstance(InstanceHash hash)
                       entry("ENTITY=%s", getName().c_str()));
 }
 
-const std::vector<IEntity::RelationPtr>& Entity::getRelations() const
+const std::vector<IEntity::RelationPtr>& BaseEntity::getRelations() const
 {
     static const Relations noRelations;
     return noRelations;
 }
 
-void Entity::initialize()
+void BaseEntity::initialize()
 {
     log<level::DEBUG>("Entity initialize",
                       entry("ENTITY=%s", getName().c_str()));
@@ -373,12 +375,7 @@ void Entity::initialize()
     initProviders();
 }
 
-Entity::Type Entity::getType() const
-{
-    return Type::object;
-}
-
-void Entity::initMembers()
+void BaseEntity::initMembers()
 {
     const auto membersNames = getMembersNames();
     log<level::DEBUG>("Entity members initialize",
@@ -390,11 +387,11 @@ void Entity::initMembers()
     }
 }
 
-void Entity::initRelations()
+void BaseEntity::initRelations()
 {
 }
 
-void Entity::initProviders()
+void BaseEntity::initProviders()
 {
     for (auto providerRule: getProviders())
     {
@@ -402,7 +399,7 @@ void Entity::initProviders()
     }
 }
 
-void Entity::processQueries()
+void BaseEntity::processQueries()
 {
     log<level::DEBUG>("Processing entity queries",
                       entry("ENTITY=%s", getName().c_str()));
@@ -426,7 +423,7 @@ void Entity::processQueries()
     }
 }
 
-void Entity::resetCache()
+void BaseEntity::resetCache()
 {
     this->instances.clear();
 
@@ -436,9 +433,9 @@ void Entity::resetCache()
     }
 }
 
-const Entity::MembersList Entity::getMembersNames() const
+const BaseEntity::MembersList BaseEntity::getMembersNames() const
 {
-    Entity::MembersList membersList;
+    BaseEntity::MembersList membersList;
     for (auto query : getQueries())
     {
         for (auto memberName: query->getFields())
@@ -449,14 +446,14 @@ const Entity::MembersList Entity::getMembersNames() const
     return std::forward<Entity::MembersList>(membersList);
 }
 
-const Entity::ProviderRulesDict& Entity::getProviders() const
+const BaseEntity::ProviderRulesDict& BaseEntity::getProviders() const
 {
-    static const Entity::ProviderRulesDict noProviders;
+    static const BaseEntity::ProviderRulesDict noProviders;
     return noProviders;
 }
 
 const IEntity::RelationPtr
-    Entity::getRelation(const EntityName& entityName) const
+    BaseEntity::getRelation(const EntityName& entityName) const
 {
     const auto& relations = getRelations();
     log<level::DEBUG>("Get relation for destination entity",
@@ -479,7 +476,7 @@ const IEntity::RelationPtr
     return RelationPtr();
 }
 
-const EntityManager& Entity::getEntityManager()
+const EntityManager& BaseEntity::getEntityManager()
 {
     return app::core::application.getEntityManager();
 }
@@ -494,15 +491,10 @@ void EntitySupplementProvider::supplementInstance(
     }
 }
 
-void Entity::defaultLinkProvider(const IEntity::InstancePtr& supplement,
+void BaseEntity::defaultLinkProvider(const IEntity::InstancePtr& supplement,
                                  const IEntity::InstancePtr& target)
 {
     target->supplementOrUpdate(supplement);
-}
-
-Collection::Type Collection::getType() const
-{
-    return Type::array;
 }
 
 } // namespace entity
