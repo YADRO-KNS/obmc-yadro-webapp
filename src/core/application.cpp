@@ -126,6 +126,8 @@ void Application::initEntities()
     entityManager.buildEntity<IP>();
     entityManager.buildEntity<Ethernet>();
 
+    entityManager.buildEntity<Firmware>();
+    entityManager.buildEntity<FirmwareManagment>();
     entityManager.buildEntity<Chassis>();
     entityManager.buildEntity<Baseboard>();
     entityManager.buildEntity<Server>();
