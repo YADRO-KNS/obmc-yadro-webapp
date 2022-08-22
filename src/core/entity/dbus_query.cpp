@@ -603,7 +603,8 @@ void DBusInstance::initDefaultFieldsValue()
 
     for (const auto& [memberName, memberValueSetter] : defaultFields)
     {
-        this->supplementOrUpdate(memberName, std::invoke(memberValueSetter));
+        this->supplementOrUpdate(
+            memberName, std::invoke(memberValueSetter, shared_from_this()));
     }
 }
 
