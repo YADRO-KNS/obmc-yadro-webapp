@@ -64,6 +64,12 @@ const std::vector<IEntity::ConditionPtr>
     return std::forward<const std::vector<IEntity::ConditionPtr>>(conditions);
 }
 
+const std::vector<IEntity::ConditionPtr>
+    BaseEntity::Relation::getConditions(const InstancePtr instance) const
+{
+    return std::forward<const std::vector<IEntity::ConditionPtr>>(
+        getConditions(instance->getHash()));
+}
 IEntity::IRelation::LinkWay Entity::Relation::getLinkWay() const
 {
     // TODO(IK) should we remove the LinkWay abstraction?
@@ -183,7 +189,16 @@ void Entity::Condition::addRule(
         std::make_pair(std::make_pair(destinationMember, value), compareCallback));
 }
 
-bool Entity::Condition::check(const IEntity::IInstance& sourceInstance) const
+void BaseEntity::Condition::addRule(const MemberName& destinationMember,
+                                    CustomCompareCallback compareCallback)
+{
+    this->rules.emplace_back(
+        std::make_pair(destinationMember, std::nullptr_t(nullptr)),
+        [compareCallback](const IEntityMember::InstancePtr& instance,
+                          const IEntityMember::IInstance::FieldType&) {
+            return compareCallback(instance);
+        });
+}
 {
     return fieldValueCompare(sourceInstance);
 }

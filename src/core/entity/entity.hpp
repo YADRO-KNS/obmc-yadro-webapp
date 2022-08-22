@@ -201,14 +201,47 @@ class Entity : virtual public IEntity
         Condition& operator=(Condition&&) = delete;
 
         explicit Condition() = default;
+        Condition(const MemberName& member,
+                  const IEntityMember::IInstance::FieldType& value,
+                  CompareCallback comparer)
+        {
+            addRule(member, value, comparer);
+        }
+        Condition(const MemberName& member, CustomCompareCallback comparer)
+        {
+            addRule(member, comparer);
+        }
+        Condition(const MemberName& member, CompareCallback comparer)
+        {
+            addRule(member,
+                    [comparer](const IEntityMember::InstancePtr& instance) {
+                        return comparer(instance, nullptr_t(nullptr));
+                    });
+        }
         ~Condition() override = default;
 
         void addRule(const MemberName&,
                      const IEntityMember::IInstance::FieldType&,
                      CompareCallback) override;
 
+        void addRule(const MemberName&, CustomCompareCallback) override;
         bool check(const IEntity::IInstance&) const override;
 
+        template <typename TRightValue>
+        static const ConditionPtr buildEqual(const std::string& fieldName,
+                                             TRightValue value)
+        {
+            if constexpr (std::is_enum_v<TRightValue>)
+            {
+                return std::make_shared<Condition>(
+                    fieldName, static_cast<int>(value), Equal<TRightValue>());
+            }
+            else
+            {
+                return std::make_shared<Condition>(fieldName, value,
+                                                   Equal<TRightValue>());
+            }
+        }
       protected:
         bool fieldValueCompare(const IEntity::IInstance&) const;
     };
@@ -238,7 +271,25 @@ class Entity : virtual public IEntity
         const EntityPtr getDestinationTarget() const override;
         const std::vector<ConditionPtr>
             getConditions(InstanceHash) const override;
+        const std::vector<ConditionPtr>
+            getConditions(const InstancePtr) const override;
         LinkWay getLinkWay() const override;
+      public:
+        static const RelationPtr build(const EntityPtr source,
+                                       const EntityPtr dest,
+                                       const RelationRulesList& rules)
+        {
+            auto relation = std::make_shared<Relation>(source, dest);
+            relation->addConditionBuildRules(rules);
+            return relation;
+        }
+        template <typename TDestination>
+        static const RelationPtr build(const EntityPtr source,
+                                       const RelationRulesList& rules)
+        {
+            return build(source, getEntityManager().getEntity<TDestination>(),
+                         rules);
+        }
     };
 
     class StaticInstance : public IInstance
