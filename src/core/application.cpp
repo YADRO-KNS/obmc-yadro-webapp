@@ -112,6 +112,8 @@ void Application::initEntities()
     entityManager.buildEntity<Sensors>();
     entityManager.buildEntity<Processor>();
     entityManager.buildEntity<ProcessorSummary>();
+    entityManager.buildEntity<Memory>();
+    entityManager.buildEntity<MemorySummary>();
     entityManager.buildEntity<Fan>();
     entityManager.buildEntity<Drive>();
     entityManager.buildEntity<NetAdapter>();
