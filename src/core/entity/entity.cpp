@@ -43,6 +43,12 @@ const std::vector<IEntity::ConditionPtr>
     std::vector<IEntity::ConditionPtr> conditions;
     for(auto [memberSource, memberDest, compareLiteral]: conditionBuildRules)
     {
+        if (memberSource == dummyField)
+        {
+            conditions.emplace_back(
+                std::make_shared<Condition>(memberDest, compareLiteral));
+            continue;
+        }
         auto sourceMember = this->source.lock()->getMember(memberSource);
         auto sourceInstance = this->source.lock()->getInstance(sourceInstanceHash);
         if (!sourceMember || !sourceInstance)
@@ -56,10 +62,8 @@ const std::vector<IEntity::ConditionPtr>
 
         log<level::DEBUG>("Acquire conditions for rule",
                           entry("DEST_MEMBER=%s", memberDest.c_str()));
-
-        auto condition = std::make_shared<Entity::Condition>();
-        condition->addRule(memberDest, compareValue, compareLiteral);
-        conditions.push_back(condition);
+        conditions.emplace_back(std::make_shared<Condition>(
+            memberDest, compareValue, compareLiteral));
     }
     return std::forward<const std::vector<IEntity::ConditionPtr>>(conditions);
 }
@@ -70,7 +74,27 @@ const std::vector<IEntity::ConditionPtr>
     return std::forward<const std::vector<IEntity::ConditionPtr>>(
         getConditions(instance->getHash()));
 }
-IEntity::IRelation::LinkWay Entity::Relation::getLinkWay() const
+
+const IEntity::InstanceCollection
+    BaseEntity::StaticInstance::getRelatedInstances(
+        const IEntity::RelationPtr relation, const ConditionsList& conditions,
+        bool skipEmpty) const
+{
+    if (!relation)
+    {
+        return {};
+    }
+    auto relConditions = relation->getConditions(getHash());
+    relConditions.insert(relConditions.end(), conditions.begin(),
+                         conditions.end());
+    if (skipEmpty && relConditions.empty())
+    {
+        return {};
+    }
+    return relation->getDestinationTarget()->getInstances(relConditions);
+}
+
+IEntity::IRelation::LinkWay BaseEntity::Relation::getLinkWay() const
 {
     // TODO(IK) should we remove the LinkWay abstraction?
     return linkWay;
@@ -185,8 +209,7 @@ void BaseEntity::Condition::addRule(
     const IEntity::IEntityMember::IInstance::FieldType& value,
     CompareCallback compareCallback)
 {
-    this->rules.push_back(
-        std::make_pair(std::make_pair(destinationMember, value), compareCallback));
+    this->rules.emplace_back(std::make_pair(destinationMember, value), compareCallback);
 }
 
 void BaseEntity::Condition::addRule(const MemberName& destinationMember,
@@ -214,7 +237,11 @@ bool BaseEntity::Condition::fieldValueCompare(
         MemberName memberName;
         IEntityMember::IInstance::FieldType rightValue;
         std::tie(memberName, rightValue) = ruleMeta;
-        auto memberInstance = sourceInstance.getField(memberName);
+        IEntity::IEntityMember::InstancePtr memberInstance;
+        if (IRelation::dummyField != memberName)
+        {
+            memberInstance = sourceInstance.getField(memberName);
+        }
         result &= std::invoke(compareCallback, memberInstance, rightValue);
     }
     return result;
