@@ -199,11 +199,14 @@ class IEntity
         using CompareCallback =
             std::function<bool(const IEntityMember::InstancePtr&,
                                const IEntityMember::IInstance::FieldType&)>;
+        using CustomCompareCallback =
+            std::function<bool(const IEntityMember::InstancePtr&)>;
 
         virtual void addRule(const MemberName&,
                              const IEntityMember::IInstance::FieldType&,
                              CompareCallback) = 0;
 
+        virtual void addRule(const MemberName&, CustomCompareCallback) = 0;
         virtual bool check(const IEntity::IInstance&) const = 0;
 
         virtual ~ICondition() = default;
@@ -228,7 +231,8 @@ class IEntity
         virtual const EntityPtr getDestinationTarget() const = 0;
         virtual const std::vector<ConditionPtr>
             getConditions(InstanceHash) const = 0;
-
+        virtual const std::vector<ConditionPtr>
+            getConditions(const InstancePtr) const = 0;
         virtual LinkWay getLinkWay() const = 0;
     };
 
