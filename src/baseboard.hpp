@@ -3,11 +3,11 @@
 
 #pragma once
 
+#include <common_fields.hpp>
 #include <core/entity/dbus_query.hpp>
 #include <core/entity/entity.hpp>
 
 #include <status_provider.hpp>
-#include <common_fields.hpp>
 
 namespace app
 {
@@ -29,20 +29,26 @@ class Baseboard final :
             "xyz.openbmc_project.Inventory.Item.Board";
 
       public:
+        ENTITY_DECL_FIELD(std::string, Name)
+        ENTITY_DECL_FIELD(std::string, Type)
+        ENTITY_DECL_FIELD(std::string, Manufacturer)
+        ENTITY_DECL_FIELD(std::string, Model)
+        ENTITY_DECL_FIELD(std::string, PartNumber)
+        ENTITY_DECL_FIELD(std::string, SerialNumber)
+
         BaseboardQuery() : dbus::FindObjectDBusQuery()
         {}
         ~BaseboardQuery() override = default;
 
         DBUS_QUERY_DECL_EP(
             DBUS_QUERY_EP_IFACES(boardInterface,
-                                 DBUS_QUERY_EP_FIELDS_ONLY2("Name"),
-                                 DBUS_QUERY_EP_FIELDS_ONLY2("Type")),
-            DBUS_QUERY_EP_IFACES(
-                general::assets::assetInterface,
-                DBUS_QUERY_EP_FIELDS_ONLY2(general::assets::manufacturer),
-                DBUS_QUERY_EP_FIELDS_ONLY2(general::assets::model),
-                DBUS_QUERY_EP_FIELDS_ONLY2(general::assets::partNumber),
-                DBUS_QUERY_EP_FIELDS_ONLY2(general::assets::serialNumber)))
+                                 DBUS_QUERY_EP_FIELDS_ONLY2(fieldName),
+                                 DBUS_QUERY_EP_FIELDS_ONLY2(fieldType)),
+            DBUS_QUERY_EP_IFACES(general::assets::assetInterface,
+                                 DBUS_QUERY_EP_FIELDS_ONLY2(fieldManufacturer),
+                                 DBUS_QUERY_EP_FIELDS_ONLY2(fieldModel),
+                                 DBUS_QUERY_EP_FIELDS_ONLY2(fieldPartNumber),
+                                 DBUS_QUERY_EP_FIELDS_ONLY2(fieldSerialNumber)))
 
       protected:
         DBUS_QUERY_DECLARE_CRITERIA(
