@@ -105,10 +105,14 @@ class IEntity
         class IInstance
         {
           public:
+            using Association =
+                std::tuple<std::string, std::string, std::string>;
+            using Associations = std::vector<Association>;
             using FieldType =
-                std::variant<std::vector<std::string>, std::vector<double>,
-                             std::string, int64_t, uint64_t, double, int32_t,
-                             uint32_t, int16_t, uint16_t, uint8_t, bool>;
+                std::variant<Associations, std::vector<std::string>,
+                             std::vector<double>, std::vector<int>, std::string,
+                             int64_t, uint64_t, double, int32_t, uint32_t,
+                             int16_t, uint16_t, uint8_t, bool, std::nullptr_t>;
 
             virtual const FieldType& getValue() const noexcept = 0;
             virtual const std::string& getStringValue() const = 0;
