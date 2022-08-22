@@ -206,6 +206,60 @@ class IEntity
         using CustomCompareCallback =
             std::function<bool(const IEntityMember::InstancePtr&)>;
 
+        template<typename TValue = std::string>
+        struct Equal
+        {
+            virtual ~Equal() = default;
+            virtual bool
+                operator()(const IEntityMember::InstancePtr& instance,
+                           const IEntityMember::IInstance::FieldType& value)
+            {
+                if (!instance)
+                {
+                    return false;
+                }
+                try
+                {
+                    const auto left = instance->getValue();
+                    if constexpr (std::is_enum_v<TValue>)
+                    {
+                        if (std::holds_alternative<int>(left) &&
+                            std::holds_alternative<int>(value))
+                        {
+                            return left == value;
+                        }
+                    }
+                    else
+                    {
+                        if (std::holds_alternative<TValue>(left) &&
+                            std::holds_alternative<TValue>(value))
+                        {
+                            return left == value;
+                        }
+                    }
+                }
+                catch (std::exception& e)
+                {
+                    log<level::DEBUG>(
+                        "Error while comparing values of some condition.",
+                        entry("ERROR=%s", e.what()));
+                }
+                return false;
+            }
+        };
+
+        template <typename TValue = std::string>
+        struct NonEqual : public Equal<TValue>
+        {
+            ~NonEqual() override = default;
+            bool operator()(
+                const IEntityMember::InstancePtr& instance,
+                const IEntityMember::IInstance::FieldType& value) override
+            {
+                return !Equal<TValue>::operator()(instance, value);
+            }
+        };
+
         virtual void addRule(const MemberName&,
                              const IEntityMember::IInstance::FieldType&,
                              CompareCallback) = 0;
