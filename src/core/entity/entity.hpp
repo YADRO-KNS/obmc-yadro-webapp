@@ -41,7 +41,7 @@ class EntityException : public core::exceptions::ObmcAppException
 
 } // namespace exceptions
 
-class Entity : virtual public IEntity
+class BaseEntity : virtual public IEntity
 {
 #define ENTITY_DECL_QUERY(...)                                                 \
     const query::QueryCollection& getQueries() const override                  \
@@ -430,14 +430,14 @@ class Entity : virtual public IEntity
         MemberInstancesMap memberInstances;
     };
 
-    Entity(const Entity&) = delete;
-    Entity& operator=(const Entity&) = delete;
-    Entity(Entity&&) = delete;
-    Entity& operator=(Entity&&) = delete;
+    BaseEntity(const BaseEntity&) = delete;
+    BaseEntity& operator=(const BaseEntity&) = delete;
+    BaseEntity(BaseEntity&&) = delete;
+    BaseEntity& operator=(BaseEntity&&) = delete;
 
-    explicit Entity() noexcept;
+    explicit BaseEntity() noexcept;
 
-    ~Entity() override = default;
+    ~BaseEntity() override = default;
 
     bool addMember(const EntityMemberPtr&) override;
     bool createMember(const MemberName& member) override;
@@ -478,12 +478,6 @@ class Entity : virtual public IEntity
      *        + Relations to anather Entities
      */
     void initialize() override;
-    /**
-     * @brief Get Entity type. The Enitty is object type of IEntity.
-     *
-     * @return Type IEntity::object
-     */
-    Type getType() const override;
 
   protected:
     virtual const MembersList getMembersNames() const;
@@ -522,6 +516,12 @@ class NamedEntity: public virtual IEntity
         free(className);
         return en;
     }
+
+    static const EntityPtr getEntity()
+    {
+        return BaseEntity::getEntityManager().getEntity<TEntity>();
+    }
+
     ~NamedEntity() override = default;
 };
 
@@ -555,7 +555,7 @@ class CachedSource: public virtual IEntity
 /**
  * @class LazySource
  * @brief The behavior of populating IEntity data.
- *        The data will be filled per request of 'populate()' via configured
+ *        The data will be filled per request by 'populate()' via configured
  *        datasource
  */
 class LazySource : public virtual IEntity
@@ -575,7 +575,62 @@ class LazySource : public virtual IEntity
  * @brief Class Collection provides the list of Entities specified object type.
  *        The current abstraction is needed to explicitly define an Entity set.
  */
-class Collection : public Entity
+class Entity : public BaseEntity
+{
+  public:
+    Entity(const Entity&) = delete;
+    Entity& operator=(const Entity&) = delete;
+    Entity(Entity&&) = delete;
+    Entity& operator=(Entity&&) = delete;
+
+    explicit Entity() noexcept : BaseEntity()
+    {}
+
+    ~Entity() override = default;
+    /**
+     * @brief Get Entity type.
+     *
+     * @return Type IEntity::Type::object
+     */
+    Type getType() const override
+    {
+        return Type::object;
+    }
+
+    bool isNull() const
+    {
+        return this->getInstances().size() == 0;
+    }
+
+    const InstancePtr get() const
+    {
+        const auto instances = this->getInstances();
+        if (instances.size() == 0) {
+            return std::make_shared<StaticInstance>(
+                EntityMember::fieldValueNotAvailable);
+        }
+        else if (instances.size() > 1)
+        {
+            log<level::WARNING>(
+                "The given instance of IEntity is not object type. Please, "
+                "review data source and the entity configuration.",
+                entry("ENTITY=%s", getName().c_str()));
+        }
+        
+        return instances.at(0);
+    }
+
+    const InstancePtr operator()() const 
+    {
+        return this->get();
+    }
+};
+
+/**
+ * @brief Class Collection provides the list of Entities specified object type.
+ *        The current abstraction is needed to explicitly define an Entity set.
+ */
+class Collection : public BaseEntity
 {
   public:
     Collection(const Collection&) = delete;
@@ -583,16 +638,19 @@ class Collection : public Entity
     Collection(Collection&&) = delete;
     Collection& operator=(Collection&&) = delete;
 
-    explicit Collection() noexcept : Entity()
+    explicit Collection() noexcept : BaseEntity()
     {}
 
     ~Collection() override = default;
     /**
-     * @brief Get Entity type. The Enitty is object type of IEntity.
+     * @brief Get Colleciton type
      *
-     * @return Type IEntity::array
+     * @return Type IEntity::Type::array
      */
-    Type getType() const override;
+    Type getType() const override
+    {
+        return Type::array;
+    }
 };
 
 /**
@@ -602,16 +660,27 @@ class Collection : public Entity
  *
  */
 class EntitySupplementProvider :
-    public Entity,
+    public BaseEntity,
     public IEntity::ISupplementProvider
 {
   public:
-    explicit EntitySupplementProvider() noexcept : Entity()
+    explicit EntitySupplementProvider() noexcept : BaseEntity()
     {}
     ~EntitySupplementProvider() override = default;
     /** @inherit */
     void supplementInstance(const IEntity::InstancePtr& instance,
                             ProviderLinkRule) override;
+
+    /**
+     * @brief Get Rerefernce type.
+     *        Providers has a formless type that is depends on the requesting resources.
+     *
+     * @return Type IEntity::Type::reference
+     */
+    Type getType() const override
+    {
+        return Type::reference;
+    }
 };
 
 } // namespace entity
