@@ -208,7 +208,7 @@ const IEntity::InstanceCollection IntrospectServiceDBusQuery::process()
             serviceName.c_str(), "/", "org.freedesktop.DBus.ObjectManager",
             "GetManagedObjects");
     }
-    catch (const std::exception& e)
+    catch (const sdbusplus::exception_t& e)
     {
         log<level::DEBUG>("Fail to process DBus query (service introspect)",
                           entry("DBUS_SVC=%s", serviceName.c_str()),
@@ -388,7 +388,7 @@ const DBusPropertiesMap
                serviceName, objectPath, "org.freedesktop.DBus.Properties",
                "GetAll", interface));
     }
-    catch (const std::exception& e)
+    catch (const sdbusplus::exception_t& e)
     {
         // Don't rase CRITICAL log level because the GetAll might processing for
         // object which already deleted by service.
