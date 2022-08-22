@@ -413,6 +413,10 @@ class BaseEntity : virtual public IEntity
 
         bool hasField(const MemberName&) const override;
         bool checkCondition(const ConditionPtr) const override;
+        const InstanceCollection
+            getRelatedInstances(const RelationPtr,
+                                const ConditionsList& = ConditionsList(),
+                                bool skipEmpty = false) const override;
 
         const std::map<std::size_t, InstancePtr> getComplex() const override;
         bool isComplex() const override;

@@ -166,7 +166,10 @@ class IEntity
 
         virtual bool hasField(const MemberName&) const = 0;
         virtual bool checkCondition(const ConditionPtr) const = 0;
-
+        virtual const InstanceCollection
+            getRelatedInstances(const RelationPtr,
+                                const ConditionsList& = ConditionsList(),
+                                bool skipEmpty = false) const = 0;
         virtual const std::map<std::size_t, InstancePtr> getComplex() const = 0;
         virtual bool isComplex() const = 0;
 
@@ -273,6 +276,7 @@ class IEntity
     class IRelation
     {
       public:
+        static constexpr const char* dummyField = "_";
         using RuleSet =
             std::tuple<MemberName, MemberName, ICondition::CompareCallback>;
         using RelationRulesList = std::vector<RuleSet>;
