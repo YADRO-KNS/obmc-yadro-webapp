@@ -132,7 +132,8 @@ class Entity : virtual public IEntity
             }
             bool isNull() const override
             {
-                return !value.has_value();
+                return !value.has_value() ||
+                       std::holds_alternative<nullptr_t>(*value);
             }
             const std::string getType() const override
             {
