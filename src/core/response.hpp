@@ -120,13 +120,9 @@ class Response : public IResponse
 
     Response& operator=(const Response&) = delete;
     Response& operator=(const Response&&) = delete;
-    /**
-     * @brief Construct a new Response object
-     *
-     * @param argEnv
-     */
-    ~Response() override = default;
 
+    ~Response() override = default;
+    
     size_t totalSize() const override;
 
     const std::string& getBody() const override;
