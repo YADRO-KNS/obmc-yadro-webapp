@@ -416,6 +416,7 @@ inline const std::string reasonPhrase(uint16_t code)
 namespace content_types
 {
 constexpr const char* applicationJson = "application/json; charset=UTF-8";
+constexpr const char* textPlain = "text/plain; charset=UTF-8";
 }
 
 inline const std::string header(const std::string& name, const std::string& value)
