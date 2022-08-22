@@ -5,6 +5,7 @@
 
 #include <fastcgi++/manager.hpp>
 #include <phosphor-logging/log.hpp>
+#include <core/connection.hpp>
 #include <core/connect/dbus_connect.hpp>
 #include <core/entity/enitty_manager.hpp>
 #include <memory>
@@ -69,6 +70,7 @@ class Application final
   private:
     connect::DBusConnectUni dbusConnection;
     entity::EntityManager entityManager;
+    Fastcgipp::Manager<Connection> fastCgiManager;
 };
 
 extern Application application;
