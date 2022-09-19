@@ -241,6 +241,9 @@ srcfiles_obmc_webapp = [
   'src/core/entity/dbus_query.cpp',
   # brokers
   'src/core/connect/dbus_connect.cpp',
+  # Redfish
+  'src/core/route/redfish/response.cpp',
+  'src/core/route/redfish/error_messages.cpp',
 ]
 
 srcfiles_unittest = [
