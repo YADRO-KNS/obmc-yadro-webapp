@@ -18,6 +18,7 @@ project_issues_url = project_url + '/issues/new'
 summary('Issues',project_issues_url, section: 'Report Issues')
 
 cmake = import('cmake')
+subdir('tools')
 
 # Validate the c++ Standard
 
