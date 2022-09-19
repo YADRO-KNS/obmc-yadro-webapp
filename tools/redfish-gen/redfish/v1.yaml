@@ -1,0 +1,41 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+v1:
+  Name: The BMC service root
+  Schema: ServiceRoot
+  Version: 1.14.0
+  Actions:
+    Get:
+      Properties:
+        Static:
+          - Name: RedfishVersion
+            Value: 1.14.0
+        Entity:
+          - Source: Server
+            Fields:
+            - Name: UUID
+              SourceField: Server::fieldUUID
+            - Name: Vendor
+              SourceField: general::assets::manufacturer
+        Static:
+          - Name: RedfishVersion
+            Value: 1.14.0
+        Fragments:
+          - Name: ProtocolFeaturesSupported
+            Static:
+              - Name: ExcerptQuery
+                Value: False
+              - Name: FilterQuery
+                Value: False
+              - Name: MultipleHTTPRequests
+                Value: True
+              - Name: OnlyMemberQuery
+                Value: False
+              - Name: SelectQuery
+                Value: False
+      Reference:
+        - Node: CertificateService
+        - Node: Chassis
+        - Node: Systems
+        - Node: Managers
