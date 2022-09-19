@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+from main import main
+
+if __name__ == "__main__":
+    main()

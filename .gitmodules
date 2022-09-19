@@ -1,0 +1,3 @@
+[submodule "tools/redfish_tools"]
+	path = tools/redfish_tools
+	url = https://github.com/DMTF/Redfish-Tools
