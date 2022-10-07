@@ -129,6 +129,7 @@ void Application::initEntities()
     entityManager.buildEntity<DomainGroups>();
     entityManager.buildEntity<DomainAccounts>();
     entityManager.buildEntity<AccountSettings>();
+    entityManager.buildEntity<VirtualMedia>();
     entityManager.buildEntity<Firmware>();
     entityManager.buildEntity<FirmwareManagment>();
     entityManager.buildEntity<BmcManager>();
