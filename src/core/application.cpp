@@ -116,6 +116,9 @@ void Application::initEntities()
     entityManager.buildEntity<PIDProfile>();
     entityManager.buildEntity<PIDZone>();
     entityManager.buildEntity<PID>();
+    entityManager.buildEntity<SnmpProtocol>();
+    entityManager.buildEntity<NtpProtocol>();
+    entityManager.buildEntity<NetworkProtocol>();
     entityManager.buildEntity<NetworkConfig>();
     entityManager.buildEntity<NetworkDHCPConfig>();
     entityManager.buildEntity<IP>();
