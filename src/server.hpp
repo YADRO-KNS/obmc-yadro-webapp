@@ -3,15 +3,14 @@
 
 #pragma once
 
-#include <phosphor-logging/log.hpp>
-
+#include <common_fields.hpp>
 #include <core/entity/dbus_query.hpp>
 #include <core/entity/entity.hpp>
 #include <core/helpers/utils.hpp>
-
-#include <common_fields.hpp>
-#include <status_provider.hpp>
+#include <firmware.hpp>
+#include <phosphor-logging/log.hpp>
 #include <sensors.hpp>
+#include <status_provider.hpp>
 
 namespace app
 {
@@ -39,12 +38,14 @@ class AssetTagProvider final :
             "xyz.openbmc_project.Inventory.Item.System";
 
       public:
+        ENTITY_DECL_FIELD(std::string, AssetTag)
+
         AssetTagQuery() : dbus::FindObjectDBusQuery()
         {}
         ~AssetTagQuery() override = default;
 
         DBUS_QUERY_DECL_EP(DBUS_QUERY_EP_IFACES(
-            assetTagInterfaceName, DBUS_QUERY_EP_FIELDS_ONLY2("AssetTag")))
+            assetTagInterfaceName, DBUS_QUERY_EP_FIELDS_ONLY2(fieldAssetTag)))
 
       protected:
         DBUS_QUERY_DECLARE_CRITERIA(
@@ -73,7 +74,7 @@ class IndicatorLedProvider final :
     public NamedEntity<IndicatorLedProvider>
 {
   public:
-    static constexpr const char* fieldLed = "Led";
+    ENTITY_DECL_FIELD(bool, Led)
 
   private:
     class Query final : public dbus::FindObjectDBusQuery
@@ -112,80 +113,76 @@ class IndicatorLedProvider final :
     DBusQueryPtr query;
 };
 
-class VersionProvider final :
+class BootSettingsProvider final :
     public entity::EntitySupplementProvider,
-    public ISingleton<VersionProvider>,
+    public ISingleton<BootSettingsProvider>,
     public CachedSource,
-    public NamedEntity<VersionProvider>
+    public NamedEntity<BootSettingsProvider>
 {
-    static constexpr const char* purposeBios =
-        "xyz.openbmc_project.Software.Version.VersionPurpose.Host";
-    static constexpr const char* purposeBmc =
-        "xyz.openbmc_project.Software.Version.VersionPurpose.BMC";
+    static constexpr const char* settingsService =
+        "xyz.openbmc_project.Settings";
+    static constexpr const char* bootObject =
+        "/xyz/openbmc_project/control/host0/auto_reboot";
 
   public:
-    static constexpr const char* fieldVersion = "Version";
-    static constexpr const char* fieldPurpose = "Purpose";
-
-    static constexpr const char* fieldVersionBios = "BiosVersion";
-    static constexpr const char* fieldVersionBmc = "BmcVersion";
-
-    enum class VersionPurpose : uint8_t
+    enum class RetryConfig
     {
-        BMC,
-        BIOS,
-        Unknown
+        retryAttempts,
+        disabled
     };
 
-  private:
-    class VersionQuery final : public dbus::FindObjectDBusQuery
+    ENTITY_DECL_FIELD_ENUM(RetryConfig, RetryConfig, disabled)
+
+    class Query : public dbus::GetObjectDBusQuery
     {
-        static constexpr const char* versionInterfaceName =
-            "xyz.openbmc_project.Software.Version";
+        class FormatRetryConfig : public query::dbus::IFormatter
+        {
+          public:
+            ~FormatRetryConfig() override = default;
+
+            const DbusVariantType format(const PropertyName&,
+                                         const DbusVariantType& value) override
+            {
+                if (holds_alternative<bool>(value))
+                {
+                    if (std::get<bool>(value))
+                    {
+                        return static_cast<int>(RetryConfig::retryAttempts);
+                    }
+                }
+                return static_cast<int>(RetryConfig::disabled);
+            }
+        };
+
+        static constexpr const char* rebootPolicyIface =
+            "xyz.openbmc_project.Control.Boot.RebootPolicy";
 
       public:
-        VersionQuery() : dbus::FindObjectDBusQuery()
+        Query() : GetObjectDBusQuery(settingsService, bootObject)
         {}
-        ~VersionQuery() override = default;
+        ~Query() override = default;
 
         // clang-format: off
         DBUS_QUERY_DECL_EP(DBUS_QUERY_EP_IFACES(
-            versionInterfaceName, DBUS_QUERY_EP_FIELDS_ONLY2(fieldVersion),
-            DBUS_QUERY_EP_FIELDS_ONLY2(fieldPurpose)))
+            rebootPolicyIface, DBUS_QUERY_EP_SET_FORMATTERS(
+                                   "AutoReboot", fieldRetryConfig,
+                                   DBUS_QUERY_EP_CSTR(FormatRetryConfig))))
 
       protected:
-        DBUS_QUERY_DECLARE_CRITERIA(
-            "/xyz/openbmc_project/software",
-            DBUS_QUERY_CRIT_IFACES(versionInterfaceName), nextOneDepth,
-            std::nullopt)
+        const InterfaceList& searchInterfaces() const override
+        {
+            static const InterfaceList interfaces{
+                rebootPolicyIface,
+            };
+            return interfaces;
+        }
         // clang-format: on
     };
 
-  public:
-    VersionProvider() :
-        EntitySupplementProvider(), query(std::make_shared<VersionQuery>())
-    {
-        this->createMember(fieldVersionBmc);
-        this->createMember(fieldVersionBios);
-    }
-    ~VersionProvider() override = default;
-
-    static VersionPurpose getPurpose(const IEntity::InstancePtr& instance)
-    {
-        static std::map<std::string, VersionPurpose> purposes{
-            {purposeBmc, VersionPurpose::BMC},
-            {purposeBios, VersionPurpose::BIOS},
-        };
-
-        auto inputPurpose = instance->getField(fieldPurpose)->getStringValue();
-        auto findPurposeIt = purposes.find(inputPurpose);
-        if (findPurposeIt == purposes.end())
-        {
-            return VersionPurpose::Unknown;
-        }
-
-        return findPurposeIt->second;
-    }
+    BootSettingsProvider() :
+        EntitySupplementProvider(), query(std::make_shared<Query>())
+    {}
+    ~BootSettingsProvider() override = default;
 
   protected:
     ENTITY_DECL_QUERY(query)
@@ -193,12 +190,514 @@ class VersionProvider final :
     DBusQueryPtr query;
 };
 
-class Server final : public Entity, public CachedSource, NamedEntity<Server>
+class HostWatchdogProvider final :
+    public entity::EntitySupplementProvider,
+    public ISingleton<HostWatchdogProvider>,
+    public CachedSource,
+    public NamedEntity<HostWatchdogProvider>
+{
+  public:
+    enum class WatchdogAction
+    {
+        none,
+        resetSystem,
+        powerDown,
+        powerCycle
+    };
+    ENTITY_DECL_FIELD_DEF(bool, Enabled, false)
+    ENTITY_DECL_FIELD_ENUM(WatchdogAction, ExpireAction, none)
+  private:
+    class Query : public dbus::GetObjectDBusQuery
+    {
+        static constexpr const char* watchdogService =
+            "xyz.openbmc_project.Watchdog";
+        static constexpr const char* watchdogObject =
+            "/xyz/openbmc_project/watchdog/host0";
+        static constexpr const char* watchdogIface =
+            "xyz.openbmc_project.State.Watchdog";
+        class FormatExpireAction : public query::dbus::IFormatter
+        {
+
+            static std::string dbusEnum(const std::string& val)
+            {
+                return "xyz.openbmc_project.State.Watchdog.Action." + val;
+            }
+
+          public:
+            ~FormatExpireAction() override = default;
+
+            const DbusVariantType format(const PropertyName& property,
+                                         const DbusVariantType& value) override
+            {
+                // clang-format: off
+                static const std::map<std::string, WatchdogAction> actions{
+                    {dbusEnum("None"), WatchdogAction::none},
+                    {dbusEnum("HardReset"), WatchdogAction::resetSystem},
+                    {dbusEnum("PowerOff"), WatchdogAction::powerDown},
+                    {dbusEnum("PowerCycle"), WatchdogAction::powerCycle},
+                };
+                // clang-format: on
+                return formatValueFromDict(actions, property, value,
+                                           WatchdogAction::none);
+            }
+        };
+
+      public:
+        Query() : GetObjectDBusQuery(watchdogService, watchdogObject)
+        {}
+        ~Query() override = default;
+
+        // clang-format: off
+        DBUS_QUERY_DECL_EP(DBUS_QUERY_EP_IFACES(
+            watchdogIface, DBUS_QUERY_EP_FIELDS_ONLY2(fieldEnabled),
+            DBUS_QUERY_EP_SET_FORMATTERS2(
+                fieldExpireAction, DBUS_QUERY_EP_CSTR(FormatExpireAction))))
+
+      protected:
+        const InterfaceList& searchInterfaces() const override
+        {
+            static const InterfaceList interfaces{
+                watchdogIface,
+            };
+            return interfaces;
+        }
+        // clang-format: on
+    };
+
+  public:
+    HostWatchdogProvider() :
+        EntitySupplementProvider(), query(std::make_shared<Query>())
+    {}
+    ~HostWatchdogProvider() override = default;
+
+  protected:
+    ENTITY_DECL_QUERY(query)
+  private:
+    DBusQueryPtr query;
+};
+
+class RebootRemainingProvider final :
+    public entity::EntitySupplementProvider,
+    public ISingleton<RebootRemainingProvider>,
+    public CachedSource,
+    public NamedEntity<RebootRemainingProvider>
+{
+  public:
+    ENTITY_DECL_FIELD_DEF(uint32_t, AttemptsLeft, 0U)
+  private:
+    class Query : public dbus::GetObjectDBusQuery
+    {
+        static constexpr const char* rebootAttemptsIface =
+            "xyz.openbmc_project.Control.Boot.RebootAttempts";
+        static constexpr const char* hostService =
+            "xyz.openbmc_project.State.Host";
+        static constexpr const char* bootObject =
+            "xyz/openbmc_project/state/host0";
+
+      public:
+        Query() : GetObjectDBusQuery(hostService, bootObject)
+        {}
+        ~Query() override = default;
+
+        // clang-format: off
+        DBUS_QUERY_DECL_EP(DBUS_QUERY_EP_IFACES(
+            rebootAttemptsIface, DBUS_QUERY_EP_FIELDS_ONLY2(fieldAttemptsLeft)))
+
+      protected:
+        const InterfaceList& searchInterfaces() const override
+        {
+            static const InterfaceList interfaces{
+                rebootAttemptsIface,
+            };
+            return interfaces;
+        }
+        // clang-format: on
+    };
+
+  public:
+    RebootRemainingProvider() :
+        EntitySupplementProvider(), query(std::make_shared<Query>())
+    {}
+    ~RebootRemainingProvider() override = default;
+
+  protected:
+    ENTITY_DECL_QUERY(query)
+  private:
+    DBusQueryPtr query;
+};
+
+class PowerRestorePolicyProvider final :
+    public entity::EntitySupplementProvider,
+    public ISingleton<PowerRestorePolicyProvider>,
+    public CachedSource,
+    public NamedEntity<PowerRestorePolicyProvider>
+{
+  public:
+    enum class RestorePolicy
+    {
+        alwaysOn,
+        alwaysOff,
+        lastState
+    };
+    ENTITY_DECL_FIELD_ENUM(RestorePolicy, PowerRestorePolicy, lastState)
+  private:
+    class Query : public dbus::GetObjectDBusQuery
+    {
+        static constexpr const char* settingsService =
+            "xyz.openbmc_project.Settings";
+        static constexpr const char* policyObject =
+            "/xyz/openbmc_project/control/host0/power_restore_policy";
+        static constexpr const char* restorePolicyIface =
+            "xyz.openbmc_project.Control.Power.RestorePolicy";
+
+        class FormatRestorePolicy : public query::dbus::IFormatter
+        {
+
+            static std::string dbusEnum(const std::string& val)
+            {
+                return "xyz.openbmc_project.Control.Power.RestorePolicy."
+                       "Policy." +
+                       val;
+            }
+
+          public:
+            ~FormatRestorePolicy() override = default;
+
+            const DbusVariantType format(const PropertyName& property,
+                                         const DbusVariantType& value) override
+            {
+                // clang-format: off
+                static const std::map<std::string, RestorePolicy> policies{
+                    {dbusEnum("AlwaysOn"), RestorePolicy::alwaysOn},
+                    {dbusEnum("AlwaysOff"), RestorePolicy::alwaysOff},
+                    {dbusEnum("Restore"), RestorePolicy::lastState},
+                };
+                // clang-format: on
+                return formatValueFromDict(policies, property, value,
+                                           RestorePolicy::lastState);
+            }
+        };
+
+      public:
+        Query() : GetObjectDBusQuery(settingsService, policyObject)
+        {}
+        ~Query() override = default;
+
+        // clang-format: off
+        DBUS_QUERY_DECL_EP(DBUS_QUERY_EP_IFACES(
+            restorePolicyIface, DBUS_QUERY_EP_SET_FORMATTERS2(
+                                    fieldPowerRestorePolicy,
+                                    DBUS_QUERY_EP_CSTR(FormatRestorePolicy))))
+
+      protected:
+        const InterfaceList& searchInterfaces() const override
+        {
+            static const InterfaceList interfaces{
+                restorePolicyIface,
+            };
+            return interfaces;
+        }
+        // clang-format: on
+    };
+
+  public:
+    PowerRestorePolicyProvider() :
+        EntitySupplementProvider(), query(std::make_shared<Query>())
+    {}
+    ~PowerRestorePolicyProvider() override = default;
+
+  protected:
+    ENTITY_DECL_QUERY(query)
+  private:
+    DBusQueryPtr query;
+};
+
+class HostBootProvider final :
+    public entity::EntitySupplementProvider,
+    public ISingleton<HostBootProvider>,
+    public CachedSource,
+    public NamedEntity<HostBootProvider>
+{
+    static constexpr const char* settingsService =
+        "xyz.openbmc_project.Settings";
+    static constexpr const char* bootObject =
+        "/xyz/openbmc_project/control/host0/boot";
+
+  public:
+    enum class Mode
+    {
+        diags,
+        biosSetup,
+        dbusOriginModeMax = biosSetup, ///< The biosSetup and both other origins
+                                       ///< from `Mode` dbus interface
+        hdd, ///< Rest modes origings from `Source` dbus interface
+        cd,
+        pxe,
+        usb,
+        none
+    };
+    enum class Type
+    {
+        legacy,
+        uefi
+    };
+
+    ENTITY_DECL_FIELD(std::string, Source)
+    ENTITY_DECL_FIELD_ENUM(Mode, Mode, none)
+    ENTITY_DECL_FIELD_ENUM(Type, Type, legacy)
+
+    class Query : public dbus::GetObjectDBusQuery
+    {
+      protected:
+        class FormatMode : public query::dbus::IFormatter
+        {
+
+            static std::string dbusEnum(const std::string& val)
+            {
+                return "xyz.openbmc_project.Control.Boot.Mode.Modes." + val;
+            }
+
+          public:
+            ~FormatMode() override = default;
+
+            const DbusVariantType format(const PropertyName& property,
+                                         const DbusVariantType& value) override
+            {
+                // clang-format: off
+                static const std::map<std::string, Mode> types{
+                    {dbusEnum("Safe"), Mode::diags},
+                    {dbusEnum("Setup"), Mode::biosSetup},
+                    {dbusEnum("Regular"), Mode::none},
+                };
+                // clang-format: on
+                return formatValueFromDict(types, property, value, Mode::none);
+            }
+        };
+        class FormatSource
+        {
+            const InstancePtr instance;
+
+            static std::string dbusEnum(const std::string& val)
+            {
+                return "xyz.openbmc_project.Control.Boot.Source.Sources." + val;
+            }
+
+          public:
+            FormatSource(const InstancePtr instance) : instance(instance)
+            {}
+            ~FormatSource() = default;
+
+            void operator()(const std::string& value)
+            {
+                // clang-format: off
+                static const std::map<std::string, Mode> sources{
+                    {dbusEnum("Disk"), Mode::hdd},
+                    {dbusEnum("ExternalMedia"), Mode::cd},
+                    {dbusEnum("Network"), Mode::pxe},
+                    {dbusEnum("RemovableMedia"), Mode::usb},
+                    {dbusEnum("Default"), Mode::none},
+                };
+                // clang-format: on
+                Mode mode = getFieldMode(instance);
+                auto searchIt = sources.find(value);
+                if (searchIt != sources.end() && mode > Mode::dbusOriginModeMax)
+                {
+                    mode = searchIt->second;
+                }
+                setFieldMode(instance, mode);
+            }
+        };
+        class FormatType : public query::dbus::IFormatter
+        {
+
+            static std::string dbusEnum(const std::string& val)
+            {
+                return "xyz.openbmc_project.Control.Boot.Type.Types." + val;
+            }
+
+          public:
+            ~FormatType() override = default;
+
+            const DbusVariantType format(const PropertyName& property,
+                                         const DbusVariantType& value) override
+            {
+                // clang-format: off
+                static const std::map<std::string, Type> types{
+                    {dbusEnum("Legacy"), Type::legacy},
+                    {dbusEnum("EFI"), Type::uefi},
+                };
+                // clang-format: on
+                return formatValueFromDict(types, property, value,
+                                           Type::legacy);
+            }
+        };
+
+        static constexpr const char* modeIface =
+            "xyz.openbmc_project.Control.Boot.Mode";
+        static constexpr const char* sourceIface =
+            "xyz.openbmc_project.Control.Boot.Source";
+        static constexpr const char* typeIface =
+            "xyz.openbmc_project.Control.Boot.Type";
+
+      public:
+        Query(const ObjectPath& path) :
+            dbus::GetObjectDBusQuery(settingsService, path)
+        {}
+        ~Query() override = default;
+
+        // clang-format: off
+        DBUS_QUERY_DECL_EP(
+            DBUS_QUERY_EP_IFACES(
+                modeIface,
+                DBUS_QUERY_EP_SET_FORMATTERS("BootMode", fieldMode,
+                                             DBUS_QUERY_EP_CSTR(FormatMode))),
+            DBUS_QUERY_EP_IFACES(sourceIface,
+                                 DBUS_QUERY_EP_FIELDS_ONLY("BootSource",
+                                                           fieldSource)),
+            DBUS_QUERY_EP_IFACES(
+                typeIface,
+                DBUS_QUERY_EP_SET_FORMATTERS("BootType", fieldType,
+                                             DBUS_QUERY_EP_CSTR(FormatType))))
+
+      protected:
+        const InterfaceList& searchInterfaces() const override
+        {
+            static const InterfaceList interfaces{
+                modeIface,
+                sourceIface,
+                typeIface,
+            };
+            return interfaces;
+        }
+        // clang-format: on
+        void supplementByStaticFields(
+            const DBusInstancePtr& instance) const override
+        {
+            FormatSource formatSource(instance);
+            formatSource(getFieldSource(instance));
+        }
+    };
+
+    HostBootProvider() :
+        EntitySupplementProvider(), query(std::make_shared<Query>(bootObject))
+    {}
+    ~HostBootProvider() override = default;
+
+  protected:
+    ENTITY_DECL_QUERY(query)
+  private:
+    DBusQueryPtr query;
+};
+
+class HostBootOnceProvider final :
+    public entity::EntitySupplementProvider,
+    public ISingleton<HostBootOnceProvider>,
+    public CachedSource,
+    public NamedEntity<HostBootOnceProvider>
+{
+    static constexpr const char* bootObject =
+        "/xyz/openbmc_project/control/host0/boot/one_time";
+
+  public:
+    ENTITY_DECL_FIELD_DEF(bool, OneTime, false)
+    ENTITY_DECL_FIELD_DEF(bool, ClearCmos, false)
+  private:
+    class Query final : public HostBootProvider::Query
+    {
+        static constexpr const char* clearCmosIface =
+            "xyz.openbmc_project.Control.Boot.ClearCmos";
+        static constexpr const char* enableIface =
+            "xyz.openbmc_project.Object.Enable";
+
+      public:
+        Query() : HostBootProvider::Query(bootObject)
+        {}
+        ~Query() override = default;
+
+        // clang-format: off
+        DBUS_QUERY_DECL_EP(
+            DBUS_QUERY_EP_IFACES(
+                modeIface,
+                DBUS_QUERY_EP_SET_FORMATTERS(
+                    "BootMode", HostBootProvider::fieldMode,
+                    DBUS_QUERY_EP_CSTR(HostBootProvider::Query::FormatMode))),
+            DBUS_QUERY_EP_IFACES(
+                typeIface,
+                DBUS_QUERY_EP_SET_FORMATTERS(
+                    "BootType", HostBootProvider::fieldType,
+                    DBUS_QUERY_EP_CSTR(HostBootProvider::Query::FormatType))),
+            DBUS_QUERY_EP_IFACES(
+                sourceIface,
+                DBUS_QUERY_EP_FIELDS_ONLY("BootSource",
+                                          HostBootProvider::fieldSource)),
+            DBUS_QUERY_EP_IFACES(clearCmosIface,
+                                 DBUS_QUERY_EP_FIELDS_ONLY2(fieldClearCmos)),
+            DBUS_QUERY_EP_IFACES(enableIface,
+                                 DBUS_QUERY_EP_FIELDS_ONLY("Enabled",
+                                                           fieldOneTime)), )
+
+      protected:
+        const InterfaceList& searchInterfaces() const override
+        {
+            static const InterfaceList interfaces{
+                HostBootProvider::Query::modeIface,
+                HostBootProvider::Query::sourceIface,
+                HostBootProvider::Query::typeIface,
+                clearCmosIface,
+                enableIface,
+            };
+            return interfaces;
+        }
+        // clang-format: on
+    };
+
+  public:
+    HostBootOnceProvider() :
+        EntitySupplementProvider(), query(std::make_shared<Query>())
+    {}
+    ~HostBootOnceProvider() override = default;
+
+  protected:
+    ENTITY_DECL_QUERY(query)
+  private:
+    DBusQueryPtr query;
+};
+
+class Server final :
+    public Entity,
+    public CachedSource,
+    public NamedEntity<Server>
 {
     static constexpr const char* chassisInterface =
         "xyz.openbmc_project.Inventory.Item.Chassis";
-    static constexpr const char* fieldDatetime = "Datetime";
 
+  public:
+    enum class State
+    {
+        enabled
+    };
+
+    enum class BootOverrideType
+    {
+        continuous,
+        once,
+        none
+    };
+
+    ENTITY_DECL_FIELD(std::string, ServiceName)
+    ENTITY_DECL_FIELD(std::string, Datetime)
+    ENTITY_DECL_FIELD(std::string, UUID)
+    ENTITY_DECL_FIELD(std::string, Name)
+    ENTITY_DECL_FIELD(std::string, Type)
+    ENTITY_DECL_FIELD(std::string, Model)
+    ENTITY_DECL_FIELD(std::string, Manufacturer)
+    ENTITY_DECL_FIELD(std::string, PartNumber)
+    ENTITY_DECL_FIELD(std::string, SerialNumber)
+    ENTITY_DECL_FIELD(std::string, BiosVersion)
+    ENTITY_DECL_FIELD(std::string, BmcVersion)
+    ENTITY_DECL_FIELD_ENUM(State, State, enabled)
+    ENTITY_DECL_FIELD_ENUM(BootOverrideType, BootOverrideType, none)
+  private:
     class ServerQuery final : public dbus::FindObjectDBusQuery
     {
       public:
@@ -208,14 +707,13 @@ class Server final : public Entity, public CachedSource, NamedEntity<Server>
 
         DBUS_QUERY_DECL_EP(
             DBUS_QUERY_EP_IFACES(chassisInterface,
-                                 DBUS_QUERY_EP_FIELDS_ONLY2("Name"),
-                                 DBUS_QUERY_EP_FIELDS_ONLY2("Type")),
-            DBUS_QUERY_EP_IFACES(
-                general::assets::assetInterface,
-                DBUS_QUERY_EP_FIELDS_ONLY2(general::assets::manufacturer),
-                DBUS_QUERY_EP_FIELDS_ONLY2(general::assets::model),
-                DBUS_QUERY_EP_FIELDS_ONLY2(general::assets::partNumber),
-                DBUS_QUERY_EP_FIELDS_ONLY2(general::assets::serialNumber)))
+                                 DBUS_QUERY_EP_FIELDS_ONLY2(fieldName),
+                                 DBUS_QUERY_EP_FIELDS_ONLY2(fieldType)),
+            DBUS_QUERY_EP_IFACES(general::assets::assetInterface,
+                                 DBUS_QUERY_EP_FIELDS_ONLY2(fieldManufacturer),
+                                 DBUS_QUERY_EP_FIELDS_ONLY2(fieldModel),
+                                 DBUS_QUERY_EP_FIELDS_ONLY2(fieldPartNumber),
+                                 DBUS_QUERY_EP_FIELDS_ONLY2(fieldSerialNumber)))
       protected:
         DBUS_QUERY_DECLARE_CRITERIA(
             "/xyz/openbmc_project/inventory/system/chassis/",
@@ -226,68 +724,28 @@ class Server final : public Entity, public CachedSource, NamedEntity<Server>
         {
             using namespace app::helpers::utils;
 
-            static const DefaultFieldsValueDict defaultStatusOk{
-                {
-                    StatusProvider::fieldStatus,
-                    []() { return std::string(StatusProvider::OK); },
-                },
+            static const DefaultFieldsValueDict defaultGetters{
+                StatusRollup::defaultGetter<Server>(),
                 {
                     IndicatorLedProvider::fieldLed,
-                    []() { return false; },
+                    [](const auto&) { return false; },
                 },
                 {
                     fieldDatetime,
-                    []() {
+                    [](const auto&) {
                         static constexpr const char* bmcDatetimeFormat =
                             "%FT%T%z";
                         return getFormattedCurrentDate(bmcDatetimeFormat);
                     },
                 },
             };
-            return defaultStatusOk;
+            return defaultGetters;
         }
-
-        void setStatus(const DBusInstancePtr& instance) const
+        void supplementByStaticFields(
+            const DBusInstancePtr& instance) const override
         {
-            const auto sensors =
-                getEntityManager().getEntity<Sensors>()->getInstances();
-            // initialize to OK
-            instance->supplementOrUpdate(StatusProvider::fieldStatus,
-                                         std::string(StatusProvider::OK));
-            for (const auto sensor : sensors)
-            {
-                try
-                {
-                    const auto& currentStatus =
-                        instance->getField(StatusProvider::fieldStatus)
-                            ->getStringValue();
-                    if (currentStatus == StatusProvider::critical)
-                    {
-                        break;
-                    }
-                    const auto& sensorStatus =
-                        sensor->getField(StatusProvider::fieldStatus)
-                            ->getStringValue();
-
-                    const std::string status = StatusProvider::getHigherStatus(
-                        currentStatus, sensorStatus);
-                    instance->supplementOrUpdate(StatusProvider::fieldStatus,
-                                                 status);
-                }
-                catch (std::exception& ex)
-                {
-                    log<level::ERR>(
-                        "Fail to calculate server status",
-                        entry("DESCRIPTION=Can't access to the server field"),
-                        entry("FIELD=%s", StatusProvider::fieldStatus),
-                        entry("ERROR=%s", ex.what()));
-                }
-            }
-        }
-
-        void supplementByStaticFields(const DBusInstancePtr& instance) const override
-        {
-            this->setStatus(instance);
+            setFieldServiceName(instance, "system");
+            setFieldState(instance, State::enabled);
         }
     };
 
@@ -322,82 +780,103 @@ class Server final : public Entity, public CachedSource, NamedEntity<Server>
         }
     }
 
-    static void linkVersions(const IEntity::InstancePtr& suppl,
+    static void linkActiveVersions(const IEntity::InstancePtr& supplementer,
+                                   const IEntity::InstancePtr& target)
+    {
+        const auto purpose = FirmwareProvider::getFieldPurpose(supplementer);
+        const auto activation =
+            FirmwareProvider::getFieldActivation(supplementer);
+        if (activation == FirmwareProvider::Activations::active)
+        {
+            if (purpose == FirmwareProvider::Purpose::bmc)
+            {
+                setFieldBmcVersion(
+                    target, FirmwareProvider::getFieldVersion(supplementer));
+                return;
+            }
+            if (purpose == FirmwareProvider::Purpose::bios)
+            {
+                setFieldBiosVersion(
+                    target, FirmwareProvider::getFieldVersion(supplementer));
+            }
+        }
+    }
+
+    static void linkHostBoot(const IEntity::InstancePtr& supplementer,
                              const IEntity::InstancePtr& target)
     {
-        static std::map<VersionProvider::VersionPurpose, MemberName>
-            purposeToMemberName{
-                {VersionProvider::VersionPurpose::BMC,
-                 VersionProvider::fieldVersionBmc},
-                {VersionProvider::VersionPurpose::BIOS,
-                 VersionProvider::fieldVersionBios},
-            };
-        static const std::vector<std::string> availableVersionObjects{
-            "bmc active",
-            "bios active",
-        };
-
-        try
+        setFieldBootOverrideType(target, BootOverrideType::none);
+        HostBootProvider::setFieldMode(target, HostBootProvider::Mode::none);
+        HostBootProvider::resetFieldType(target);
+        if (HostBootProvider::getFieldMode(supplementer) !=
+            HostBootProvider::Mode::none)
         {
-            auto availableName =
-                helpers::utils::getNameFromLastSegmentObjectPath(
-                    suppl->getField(metaObjectPath)->getStringValue());
-
-            auto versionObjectValid = std::any_of(
-                availableVersionObjects.begin(), availableVersionObjects.end(),
-                [availableName](
-                    const std::string& availableVersionObject) -> bool {
-                    return availableName == availableVersionObject;
-                });
-            if (!versionObjectValid)
-            {
-                return;
-            }
-
-            auto purpose = VersionProvider::getPurpose(suppl);
-            if (VersionProvider::VersionPurpose::Unknown == purpose)
-            {
-                log<level::ERR>("Fail to acquire firmware version",
-                                entry("DESCRIPTION=Accepted unknown version "
-                                      "purpose. Skipping"));
-                return;
-            }
-
-            auto findMemberNameIt = purposeToMemberName.find(purpose);
-            if (findMemberNameIt == purposeToMemberName.end())
-            {
-                throw app::core::exceptions::InvalidType("Version Purpose");
-            }
-
-            auto versionValue =
-                suppl->getField(VersionProvider::fieldVersion)->getValue();
-            target->supplementOrUpdate(findMemberNameIt->second, versionValue);
+            target->supplementOrUpdate(supplementer);
+            setFieldBootOverrideType(target, BootOverrideType::continuous);
         }
-        catch (std::bad_variant_access& ex)
+    }
+
+    static void linkHostBootOnce(const IEntity::InstancePtr& supplementer,
+                                 const IEntity::InstancePtr& target)
+    {
+        if (HostBootProvider::getFieldMode(supplementer) !=
+                HostBootProvider::Mode::none &&
+            HostBootOnceProvider::getFieldOneTime(supplementer))
         {
-            log<level::ERR>("Fail to get firmware version",
-                            entry("DESCRIPTION=Can't supplement the 'Version' "
-                                  "field of 'Server'"),
-                            entry("ERROR=%s", ex.what()));
+            target->supplementOrUpdate(supplementer);
+            setFieldBootOverrideType(target, BootOverrideType::once);
+        }
+    }
+
+    static void linkRebootAttempts(const IEntity::InstancePtr& supplementer,
+                                   const IEntity::InstancePtr& target)
+    {
+        auto config = BootSettingsProvider::getFieldRetryConfig(target);
+        RebootRemainingProvider::resetFieldAttemptsLeft(target);
+        if (config == BootSettingsProvider::RetryConfig::retryAttempts)
+        {
+            target->supplementOrUpdate(supplementer);
         }
     }
 
   public:
     Server() : Entity(), query(std::make_shared<ServerQuery>())
     {
-        // manual initialize versions', status' fields because their comes from
-        // calucalted provider linker rule.
+        this->createMember(fieldServiceName);
         this->createMember(fieldDatetime);
-        this->createMember(StatusProvider::fieldStatus);
+        this->createMember(fieldUUID);
+        this->createMember(fieldState);
+        this->createMember(fieldBootOverrideType);
+        this->createMember(fieldBmcVersion);
+        this->createMember(fieldBiosVersion);
     }
     ~Server() override = default;
+
+    static const std::vector<std::string>& observedCauserList()
+    {
+        static const std::vector<std::string> causers{};
+        return causers;
+    }
 
   protected:
     /* clang-format off */
     ENTITY_DECL_PROVIDERS(
         ENTITY_PROVIDER_LINK_DEFAULT(AssetTagProvider),
+        ENTITY_PROVIDER_LINK_DEFAULT(BootSettingsProvider),
+        ENTITY_PROVIDER_LINK_DEFAULT(HostWatchdogProvider),
+        ENTITY_PROVIDER_LINK_DEFAULT(PowerRestorePolicyProvider),
+        ENTITY_PROVIDER_LINK(RebootRemainingProvider, linkRebootAttempts),
+        ENTITY_PROVIDER_LINK(HostBootProvider, linkHostBoot),
+        ENTITY_PROVIDER_LINK(HostBootOnceProvider, linkHostBootOnce),
         ENTITY_PROVIDER_LINK(IndicatorLedProvider,linkIndicatorLed),
-        ENTITY_PROVIDER_LINK(VersionProvider, linkVersions)
+        ENTITY_PROVIDER_LINK(FirmwareProvider, linkActiveVersions),
+        ENTITY_PROVIDER_LINK_DEFAULT(StatusByCallbackManager<Server>),
+    )
+    ENTITY_DECL_RELATIONS(
+        /* relation to bmc to object */
+        ENTITY_DEF_RELATION(
+            Firmware, Firmware::firmwareRelation<FirmwareProvider::Purpose::bios>()
+        )
     )
     ENTITY_DECL_QUERY(query)
     /* clang-format on */

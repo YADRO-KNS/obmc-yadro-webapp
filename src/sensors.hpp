@@ -3,13 +3,11 @@
 
 #pragma once
 
-#include <phosphor-logging/log.hpp>
-
 #include <core/entity/dbus_query.hpp>
 #include <core/entity/entity.hpp>
 #include <core/helpers/utils.hpp>
-
 #include <formatters.hpp>
+#include <phosphor-logging/log.hpp>
 #include <status_provider.hpp>
 
 namespace app
@@ -101,7 +99,8 @@ class Sensors :
 
         static constexpr const char* propWarningAlarmHigh = "WarningAlarmHigh";
         static constexpr const char* propWarningAlarmLow = "WarningAlarmLow";
-        static constexpr const char* propCriticalAlarmHigh = "CriticalAlarmHigh";
+        static constexpr const char* propCriticalAlarmHigh =
+            "CriticalAlarmHigh";
         static constexpr const char* propCriticalAlarmLow = "CriticalAlarmLow";
 
         static constexpr const char* propValue = "Value";
@@ -116,7 +115,7 @@ class Sensors :
             const DbusVariantType format(const PropertyName& property,
                                          const DbusVariantType& value) override
             {
-                constexpr const std::array inventorySlugList {
+                constexpr const std::array inventorySlugList{
                     "inventory",
                     "cpu",
                 };
@@ -160,13 +159,16 @@ class Sensors :
             {
                 return static_cast<size_t>(index);
             }
+
           public:
-            GroupParser(const DBusInstancePtr& instance): instance(instance) {}
+            GroupParser(const DBusInstancePtr& instance) : instance(instance)
+            {}
             ~GroupParser() = default;
 
             Group operator()()
             {
-                constexpr const size_t maxIndexes = static_cast<size_t>(Index::max);
+                constexpr const size_t maxIndexes =
+                    static_cast<size_t>(Index::max);
                 static constexpr std::array<const char*, maxIndexes> paths = {
                     "/xyz/openbmc_project/sensors/voltage/",
                     "/xyz/openbmc_project/sensors/power/",
@@ -285,8 +287,10 @@ class Sensors :
         void setSensorName(const DBusInstancePtr& instance) const
         {
             const auto& objectPath = instance->getObjectPath();
-            setFieldId(instance, getNameFromLastSegmentObjectPath(objectPath, false));
-            setFieldName(instance, getNameFromLastSegmentObjectPath(objectPath));
+            setFieldId(instance,
+                       getNameFromLastSegmentObjectPath(objectPath, false));
+            setFieldName(instance,
+                         getNameFromLastSegmentObjectPath(objectPath));
         }
 
         void setStatus(const DBusInstancePtr& instance) const
@@ -352,7 +356,8 @@ class Sensors :
             setFieldState(instance, State::absent);
             try
             {
-                if (instance && instance->getField(fieldAvailable)->getBoolValue())
+                if (instance &&
+                    instance->getField(fieldAvailable)->getBoolValue())
                 {
                     setFieldState(instance, State::enabled);
                 }
@@ -369,7 +374,8 @@ class Sensors :
             }
         }
 
-        void supplementByStaticFields(const DBusInstancePtr& instance) const override
+        void supplementByStaticFields(
+            const DBusInstancePtr& instance) const override
         {
             this->setSensorName(instance);
             this->setStatus(instance);
@@ -411,9 +417,9 @@ class Sensors :
                     }
                     catch (std::exception& ex)
                     {
-                        log<level::ERR>(
-                            "Fail to configure relation Inventory to Reading sensor",
-                            entry("ERROR=%s", ex.what()));
+                        log<level::ERR>("Fail to configure relation Inventory "
+                                        "to Reading sensor",
+                                        entry("ERROR=%s", ex.what()));
                     }
 
                     return false;
@@ -437,6 +443,7 @@ class Sensors :
     {
         return Condition::buildEqual(fieldGroup, Group::sensors);
     }
+
   protected:
     ENTITY_DECL_QUERY(query)
   private:
