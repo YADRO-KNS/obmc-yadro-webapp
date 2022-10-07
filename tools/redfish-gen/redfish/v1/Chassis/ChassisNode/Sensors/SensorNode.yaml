@@ -1,0 +1,89 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+SensorNode@dynamic:
+  Name: Sensor
+  Schema: Sensor
+  Version: 1.5.0
+  Parameter:
+    Type: Entity
+    Source: Sensors
+    Parameter: SensorId
+    Value: Sensors::fieldName
+  Actions:
+    Get:
+      Properties:
+        Entity:
+          - Source: Sensors
+            Fields:
+              - Name: Name
+                SourceField: Sensors::fieldName
+              - Name: Id
+                SourceField: Sensors::fieldId
+              - Name: ReadingRangeMax
+                SourceField: Sensors::fieldMaxValue
+              - Name: ReadingRangeMin
+                SourceField: Sensors::fieldMinValue
+              - Name: Reading
+                SourceField: Sensors::fieldReading
+              - Name: ReadingType
+                SourceField: Sensors::fieldUnit
+        Enums:
+          - Name: ReadingType
+            Source: Sensors::Unit
+            Mapping:
+              Temperature: temperature
+              Voltage: voltage
+              Rotational: rotational
+              Current: current
+              Power: power
+              EnergyJoules: energyJoules
+              Altitude: altitude
+              Percent: percent
+        Fragments:
+          - Name: Status
+            Entity:
+              - Source: Sensors
+                Fields:
+                  - Name: Health
+                    SourceField: StatusProvider::fieldStatus
+                  - Name: State
+                    SourceField: Sensors::fieldState
+            Enums:
+              - Name: Health
+                Source: StatusProvider::Status
+                Mapping:
+                  OK: ok
+                  Warning: warning
+                  Critical: critical
+              - Name: State
+                Source: Sensors::State
+                Mapping:
+                  Enabled: enabled
+                  Absent: absent
+          - Name: Thresholds
+            Fragments:
+              - Name: LowerCaution
+                Entity:
+                  - Source: Sensors
+                    Fields:
+                      - Name: Reading
+                        SourceField: Sensors::fieldLowWarning
+              - Name: LowerCritical
+                Entity:
+                  - Source: Sensors
+                    Fields:
+                      - Name: Reading
+                        SourceField: Sensors::fieldLowCritical
+              - Name: UpperCaution
+                Entity:
+                  - Source: Sensors
+                    Fields:
+                      - Name: Reading
+                        SourceField: Sensors::fieldHighWarning
+              - Name: UpperCritical
+                Entity:
+                  - Source: Sensors
+                    Fields:
+                      - Name: Reading
+                        SourceField: Sensors::fieldHighCritical

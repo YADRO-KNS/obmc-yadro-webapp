@@ -1,0 +1,12 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+NetworkAdapters:
+  Name: Network adapters collection
+  Schema: NetworkAdapterCollection
+  Actions:
+    Get:
+      Reference:
+        - Node:
+            - NetworkAdapter
+          Field: Members

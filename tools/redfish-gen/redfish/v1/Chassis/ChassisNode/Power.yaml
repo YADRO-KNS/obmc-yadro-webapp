@@ -1,0 +1,141 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+Power:
+  Name: Power
+  Schema: Power
+  Version: 1.7.1
+  Actions:
+    Get:
+      Properties:
+        Collection:
+          - Name: Voltages
+            Source: Sensors
+            Annotations:
+              - Type: ODataId
+            Conditions:
+              - Field: Sensors::fieldUnit
+                Value: Sensors::Unit::voltage
+            Entity:
+              - Source: Sensors
+                Fields:
+                  - Name: Name
+                    SourceField: Sensors::fieldName
+                  - Name: MemberId
+                    SourceField: Sensors::fieldId
+                  - Name: LowerThresholdCritical
+                    SourceField: Sensors::fieldLowCritical
+                  - Name: LowerThresholdNonCritical
+                    SourceField: Sensors::fieldLowWarning
+                  - Name: MaxReadingRange
+                    SourceField: Sensors::fieldMaxValue
+                  - Name: MinReadingRange
+                    SourceField: Sensors::fieldMinValue
+                  - Name: ReadingVolts
+                    SourceField: Sensors::fieldReading
+                  - Name: UpperThresholdCritical
+                    SourceField: Sensors::fieldHighCritical
+                  - Name: UpperThresholdNonCritical
+                    SourceField: Sensors::fieldHighWarning
+            Annotations:
+              - Type: ODataId
+            Fragments:
+              - Name: Status
+                Entity:
+                  - Source: Sensors
+                    Fields:
+                      - Name: Health
+                        SourceField: StatusProvider::fieldStatus
+                      - Name: State
+                        SourceField: Sensors::fieldState
+                Enums:
+                  - &Health
+                    Name: Health
+                    Source: StatusProvider::Status
+                    Mapping:
+                      OK: ok
+                      Warning: warning
+                      Critical: critical
+                  - Name: State
+                    Source: Sensors::State
+                    Mapping:
+                      Enabled: enabled
+                      Absent: absent
+          - Name: PowerSupplies
+            Source: PSU
+            Annotations:
+              - Type: ODataId
+            Entity:
+              - Source: PSU
+                Fields:
+                  - Name: Name
+                    SourceField: PSU::fieldName
+                  - Name: MemberId
+                    SourceField: PSU::fieldId
+                  - Name: Manufacturer
+                    SourceField: PSU::fieldManufacturer
+                  - Name: Model
+                    SourceField: PSU::fieldModel
+                  - Name: PartNumber
+                    SourceField: PSU::fieldPartNumber
+                  - Name: SerialNumber
+                    SourceField: PSU::fieldSerialNumber
+              - Source: Sensors
+                Name: PowerInput
+                Conditions:
+                  - Preset: PSU::outputPowerSensor
+                    Args:
+                      - instance
+                Fields:
+                  - Name: PowerOutputWatts
+                    SourceField: Sensors::fieldReading
+              - Source: Sensors
+                Name: PowerOutput
+                Conditions:
+                  - Preset: PSU::inputPowerSensor
+                    Args:
+                      - instance
+                Fields:
+                  - Name: PowerInputWatts
+                    SourceField: Sensors::fieldReading
+            Oem:
+              - Name: OemPower
+                Version: 1.0.0
+                Entity:
+                  - Source: PSU
+                    Fields:
+                      - Name: CrpsMfrFWRevision
+                        SourceField: PMBusProvider::fieldCrpsMfrFWRevision
+                      - Name: PmbusMfrDate
+                        SourceField: PMBusProvider::fieldPmbusMfrDate
+                      - Name: PmbusMfrID
+                        SourceField: PMBusProvider::fieldPmbusMfrID
+                      - Name: PmbusMfrLocation
+                        SourceField: PMBusProvider::fieldPmbusMfrLocation
+                      - Name: PmbusMfrModel
+                        SourceField: PMBusProvider::fieldPmbusMfrModel
+                      - Name: PmbusMfrRevision
+                        SourceField: PMBusProvider::fieldPmbusMfrRevision
+                      - Name: PmbusMfrSerial
+                        SourceField: PMBusProvider::fieldPmbusMfrSerial
+                      - Name: PmbusRevision
+                        SourceField: PMBusProvider::fieldPmbusRevision
+                Annotations:
+                  - Type: ODataId
+            Fragments:
+              - Name: Status
+                Entity:
+                  - Source: PSU
+                    Fields:
+                      - Name: Health
+                        SourceField: StatusProvider::fieldStatus
+                      - Name: HealthRollup
+                        SourceField: StatusProvider::fieldStatusRollup
+                      - Name: State
+                        SourceField: Fan::fieldState
+                Enums:
+                  - *Health
+                  - Name: State
+                    Source: Fan::State
+                    Mapping:
+                      Enabled: enabled

@@ -1,0 +1,92 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+PCIeFunction@dynamic:
+  Name: PCIe Function
+  Schema: PCIeFunction
+  Version: 1.3.0
+  Parameter:
+    Type: Entity
+    Source: PCIeFunction
+    Parameter: PCIeFunctionId
+    Value: PCIeProvider::fieldFunctionId
+  Actions:
+    Get:
+      Properties:
+        Entity:
+          - Source: PCIeFunction
+            Fields:
+              - Name: Id
+                SourceField: PCIeProvider::fieldFunctionId
+              - Name: ClassCode
+                SourceField: PCIeProvider::fieldClassCode
+              - Name: DeviceClass
+                SourceField: PCIeProvider::fieldDeviceClass
+              - Name: DeviceId
+                SourceField: PCIeProvider::fieldDeviceId
+              - Name: FunctionId
+                SourceField: PCIeProvider::fieldFunctionId
+              - Name: FunctionType
+                SourceField: PCIeProvider::fieldFunctionType
+              - Name: RevisionId
+                SourceField: PCIeProvider::fieldRevisionId
+              - Name: SubsystemId
+                SourceField: PCIeProvider::fieldSubsystemId
+              - Name: SubsystemVendorId
+                SourceField: PCIeProvider::fieldSubsystemVendorId
+              - Name: VendorId
+                SourceField: PCIeProvider::fieldVendorId
+        Oem:
+          - Name: OemPCIeFunction
+            Version: 1.0.0
+            Entity:
+              - Source: PCIeFunction
+                Fields:
+                  - Name: DeviceSubClass
+                    SourceField: PCIeProvider::fieldDeviceSubClass
+            Annotations:
+              - Type: ODataId
+        Links:
+          - Name: PCIeDevice
+            Template: /redfish/v1/Chassis/{ChassisId}/PCIeDevices/{PCIeDeviceId}
+            Parameters:
+              - Id: ChassisId
+                Entity: Server
+                Field: Server::fieldName
+              - Id: PCIeDeviceId
+                Entity: PCIeDevice
+                Field: PCIeProvider::fieldId
+                FromContext: True
+
+        Enums:
+          - Name: DeviceClass
+            Source: PCIeProvider::DeviceClass
+            Mapping:
+              UnclassifiedDevice: unclassifiedDevice
+              MassStorageController: massStorageController
+              NetworkController: networkController
+              DisplayController: displayController
+              MultimediaController: multimediaController
+              MemoryController: memoryController
+              Bridge: bridge
+              CommunicationController: communicationController
+              GenericSystemPeripheral: genericSystemPeripheral
+              InputDeviceController: inputDeviceController
+              DockingStation: dockingStation
+              Processor: processor
+              SerialBusController: serialBusController
+              WirelessController: wirelessController
+              IntelligentController: intelligentController
+              SatelliteCommunicationsController: satelliteCommunicationsController
+              EncryptionController: encryptionController
+              SignalProcessingController: signalProcessingController
+              ProcessingAccelerators: processingAccelerators
+              NonEssentialInstrumentation: nonEssentialInstrumentation
+              Coprocessor: coprocessor
+              UnassignedClass: unassignedClass
+              Other: other
+          - Name: FunctionType
+            Source: PCIeProvider::FunctionType
+            Mapping:
+              Physical: physicalFunction
+              Virtual: virtualFunction
