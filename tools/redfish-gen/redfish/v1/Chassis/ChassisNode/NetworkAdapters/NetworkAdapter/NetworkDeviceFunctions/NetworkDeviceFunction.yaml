@@ -1,0 +1,47 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+NetworkDeviceFunction@dynamic:
+  Name: Network device function
+  Version: 1.8.0
+  Schema: NetworkDeviceFunction
+  Parameter:
+    Type: Entity
+    Source: NetAdapter
+    Parameter: NetworkDeviceFunctionId
+    Value: NetAdapter::fieldName
+  Actions:
+    Get:
+      Properties:
+        Entity:
+          - Source: NetAdapter
+            Fields:
+              - Name: Id
+                SourceField: NetAdapter::fieldName
+        Fragments:
+          - Name: Ethernet
+            Entity:
+              - Source: NetAdapter
+                Fields:
+                  - Name: PermanentMACAddress
+                    SourceField: NetAdapter::fieldMAC
+          - Name: Status
+            Entity:
+              - Source: NetAdapter
+                Fields:
+                  - Name: Health
+                    SourceField: StatusProvider::fieldStatus
+                  - Name: State
+                    SourceField: NetAdapter::fieldState
+            Enums:
+              - Name: Health
+                Source: StatusProvider::Status
+                Mapping:
+                  OK: ok
+                  Warning: warning
+                  Critical: critical
+              - Name: State
+                Source: NetAdapter::State
+                Mapping:
+                  Enabled: enabled
+                  Absent: absent

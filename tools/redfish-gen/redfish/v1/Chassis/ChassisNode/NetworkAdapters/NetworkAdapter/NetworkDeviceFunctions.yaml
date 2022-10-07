@@ -1,0 +1,12 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+NetworkDeviceFunctions:
+  Name: Network device functions collection
+  Schema: NetworkDeviceFunctionCollection
+  Actions:
+    Get:
+      Reference:
+        - Node:
+          - NetworkDeviceFunction
+          Field: Members
