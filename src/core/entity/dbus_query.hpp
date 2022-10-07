@@ -615,6 +615,92 @@ class IntrospectServiceDBusQuery :
     const ObjectPath& getObjectPathNamespace() const override;
 };
 
+template <typename TCallResult, typename... Args>
+class DBusQueryViaMethodCall :
+    public DBusQuery,
+    public std::enable_shared_from_this<DBusQueryViaMethodCall<TCallResult, Args...>>
+{
+    using MethodName = std::string;
+    using MethodParams = std::tuple<Args...>;
+    const ServiceName service;
+    const ObjectPath object;
+    const InterfaceName interface;
+    const MethodName method;
+    MethodParams methodParams;
+
+  public:
+    explicit DBusQueryViaMethodCall(const ServiceName& service,
+                                    const ObjectPath& object,
+                                    const InterfaceName& interface,
+                                    const MethodName& method,
+                                    Args&&... args) noexcept :
+        DBusQuery(),
+        service(service), object(object), interface(interface), method(method)
+    {
+        methodParams = MethodParams(args...);
+    }
+    ~DBusQueryViaMethodCall() override = default;
+
+    const entity::IEntity::InstanceCollection process() override
+    {
+        try
+        {
+            const auto response = this->callDBusWithParams(
+                methodParams, std::index_sequence_for<Args...>());
+            return populateInstances(response);
+        }
+        catch (const sdbusplus::exception_t& ex)
+        {
+            log<level::DEBUG>(
+                "Fail to process DBus query (DBusQueryViaMethodCall)",
+                entry("DBUS_SVC=%s", this->service.c_str()),
+                entry("DBUS_PATH=%s", this->object.c_str()),
+                entry("DBUS_INTF=%s", this->interface.c_str()),
+                entry("DBUS_MTD=%s", this->method.c_str()),
+                entry("ERROR=%s", ex.what()));
+        }
+        return {};
+    }
+
+    bool checkCriteria(const ObjectPath&, const InterfaceList&,
+                       std::optional<ServiceName> = std::nullopt) const override final
+    {
+        // A criteria checkup required to support cache instances only.
+        return false;
+    }
+    const DBusPropertyEndpointMap& getSearchPropertiesMap() const override
+    {
+        static const DBusPropertyEndpointMap emptyMap{};
+        return emptyMap;
+    }
+
+  protected:
+    template <std::size_t... ISeq>
+    const TCallResult callDBusWithParams(const MethodParams& params,
+                            std::index_sequence<ISeq...>)
+    {
+        return getConnect()->callMethodAndRead<TCallResult, Args...>(
+            this->service, this->object, this->interface, this->method,
+            std::get<ISeq>(std::forward<decltype(params)>(params))...);
+    }
+
+    virtual IEntity::InstanceCollection
+        populateInstances(const TCallResult& yield) = 0;
+
+  protected:
+    DBusQueryConstWeakPtr getWeakPtr() const override
+    {
+        return this->weak_from_this();
+    }
+    DBusQueryPtr getSharedPtr() override
+    {
+        return this->shared_from_this();
+    }
+    const ObjectPath& getObjectPathNamespace() const override
+    {
+        return this->object;
+    }
+};
 } // namespace dbus
 } // namespace query
 } // namespace app
