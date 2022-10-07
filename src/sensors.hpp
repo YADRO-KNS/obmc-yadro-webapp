@@ -72,7 +72,7 @@ class Sensors :
 
     ENTITY_DECL_FIELD_DEF(bool, Available, false)
     ENTITY_DECL_FIELD_DEF(bool, Functional, false)
-    
+
     ENTITY_DECL_FIELD_ENUM(State, State, absent)
     ENTITY_DECL_FIELD_ENUM(StatusProvider::Status, Status, ok)
     ENTITY_DECL_FIELD(std::string, AssociatedInventoryId)
@@ -112,7 +112,7 @@ class Sensors :
           public:
             ~FormatAssociatedInventory() override = default;
 
-            const DbusVariantType format(const PropertyName& property,
+            const DbusVariantType format(const PropertyName&,
                                          const DbusVariantType& value) override
             {
                 constexpr const std::array inventorySlugList{
@@ -154,7 +154,7 @@ class Sensors :
                 utilization,
                 max
             };
-            
+
             inline size_t index(Index index)
             {
                 return static_cast<size_t>(index);
@@ -433,7 +433,7 @@ class Sensors :
     {
         return Condition::buildEqual(fieldAvailable, true);
     }
-    
+
     static const ConditionPtr sensorsByType(Unit unit)
     {
         return Condition::buildEqual(fieldUnit, unit);
