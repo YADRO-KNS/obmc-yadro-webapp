@@ -51,8 +51,9 @@ using DBusAssociationsType =
     std::vector<std::tuple<std::string, std::string, std::string>>;
 using DbusVariantType =
     std::variant<DBusAssociationsType, std::vector<std::string>,
-                 std::vector<double>, std::string, int64_t, uint64_t, double,
-                 int32_t, uint32_t, int16_t, uint16_t, uint8_t, bool>;
+                 std::vector<double>, std::vector<int>, std::string, int64_t,
+                 uint64_t, double, int32_t, uint32_t, int16_t, uint16_t,
+                 uint8_t, bool>;
 using DBusPropertiesMap = std::map<PropertyName, DbusVariantType>;
 using DBusInterfacesMap = std::map<InterfaceName, DBusPropertiesMap>;
 
