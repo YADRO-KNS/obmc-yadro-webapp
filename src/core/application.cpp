@@ -107,6 +107,7 @@ void Application::initEntities()
     entityManager.buildEntity<Fan>();
     entityManager.buildEntity<PSU>();
     entityManager.buildEntity<Drive>();
+    entityManager.buildEntity<StorageControllers>();
     entityManager.buildEntity<NetAdapter>();
     entityManager.buildEntity<Settings>();
     entityManager.buildEntity<PCIeDevice>();
