@@ -10,6 +10,7 @@
 #include <formatters.hpp>
 #include <pcie.hpp>
 #include <phosphor-logging/log.hpp>
+#include <sensors.hpp>
 #include <status_provider.hpp>
 
 namespace app
@@ -31,7 +32,22 @@ class ChassisStateProvider final :
     public NamedEntity<ChassisStateProvider>
 {
   public:
+    enum class State
+    {
+        enabled,
+        standbyOffline
+    };
+
+    enum class Power
+    {
+        on,
+        off
+    };
+
+    ENTITY_DECL_FIELD_ENUM(State, State, standbyOffline)
+    ENTITY_DECL_FIELD_ENUM(Power, PowerState, off)
     ENTITY_DECL_FIELD(std::string, LastStateChangeTime)
+
   private:
     class Query : public dbus::GetObjectDBusQuery
     {
@@ -42,6 +58,27 @@ class ChassisStateProvider final :
         static constexpr const char* chassisIface =
             "xyz.openbmc_project.State.Chassis";
 
+        class FormatPower : public query::dbus::IFormatter
+        {
+            static std::string dbusEnum(const std::string& val)
+            {
+                return "xyz.openbmc_project.State.Chassis.PowerState." + val;
+            }
+
+          public:
+            ~FormatPower() override = default;
+
+            const DbusVariantType format(const PropertyName& property,
+                                         const DbusVariantType& value) override
+            {
+                static const std::map<std::string, Power> states{
+                    {dbusEnum("On"), Power::on},
+                };
+
+                return formatValueFromDict(states, property, value, Power::off);
+            }
+        };
+
       public:
         Query() : GetObjectDBusQuery(chassisStateSvc, chassisObject)
         {}
@@ -49,9 +86,12 @@ class ChassisStateProvider final :
 
         // clang-format: off
         DBUS_QUERY_DECL_EP(DBUS_QUERY_EP_IFACES(
-            chassisIface, DBUS_QUERY_EP_SET_FORMATTERS2(
-                              fieldLastStateChangeTime,
-                              DBUS_QUERY_EP_CSTR(FormatTimeMsToSec))))
+            chassisIface,
+            DBUS_QUERY_EP_SET_FORMATTERS2(
+                fieldLastStateChangeTime,
+                DBUS_QUERY_EP_CSTR(FormatTimeMsToSec)),
+            DBUS_QUERY_EP_SET_FORMATTERS("CurrentPowerState", fieldPowerState,
+                                         DBUS_QUERY_EP_CSTR(FormatPower))))
       protected:
         const InterfaceList& searchInterfaces() const override
         {
@@ -61,12 +101,90 @@ class ChassisStateProvider final :
             return interfaces;
         }
         // clang-format: on
+        void supplementByStaticFields(
+            const DBusInstancePtr& instance) const override
+        {
+            if (getFieldPowerState(instance) == Power::on)
+            {
+                setFieldState(instance, State::enabled);
+                return;
+            }
+            setFieldState(instance, State::standbyOffline);
+        }
     };
+
   public:
     ChassisStateProvider() :
         EntitySupplementProvider(), query(std::make_shared<Query>())
-    {}
+    {
+        this->createMember(fieldState);
+    }
     ~ChassisStateProvider() override = default;
+
+  protected:
+    ENTITY_DECL_QUERY(query)
+  private:
+    DBusQueryPtr query;
+};
+
+class IntrusionSensor final :
+    public Entity,
+    public CachedSource,
+    public NamedEntity<IntrusionSensor>
+{
+  public:
+    enum class Status
+    {
+        normal,
+        hardwareIntrusion,
+        tamperingDetected
+    };
+    ENTITY_DECL_FIELD_ENUM(Status, Status, normal)
+
+  private:
+    class Query final : public dbus::FindObjectDBusQuery
+    {
+        static constexpr const char* iface =
+            "xyz.openbmc_project.Chassis.Intrusion";
+        class FormatStatus : public query::dbus::IFormatter
+        {
+          public:
+            ~FormatStatus() override = default;
+
+            const DbusVariantType format(const PropertyName& property,
+                                         const DbusVariantType& value) override
+            {
+                static const std::map<std::string, Status> statusList{
+                    {"Normal", Status::normal},
+                    {"HardwareIntrusion", Status::hardwareIntrusion},
+                    {"TamperingDetected", Status::tamperingDetected},
+                };
+
+                return formatValueFromDict(statusList, property, value,
+                                           Status::normal);
+            }
+        };
+
+      public:
+        Query() : dbus::FindObjectDBusQuery()
+        {}
+        ~Query() override = default;
+
+        DBUS_QUERY_DECL_EP(DBUS_QUERY_EP_IFACES(
+            iface,
+            DBUS_QUERY_EP_SET_FORMATTERS2(fieldStatus,
+                                          DBUS_QUERY_EP_CSTR(FormatStatus))))
+
+      protected:
+        DBUS_QUERY_DECLARE_CRITERIA("/xyz/openbmc_project/Intrusion",
+                                    DBUS_QUERY_CRIT_IFACES(iface), nextOneDepth,
+                                    std::nullopt)
+    };
+
+  public:
+    IntrusionSensor() : Entity(), query(std::make_shared<Query>())
+    {}
+    ~IntrusionSensor() override = default;
 
   protected:
     ENTITY_DECL_QUERY(query)
@@ -86,7 +204,6 @@ class Chassis final :
         Other
     };
 
-    ENTITY_DECL_FIELD_DEF(std::string, Name, "MainChassis")
     ENTITY_DECL_FIELD_ENUM(ChassisType, Type, Other)
     ENTITY_DECL_FIELD(std::string, PartNumber)
     ENTITY_DECL_FIELD(std::string, Manufacturer)
@@ -133,25 +250,26 @@ class Chassis final :
         DBUS_QUERY_DECLARE_CRITERIA(
             "/xyz/openbmc_project/inventory/system/board/",
             DBUS_QUERY_CRIT_IFACES(yadroInterface), nextOneDepth, std::nullopt)
-        void supplementByStaticFields(
-            const DBusInstancePtr& instance) const override
+
+        const DefaultFieldsValueDict& getDefaultFieldsValue() const override
         {
-            instance->supplementOrUpdate(fieldName, std::string("MainChassis"));
+            static const DefaultFieldsValueDict defaults{
+                StatusRollup::defaultGetter<Chassis>(),
+                StatusFromRollup::defaultGetter<Chassis>(),
+            };
+            return defaults;
         }
     };
 
   public:
     Chassis() : Entity(), query(std::make_shared<ChassisQuery>())
-    {
-        createMember(fieldName);
-    }
+    {}
     ~Chassis() override = default;
 
   protected:
     ENTITY_DECL_QUERY(query)
-    ENTITY_DECL_PROVIDERS(
-      ENTITY_PROVIDER_LINK_DEFAULT(ChassisStateProvider)
-    )
+    ENTITY_DECL_PROVIDERS(ENTITY_PROVIDER_LINK_DEFAULT(ChassisStateProvider))
+    ENTITY_DECL_RELATIONS(ENTITY_DEF_RELATION_DIRECT(Sensors))
   private:
     DBusQueryPtr query;
 };
