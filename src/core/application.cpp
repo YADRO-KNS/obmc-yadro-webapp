@@ -125,6 +125,10 @@ void Application::initEntities()
     entityManager.buildEntity<Ethernet>();
 
     entityManager.buildEntity<SessionManager>();
+    entityManager.buildEntity<Accounts>();
+    entityManager.buildEntity<DomainGroups>();
+    entityManager.buildEntity<DomainAccounts>();
+    entityManager.buildEntity<AccountSettings>();
     entityManager.buildEntity<Firmware>();
     entityManager.buildEntity<FirmwareManagment>();
     entityManager.buildEntity<BmcManager>();
