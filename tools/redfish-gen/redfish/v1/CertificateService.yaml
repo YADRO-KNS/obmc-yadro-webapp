@@ -1,0 +1,11 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+CertificateService:
+  Name: The certificates collection
+  Schema: CertificateService
+  Version: 1.0.4
+  Actions:
+    Get:
+      Reference:
+        - Node: CertificateLocations
