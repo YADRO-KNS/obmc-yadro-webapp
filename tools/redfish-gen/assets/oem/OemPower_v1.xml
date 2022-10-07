@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<edmx:Edmx xmlns:edmx="http://docs.oasis-open.org/odata/ns/edmx" Version="4.0">
+
+  <edmx:Reference Uri="http://docs.oasis-open.org/odata/odata/v4.0/errata03/csd01/complete/vocabularies/Org.OData.Core.V1.xml">
+    <edmx:Include Namespace="Org.OData.Core.V1" Alias="OData"/>
+  </edmx:Reference>
+  <edmx:Reference Uri="http://docs.oasis-open.org/odata/odata/v4.0/errata03/csd01/complete/vocabularies/Org.OData.Measures.V1.xml">
+    <edmx:Include Namespace="Org.OData.Measures.V1" Alias="Measures"/>
+  </edmx:Reference>
+  <edmx:Reference Uri="http://redfish.dmtf.org/schemas/v1/RedfishExtensions_v1.xml">
+    <edmx:Include Namespace="RedfishExtensions.v1_0_0" Alias="Redfish"/>
+  </edmx:Reference>
+  <edmx:Reference Uri="http://redfish.dmtf.org/schemas/v1/Resource_v1.xml">
+    <edmx:Include Namespace="Resource"/>
+    <edmx:Include Namespace="Resource.v1_0_0"/>
+  </edmx:Reference>
+  <edmx:DataServices>
+
+    <Schema xmlns="http://docs.oasis-open.org/odata/ns/edm" Namespace="OemPower">
+      <Annotation Term="Redfish.OwningEntity" String="YADRO"/>
+    </Schema>
+
+    <Schema xmlns="http://docs.oasis-open.org/odata/ns/edm" Namespace="OemPower.v1_0_0">
+      <Annotation Term="Redfish.OwningEntity" String="YADRO"/>
+      <Annotation Term="Redfish.Release" String="1.0"/>
+
+      <EntityType Name="PowerSupplies" BaseType="Resource.OemObject" Abstract="true">
+          <Annotation Term="OData.Description" String="OEM Extension for Power"/>
+          <Annotation Term="OData.LongDescription" String="OEM Extension for Power to support PMBus specific properties."/>
+
+          <Property Name="CrpsMfrFWRevision" Type="Edm.String">
+              <Annotation Term="OData.Permissions" EnumMember="OData.Permission/Read"/>
+              <Annotation Term="OData.Description" String="The CRPS manufacturer firmware revision provided via PMBus."/>
+              <Annotation Term="OData.LongDescription" String="The CRPS manufacturer firmware revision provided via PMBus."/>
+          </Property>
+          <Property Name="PmbusMfrDate" Type="Edm.String">
+              <Annotation Term="OData.Permissions" EnumMember="OData.Permission/Read"/>
+              <Annotation Term="OData.Description" String="The manufacturer firmware build date that is provided via PMBus."/>
+              <Annotation Term="OData.LongDescription" String="The manufacturer firmware build date that is provided via PMBus."/>
+          </Property>
+          <Property Name="PmbusMfrID" Type="Edm.String">
+              <Annotation Term="OData.Permissions" EnumMember="OData.Permission/Read"/>
+              <Annotation Term="OData.Description" String="The manufacturer ID provided via PMBus."/>
+              <Annotation Term="OData.LongDescription" String="The manufacturer ID provided via PMBus."/>
+          </Property>
+          <Property Name="PmbusMfrLocation" Type="Edm.String">
+              <Annotation Term="OData.Permissions" EnumMember="OData.Permission/Read"/>
+              <Annotation Term="OData.Description" String="The manufacturer Location provided via PMBus."/>
+              <Annotation Term="OData.LongDescription" String="The manufacturer Location provided via PMBus."/>
+          </Property>
+          <Property Name="PmbusMfrModel" Type="Edm.String">
+              <Annotation Term="OData.Permissions" EnumMember="OData.Permission/Read"/>
+              <Annotation Term="OData.Description" String="The manufacturer Model provided via PMBus."/>
+              <Annotation Term="OData.LongDescription" String="The manufacturer Model provided via PMBus."/>
+          </Property>
+          <Property Name="PmbusMfrRevision" Type="Edm.String">
+              <Annotation Term="OData.Permissions" EnumMember="OData.Permission/Read"/>
+              <Annotation Term="OData.Description" String="The manufacturer revision provided via PMBus."/>
+              <Annotation Term="OData.LongDescription" String="The manufacturer revision provided via PMBus."/>
+          </Property>
+          <Property Name="PmbusMfrSerial" Type="Edm.String">
+              <Annotation Term="OData.Permissions" EnumMember="OData.Permission/Read"/>
+              <Annotation Term="OData.Description" String="The manufacturer Serial provided via PMBus."/>
+              <Annotation Term="OData.LongDescription" String="The manufacturer Serial provided via PMBus."/>
+          </Property>
+          <Property Name="PmbusRevision" Type="Edm.String">
+              <Annotation Term="OData.Permissions" EnumMember="OData.Permission/Read"/>
+              <Annotation Term="OData.Description" String="The PMBus revision."/>
+              <Annotation Term="OData.LongDescription" String="The PMBus revision."/>
+          </Property>
+
+      </EntityType>
+    </Schema>
+  </edmx:DataServices>
+</edmx:Edmx>
+

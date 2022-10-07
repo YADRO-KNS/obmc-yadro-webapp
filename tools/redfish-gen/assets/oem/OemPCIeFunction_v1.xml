@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<edmx:Edmx xmlns:edmx="http://docs.oasis-open.org/odata/ns/edmx" Version="4.0">
+
+  <edmx:Reference Uri="http://docs.oasis-open.org/odata/odata/v4.0/errata03/csd01/complete/vocabularies/Org.OData.Core.V1.xml">
+    <edmx:Include Namespace="Org.OData.Core.V1" Alias="OData"/>
+  </edmx:Reference>
+  <edmx:Reference Uri="http://docs.oasis-open.org/odata/odata/v4.0/errata03/csd01/complete/vocabularies/Org.OData.Measures.V1.xml">
+    <edmx:Include Namespace="Org.OData.Measures.V1" Alias="Measures"/>
+  </edmx:Reference>
+  <edmx:Reference Uri="http://redfish.dmtf.org/schemas/v1/RedfishExtensions_v1.xml">
+    <edmx:Include Namespace="RedfishExtensions.v1_0_0" Alias="Redfish"/>
+  </edmx:Reference>
+  <edmx:Reference Uri="http://redfish.dmtf.org/schemas/v1/Resource_v1.xml">
+    <edmx:Include Namespace="Resource"/>
+    <edmx:Include Namespace="Resource.v1_0_0"/>
+  </edmx:Reference>
+  <edmx:DataServices>
+
+    <Schema xmlns="http://docs.oasis-open.org/odata/ns/edm" Namespace="OemPCIeFunction">
+      <Annotation Term="Redfish.OwningEntity" String="YADRO"/>
+    </Schema>
+
+    <Schema xmlns="http://docs.oasis-open.org/odata/ns/edm" Namespace="OemPCIeFunction.v1_0_0">
+      <Annotation Term="Redfish.OwningEntity" String="YADRO"/>
+      <Annotation Term="Redfish.Release" String="1.0"/>
+
+      <EntityType Name="PCIeFunction" BaseType="Resource.OemObject" Abstract="true">
+          <Annotation Term="OData.Description" String="OEM Extension for PCIeFunction"/>
+          <Annotation Term="OData.LongDescription" String="OEM Extension for PCIeFunction to support Device SubClass mode."/>
+
+          <Property Name="DeviceSubClass" Type="Edm.String">
+              <Annotation Term="OData.Permissions" EnumMember="OData.Permission/Read"/>
+              <Annotation Term="OData.Description" String="The subclass for this PCIe function."/>
+              <Annotation Term="OData.LongDescription" String="This property shall contain the device subclass of the PCIe device function, such as storage, network, or memory."/>
+          </Property>
+
+      </EntityType>
+    </Schema>
+  </edmx:DataServices>
+</edmx:Edmx>
+
