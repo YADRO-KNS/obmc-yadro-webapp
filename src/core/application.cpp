@@ -129,6 +129,9 @@ void Application::initEntities()
     entityManager.buildEntity<DomainGroups>();
     entityManager.buildEntity<DomainAccounts>();
     entityManager.buildEntity<AccountSettings>();
+    entityManager.buildEntity<TrustStoreCertificates>();
+    entityManager.buildEntity<LDAPCertificates>();
+    entityManager.buildEntity<HTTPSCertificates>();
     entityManager.buildEntity<VirtualMedia>();
     entityManager.buildEntity<Firmware>();
     entityManager.buildEntity<FirmwareManagment>();
