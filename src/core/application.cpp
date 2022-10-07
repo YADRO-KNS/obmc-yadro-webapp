@@ -105,6 +105,7 @@ void Application::initEntities()
     entityManager.buildEntity<Memory>();
     entityManager.buildEntity<MemorySummary>();
     entityManager.buildEntity<Fan>();
+    entityManager.buildEntity<PSU>();
     entityManager.buildEntity<Drive>();
     entityManager.buildEntity<NetAdapter>();
     entityManager.buildEntity<Settings>();
