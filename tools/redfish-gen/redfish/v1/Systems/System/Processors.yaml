@@ -1,0 +1,13 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+Processors:
+  Name: Processor Collection
+  Schema: ProcessorCollection
+  Actions:
+    Get:
+      Reference:
+        - Node:
+            - ProcessorNode
+          Source: Static
+          Field: Members

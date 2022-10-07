@@ -1,0 +1,8 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+LogServices:
+  Name: System Log Services Collection
+  Schema: LogServiceCollection
+  Actions:
+    Get:
