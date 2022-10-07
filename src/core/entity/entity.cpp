@@ -276,7 +276,7 @@ bool BaseEntity::addMember(const EntityMemberPtr& memberPtr)
 
 bool BaseEntity::createMember(const MemberName& member)
 {
-    return addMember(std::make_shared<Entity::EntityMember>(member));    
+    return addMember(std::make_shared<Entity::EntityMember>(member));
 }
 
 const IEntity::EntityMemberPtr

@@ -16,6 +16,7 @@
 #include <string>
 #include <variant>
 #include <vector>
+#include <chrono>
 
 namespace app
 {
@@ -23,6 +24,7 @@ namespace entity
 {
 
 using namespace phosphor::logging;
+using namespace std::chrono;
 
 class EntitySupplementProvider;
 class Collection;
@@ -554,6 +556,55 @@ class CachedSource: public virtual IEntity
         query->configure(std::ref(*this));
     }
     ~CachedSource() override = default;
+};
+
+/**
+ * @class ShortTimeCachedSource
+ * @brief The behavior of populating IEntity data.
+ *        The data will be filled by an cache update engine with a defined
+ *        lifetime.
+ */
+template <int64_t timeToCacheInSec>
+class ShortTimeCachedSource: public virtual IEntity
+{
+    system_clock::time_point cacheTimePoint;
+  public:
+    ShortTimeCachedSource() :
+        cacheTimePoint(system_clock::now() - timeToCache())
+    {
+    }
+    void populate() override
+    {
+        if (isCacheExpiried())
+        {
+            resetCache();
+            processQueries();
+            setTimePoint();
+        }
+    }
+    void configure(const query::QueryPtr query) override
+    {
+        query->configure(std::ref(*this));
+    }
+    ~ShortTimeCachedSource() override = default;
+  private:
+    void setTimePoint()
+    {
+        this->cacheTimePoint = system_clock::now();
+    }
+
+    inline bool isCacheExpiried() const
+    {
+        std::time_t current = std::time(nullptr);
+        const auto calculated =
+            system_clock::to_time_t(cacheTimePoint + timeToCache());
+        return calculated < current;
+    }
+
+    constexpr const auto timeToCache() const
+    {
+        return std::chrono::seconds(timeToCacheInSec);
+    }
 };
 
 /**
