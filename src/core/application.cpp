@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2021 YADRO
+// Copyright (C) 2021, KNS Group LLC (YADRO)
 
 #include <core/application.hpp>
 #include <phosphor-logging/log.hpp>
