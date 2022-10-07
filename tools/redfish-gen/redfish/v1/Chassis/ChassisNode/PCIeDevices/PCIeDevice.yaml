@@ -1,0 +1,39 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+PCIeDevice@dynamic:
+  Name: PCI device
+  Schema: PCIeDevice
+  Version: 1.8.0
+  Parameter:
+    Type: Entity
+    Source: PCIeDevice
+    Parameter: PCIeDeviceId
+    Value: PCIeProvider::fieldSBD
+  Actions:
+    Get:
+      Properties:
+        Entity:
+          - Source: PCIeDevice
+            Fields:
+              - Name: Id
+                SourceField: PCIeProvider::fieldSBD
+              - Name: Model
+                SourceField: PCIeProvider::fieldDevice
+              - Name: DeviceType
+                SourceField: PCIeProvider::fieldDeviceType
+          - Source: PCIeFunction
+            Conditions:
+              - Field: PCIeProvider::fieldFunctionId
+                Value: "0"
+            Fields:
+              - Name: Manufacturer
+                SourceField: PCIeProvider::fieldVendorName
+        Enums:
+          - Name: DeviceType
+            Source: PCIeProvider::DeviceType
+            Mapping:
+              SingleFunction: singleFunction
+              MultiFunction: multiFunction
+      Reference:
+        - Node: PCIeFunctions
