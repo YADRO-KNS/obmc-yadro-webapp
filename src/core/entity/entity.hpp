@@ -71,6 +71,11 @@ class BaseEntity : virtual public IEntity
     Relation::build(getEntityManager().getEntity(getName()),                   \
                     getEntityManager().getEntity(#dest), rules)
 
+#define ENTITY_DEF_RELATION_DIRECT(dest)                                       \
+    ENTITY_DEF_RELATION(dest, IRelation::directLinkingRule())
+#define ENTITY_DEF_RELATION_DIRECT2(dest)                                      \
+    ENTITY_DEF_RELATION2(dest, IRelation::directLinkingRule())
+
 #define ENTITY_DECL_RELATIONS(...)                                             \
     const std::vector<IEntity::RelationPtr>& getRelations() const override     \
     {                                                                          \
