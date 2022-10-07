@@ -1,0 +1,170 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+MemoryNode@dynamic:
+  Name: Memory
+  Schema: Memory
+  Version: 1.15.0
+  Parameter:
+    Type: Entity
+    Source: Memory
+    Parameter: MemoryId
+    Value: DimmSMBiosProvider::fieldName
+  Actions:
+    Get:
+      Properties:
+        Entity:
+          - Source: Memory
+            Fields:
+              - Name: AllocationAlignmentMiB
+                SourceField: DimmSMBiosProvider::fieldAllocationAlignementInMiB
+              - Name: AllocationIncrementMiB
+                SourceField: DimmSMBiosProvider::fieldAllocationIncrementInMiB
+              - Name: AllowedSpeedsMHz
+                SourceField: DimmSMBiosProvider::fieldAllowedSpeedsMHz
+              - Name: BaseModuleType
+                SourceField: DimmSMBiosProvider::fieldFormFactor
+              - Name: BusWidthBits
+                SourceField: DimmSMBiosProvider::fieldMemoryTotalWidth
+              - Name: CacheSizeMiB
+                SourceField: DimmSMBiosProvider::fieldCacheSizeInMiB
+              - Name: CapacityMiB
+                SourceField: DimmSMBiosProvider::fieldMemorySizeInMiB
+              - Name: DataWidthBits
+                SourceField: DimmSMBiosProvider::fieldMemoryDataWidth
+              - Name: DeviceLocator
+                SourceField: DimmSMBiosProvider::fieldMemoryDeviceLocator
+              - Name: ErrorCorrection
+                SourceField: DimmSMBiosProvider::fieldECC
+              - Name: FirmwareRevision
+                SourceField: DimmSMBiosProvider::fieldRevisionCode
+              - Name: Id
+                SourceField: DimmSMBiosProvider::fieldId
+              - Name: IsRankSpareEnabled
+                SourceField: DimmSMBiosProvider::fieldIsRankSpareEnabled
+              - Name: IsSpareDeviceEnabled
+                SourceField: DimmSMBiosProvider::fieldIsSpareDeviceInUse
+              - Name: Manufacturer
+                SourceField: DimmSMBiosProvider::fieldManufacturer
+              - Name: MaxTDPMilliWatts
+                SourceField: DimmSMBiosProvider::fieldMaxAveragePowerLimitmW
+              - Name: MemoryDeviceType
+                SourceField: DimmSMBiosProvider::fieldMemoryDeviceType
+              - Name: MemorySubsystemControllerManufacturerID
+                SourceField: DimmSMBiosProvider::fieldSubsystemVendorID
+              - Name: MemorySubsystemControllerProductID
+                SourceField: DimmSMBiosProvider::fieldSubsystemDeviceID
+              - Name: MemoryType
+                SourceField: DimmSMBiosProvider::fieldMemoryType
+              - Name: ModuleManufacturerID
+                SourceField: DimmSMBiosProvider::fieldModuleManufacturerID
+              - Name: ModuleProductID
+                SourceField: DimmSMBiosProvider::fieldModuleProductID
+              - Name: Name
+                SourceField: DimmSMBiosProvider::fieldName
+              - Name: OperatingSpeedMhz
+                SourceField: DimmSMBiosProvider::fieldMemoryConfiguredSpeedInMhz
+              - Name: PartNumber
+                SourceField: DimmSMBiosProvider::fieldPartNumber
+              - Name: PersistentRegionNumberLimit
+                SourceField: DimmSMBiosProvider::fieldPmRegionNumberLimit
+              - Name: PersistentRegionSizeLimitMiB
+                SourceField: DimmSMBiosProvider::fieldPmRegionSizeLimitMiB
+              - Name: PersistentRegionSizeMaxMiB
+                SourceField: DimmSMBiosProvider::fieldPmRegionMaxSizeMiB
+              - Name: RankCount
+                SourceField: DimmSMBiosProvider::fieldMemoryAttributes
+              - Name: SerialNumber
+                SourceField: DimmSMBiosProvider::fieldSerialNumber
+              - Name: SpareDeviceCount
+                SourceField: DimmSMBiosProvider::fieldSpareDeviceCount
+              - Name: VolatileRegionNumberLimit
+                SourceField: DimmSMBiosProvider::fieldVolatileRegionNumberLimit
+              - Name: VolatileSizeMiB
+                SourceField: DimmSMBiosProvider::fieldVolatileSizeInMiB
+              - Name: VolatileRegionSizeLimitMiB
+                SourceField: DimmSMBiosProvider::fieldVolatileRegionSizeLimitMiB
+              - Name: VolatileRegionSizeMaxMiB
+                SourceField: DimmSMBiosProvider::fieldVolatileRegionMaxSizeMiB
+        Fragments:
+          - Name: MemoryLocation
+            Entity:
+              - Source: Memory
+                Fields:
+                  - Name: Channel
+                    SourceField: DimmSMBiosProvider::fieldChannel
+                  - Name: MemoryController
+                    SourceField: DimmSMBiosProvider::fieldMemoryController
+                  - Name: Slot
+                    SourceField: DimmSMBiosProvider::fieldSlot
+                  - Name: Socket
+                    SourceField: DimmSMBiosProvider::fieldSocket
+          - Name: Status
+            Entity:
+              - Source: Memory
+                Fields:
+                  - Name: Health
+                    SourceField: StatusProvider::fieldStatus
+                  - Name: HealthRollup
+                    SourceField: StatusProvider::fieldStatusRollup
+                  - Name: State
+                    SourceField: DimmSMBiosProvider::fieldState
+            Enums:
+              - Name: Health
+                Source: StatusProvider::Status
+                Mapping:
+                  OK: ok
+                  Warning: warning
+                  Critical: critical
+              - Name: State
+                Source: DimmSMBiosProvider::State
+                Mapping:
+                  Enabled: enabled
+        Enums:
+          - Name: ErrorCorrection
+            Source: DimmSMBiosProvider::ECC
+            Mapping:
+              NoECC: noECC
+              SingleBitECC: singleBitECC
+              MultiBitECC: multiBitECC
+              AddressParity: addressParity
+          - Name: BaseModuleType
+            Source: DimmSMBiosProvider::FormFactor
+            Mapping:
+              RDIMM: RDIMM
+              UDIMM: UDIMM
+              SO_DIMM: SO_DIMM
+              LRDIMM: LRDIMM
+              Mini_RDIMM: mini_RDIMM
+              Mini_UDIMM: mini_UDIMM
+              SO_RDIMM_72b: SO_RDIMM_72b
+              SO_UDIMM_72b: SO_UDIMM_72b
+              SO_DIMM_16b: SO_DIMM_16b
+              SO_DIMM_32b: SO_DIMM_32b
+              Die: die
+          - Name: MemoryType
+            Source: DimmSMBiosProvider::MemoryType
+            Mapping:
+              DRAM: DRAM
+              IntelOptane: intelOptane
+          - Name: MemoryDeviceType
+            Source: DimmSMBiosProvider::MemoryDeviceType
+            Mapping:
+              DDR: DDR
+              DDR2: DDR2
+              DDR3: DDR3
+              DDR4: DDR4
+              DDR4E_SDRAM: DDR4E_SDRAM
+              LPDDR4_SDRAM: LPDDR4_SDRAM
+              LPDDR3_SDRAM: LPDDR3_SDRAM
+              DDR2_SDRAM_FB_DIMM: DDR2_SDRAM_FB_DIMM
+              DDR2_SDRAM_FB_DIMM_PROBE: DDR2_SDRAM_FB_DIMM_PROBE
+              DDR_SGRAM: DDR_SGRAM
+              ROM: ROM
+              SDRAM: SDRAM
+              EDO: EDO
+              FastPageMode: fastPageMode
+              PipelinedNibble: pipelinedNibble
+              Logical: logical
+              HBM: HBM
+              HBM2: HBM2

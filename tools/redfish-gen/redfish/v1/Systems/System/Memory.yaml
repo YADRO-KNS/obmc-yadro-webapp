@@ -1,0 +1,13 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+Memory:
+  Name: Memory Module Collection
+  Schema: MemoryCollection
+  Actions:
+    Get:
+      Reference:
+        - Node:
+            - MemoryNode
+          Source: Static
+          Field: Members

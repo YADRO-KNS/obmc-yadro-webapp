@@ -1,0 +1,82 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+ProcessorNode@dynamic:
+  Name: Processor
+  Schema: Processor
+  Version: 1.15.0
+  Parameter:
+    Type: Entity
+    Source: Processor
+    Parameter: ProcessorId
+    Value: Processor::fieldPrettyName
+  Actions:
+    Get:
+      Properties:
+        Entity:
+          - Source: Processor
+            Fields:
+            - Name: InstructionSet
+              SourceField: CpuSMBiosProvider::fieldInstructionSet
+            - Name: Manufacturer
+              SourceField: CpuSMBiosProvider::fieldManufacturer
+            - Name: MaxSpeedMHz
+              SourceField: CpuSMBiosProvider::fieldMaxSpeed
+            - Name: Model
+              SourceField: CpuSMBiosProvider::fieldModel
+            - Name: ProcessorArchitecture
+              SourceField: CpuSMBiosProvider::fieldArch
+            - Name: ProcessorType
+              SourceField: CpuSMBiosProvider::fieldProcessorType
+            - Name: Socket
+              SourceField: CpuSMBiosProvider::fieldSocket
+            - Name: TotalCores
+              SourceField: CpuSMBiosProvider::fieldCoreCount
+            - Name: TotalThreads
+              SourceField: CpuSMBiosProvider::fieldThreadCount
+        Fragments:
+          - Name: ProcessorId
+            Entity:
+              - Source: Processor
+                Fields:
+                  - Name: EffectiveFamily
+                    SourceField: CpuSMBiosProvider::fieldFamily
+                  - Name: IdentificationRegisters
+                    SourceField: CpuSMBiosProvider::fieldIdentityReg
+          - Name: Status
+            Entity:
+              - Source: Processor
+                Fields:
+                  - Name: Health
+                    SourceField: StatusProvider::fieldStatus
+                  - Name: HealthRollup
+                    SourceField: StatusProvider::fieldStatusRollup
+                  - Name: State
+                    SourceField: Processor::fieldState
+            Enums:
+              - Name: Health
+                Source: StatusProvider::Status
+                Mapping:
+                  OK: ok
+                  Warning: warning
+                  Critical: critical
+              - Name: State
+                Source: Processor::State
+                Mapping:
+                  Enabled: enabled
+                  Absent: absent
+        Enums:
+          - Name: ProcessorType
+            Source: CpuSMBiosProvider::ProcessorType
+            Mapping:
+              CPU: cpu
+          - Name: InstructionSet
+            Source: CpuSMBiosProvider::InstructionSet
+            Mapping:
+              x86-64: x86_64
+              PowerISA: powerISA
+          - Name: ProcessorArchitecture
+            Source: CpuSMBiosProvider::Arch
+            Mapping:
+              x86: x86
+              Power: power

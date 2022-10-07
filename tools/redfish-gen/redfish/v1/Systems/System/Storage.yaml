@@ -1,0 +1,12 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+Storage:
+  Name: Storage collection
+  Schema: StorageCollection
+  Actions:
+    Get:
+      Reference:
+        - Node:
+            - StorageNode
+          Field: Members
