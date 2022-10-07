@@ -127,6 +127,8 @@ void Application::initEntities()
     entityManager.buildEntity<SessionManager>();
     entityManager.buildEntity<Firmware>();
     entityManager.buildEntity<FirmwareManagment>();
+    entityManager.buildEntity<BmcManager>();
+    entityManager.buildEntity<IntrusionSensor>();
     entityManager.buildEntity<Chassis>();
     entityManager.buildEntity<Baseboard>();
     entityManager.buildEntity<Server>();
