@@ -1,0 +1,71 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+LDAPCertificateEp@dynamic:
+  Name: LDAP Certificate
+  Schema: Certificate
+  Version: 1.6.0
+  Parameter:
+    Type: Entity
+    Source: LDAPCertificates
+    Parameter: CertificateId
+    Value: CertificateBase::fieldId
+  Actions:
+    Get:
+      Properties:
+        Entity:
+          - Source: LDAPCertificates
+            Fields:
+              - Name: ValidNotBefore
+                SourceField: CertificateBase::fieldValidNotBefore
+              - Name: ValidNotAfter
+                SourceField: CertificateBase::fieldValidNotAfter
+              - Name: SignatureAlgorithm
+                SourceField: CertificateBase::fieldAlgorithm
+              - Name: KeyUsage
+                SourceField: CertificateBase::fieldKeyUsage
+        Enums:
+          - Name: KeyUsage
+            Source: CertificateBase::KeyUsage
+            Mapping:
+                DigitalSignature: digitalSignature
+                NonRepudiation: nonRepudiation
+                KeyEncipherment: keyEncipherment
+                DataEncipherment: dataEncipherment
+                KeyAgreement: keyAgreement
+                KeyCertSign: keyCertSign
+                CRLSigning: crlSigning
+                EncipherOnly: encipherOnly
+                DecipherOnly: decipherOnly
+                ServerAuthentication: serverAuthentication
+                ClientAuthentication: clientAuthentication
+                CodeSigning: codeSigning
+                EmailProtection: emailProtection
+                Timestamping: timestamping
+                OCSPSigning: ocspSigning
+        Fragments:
+          - &Identifier
+            Name: Issuer
+            Entity:
+              - Source: LDAPCertificates
+                Fields:
+                  - Name: AdditionalCommonNames
+                    SourceField: CertificateBase::fieldAdditionalCommonNames
+                  - Name: City
+                    SourceField: CertificateBase::fieldCity
+                  - Name: CommonName
+                    SourceField: CertificateBase::fieldCommonName
+                  - Name: Country
+                    SourceField: CertificateBase::fieldCountry
+                  - Name: DomainComponents
+                    SourceField: CertificateBase::fieldDomainComponents
+                  - Name: Email
+                    SourceField: CertificateBase::fieldEmail
+                  - Name: Organization
+                    SourceField: CertificateBase::fieldOrganization
+                  - Name: OrganizationalUnit
+                    SourceField: CertificateBase::fieldOrganizationalUnit
+                  - Name: State
+                    SourceField: CertificateBase::fieldState
+          - <<: *Identifier
+            Name: Subject

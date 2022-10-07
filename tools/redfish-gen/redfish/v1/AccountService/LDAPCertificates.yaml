@@ -1,0 +1,14 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+LDAPCertificates:
+  Name: LDAP certificate collection
+  Schema: CertificateCollection
+  Prefix: LDAP
+  Segment: Certificates
+  Actions:
+    Get:
+      Reference:
+        - Node:
+            - LDAPCertificateEp
+          Field: Members
