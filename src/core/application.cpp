@@ -126,6 +126,7 @@ void Application::initEntities()
 
     entityManager.configure();
     entityManager.update();
+    log<level::INFO>("Internal cache initialization is complete.");
 }
 
 } // namespace core
