@@ -3,12 +3,12 @@
 
 #pragma once
 
-#include <phosphor-logging/log.hpp>
-
+#include <common_fields.hpp>
 #include <core/entity/dbus_query.hpp>
 #include <core/entity/entity.hpp>
-
-#include <common_fields.hpp>
+#include <formatters.hpp>
+#include <phosphor-logging/log.hpp>
+#include <status_provider.hpp>
 
 namespace app
 {
@@ -26,14 +26,19 @@ class NetAdapter final :
     public CachedSource,
     public NamedEntity<NetAdapter>
 {
-    static constexpr const char* fieldName = "Name";
-    static constexpr const char* fieldPresent = "Present";
-    static constexpr const char* fieldFunctional = "Functional";
-    static constexpr const char* fieldManufacturer = "Manufacturer";
-    static constexpr const char* fieldModel = "Model";
-    static constexpr const char* fieldMac = "MAC";
+  public:
+    enum class State
+    {
+        enabled,
+        absent
+    };
 
-    static constexpr const char* fieldEnabled = "Enabled";
+    ENTITY_DECL_FIELD(std::string, Name)
+    ENTITY_DECL_FIELD(std::string, Manufacturer)
+    ENTITY_DECL_FIELD(std::string, Model)
+    ENTITY_DECL_FIELD(std::string, MAC)
+    ENTITY_DECL_FIELD_ENUM(State, State, absent)
+  private:
     class Query final : public dbus::FindObjectDBusQuery
     {
         static constexpr const char* netAdpService = "com.yadro.NetworkAdapter";
@@ -47,82 +52,62 @@ class NetAdapter final :
         static constexpr const char* propName = "PrettyName";
         static constexpr const char* propMac = "MACAddress";
 
+        class FormatState : public query::dbus::IFormatter
+        {
+          public:
+            ~FormatState() override = default;
+
+            const DbusVariantType format(const PropertyName&,
+                                         const DbusVariantType& value) override
+            {
+                State state = State::absent;
+                if (std::holds_alternative<bool>(value) &&
+                    std::get<bool>(value))
+                {
+                    state = State::enabled;
+                }
+                return static_cast<int>(state);
+            }
+        };
+
       public:
         Query() : dbus::FindObjectDBusQuery()
         {}
         ~Query() override = default;
 
         DBUS_QUERY_DECL_EP(
+            DBUS_QUERY_EP_IFACES(general::assets::assetInterface,
+                                 DBUS_QUERY_EP_FIELDS_ONLY2(fieldManufacturer),
+                                 DBUS_QUERY_EP_FIELDS_ONLY2(fieldModel)),
             DBUS_QUERY_EP_IFACES(
-                general::assets::assetInterface,
-                DBUS_QUERY_EP_FIELDS_ONLY2(general::assets::manufacturer),
-                DBUS_QUERY_EP_FIELDS_ONLY2(general::assets::model)
-            ),
-            DBUS_QUERY_EP_IFACES(
-                invItemIface,
-                DBUS_QUERY_EP_FIELDS_ONLY(propName, fieldName),
-                DBUS_QUERY_EP_FIELDS_ONLY2(fieldPresent)
-            ),
-            DBUS_QUERY_EP_IFACES(
-                invNetAdpIface,
-                DBUS_QUERY_EP_FIELDS_ONLY(propMac, fieldMac)
-            ),
+                invItemIface, DBUS_QUERY_EP_FIELDS_ONLY(propName, fieldName),
+                DBUS_QUERY_EP_SET_FORMATTERS("Present", fieldState,
+                                             DBUS_QUERY_EP_CSTR(FormatState))),
+            DBUS_QUERY_EP_IFACES(invNetAdpIface,
+                                 DBUS_QUERY_EP_FIELDS_ONLY(propMac, fieldMAC)),
             DBUS_QUERY_EP_IFACES(
                 stateOpStatusIface,
-                DBUS_QUERY_EP_FIELDS_ONLY2(fieldFunctional)
-            )
-        )
+                DBUS_QUERY_EP_SET_FORMATTERS(
+                    "Functional", StatusProvider::fieldStatus,
+                    DBUS_QUERY_EP_CSTR(StatusProvider::StatusByFunctional))))
       protected:
         DBUS_QUERY_DECLARE_CRITERIA(
             "/xyz/openbmc_project/inventory/system/network/adapter/",
-            DBUS_QUERY_CRIT_IFACES(invNetAdpIface),
-            nextOneDepth,
-            netAdpService
-        )
+            DBUS_QUERY_CRIT_IFACES(invNetAdpIface), nextOneDepth, netAdpService)
 
-        void setEnabled(const DBusInstancePtr& instance) const
+        const DefaultFieldsValueDict& getDefaultFieldsValue() const override
         {
-            // default enabled
-            bool enabled = true;
-            try
-            {
-                /* clang-format off */
-                log<level::DEBUG>(
-                    "Adjust 'Enabled' field",
-                    entry("ENTITY=%s", 
-                        instance->getField(fieldName)->getStringValue().c_str()),
-                    entry("Functional_TYPE='%s'",
-                        instance->getField(fieldFunctional)->getType().c_str()),
-                    entry("Present_TYPE='%s'",
-                        instance->getField(fieldPresent)->getType().c_str()));
-                /* clang-format on */
-
-                bool functional =
-                    instance->getField(fieldFunctional)->getBoolValue();
-                bool present = instance->getField(fieldPresent)->getBoolValue();
-
-                enabled = (functional && present);
-            }
-            catch (const std::exception& e)
-            {
-                log<level::ERR>(
-                    "Can't get Functional or Present field to calcualte",
-                    entry("FIELD=%s", fieldEnabled),
-                    entry("ERROR=%s", e.what()));
-            }
-            instance->supplementOrUpdate(fieldEnabled, enabled);
-        }
-
-        void supplementByStaticFields(const DBusInstancePtr& instance) const override
-        {
-            this->setEnabled(instance);
+            static const DefaultFieldsValueDict defaults{
+                StatusRollup::defaultGetter<NetAdapter>(),
+                StatusFromRollup::defaultGetter<NetAdapter>(),
+            };
+            return defaults;
         }
     };
+
   public:
     NetAdapter() : Collection(), query(std::make_shared<Query>())
-    {
-        createMember(fieldEnabled);
-    }
+    {}
     ~NetAdapter() override = default;
 
   protected:
