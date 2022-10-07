@@ -1,0 +1,197 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+System@dynamic:
+  Name: The System service
+  Schema: ComputerSystem
+  Version: 1.18.0
+  Parameter:
+    Type: Entity
+    Source: Server
+    Parameter: ComputerSystemId
+    Value: Server::fieldServiceName
+  Actions:
+    Get:
+      Properties:
+        Static:
+          - Name: SystemType
+            Value: Physical
+        Entity:
+          - Source: Server
+            Fields:
+              - Name: Manufacturer
+                SourceField: general::assets::manufacturer
+              - Name: Model
+                SourceField: general::assets::model
+              - Name: PartNumber
+                SourceField: general::assets::partNumber
+              - Name: SerialNumber
+                SourceField: general::assets::serialNumber
+              - Name: LocationIndicatorActive
+                SourceField: IndicatorLedProvider::fieldLed
+              - Name: PowerRestorePolicy
+                SourceField: PowerRestorePolicyProvider::fieldPowerRestorePolicy
+          - Source: Chassis
+            Fields:
+              - Name: LastResetTime
+                SourceField: ChassisStateProvider::fieldLastStateChangeTime
+          - Source: Firmware
+            Conditions:
+              - Preset: Firmware::activeFirmware
+            Fields:
+              - Name: BiosVersion
+                SourceField: FirmwareProvider::fieldVersion
+        Fragments:
+          - Name: Status
+            Entity:
+              - Source: Server
+                Fields: &Health
+                  - Name: Health
+                    SourceField: StatusProvider::fieldStatus
+                  - Name: HealthRollup
+                    SourceField: StatusProvider::fieldStatusRollup
+                  - Name: State
+                    SourceField: Server::fieldState
+            Enums:
+              - &HealthEnum
+                Name: Health
+                Source: StatusProvider::Status
+                Mapping:
+                  OK: ok
+                  Warning: warning
+                  Critical: critical
+              - Name: State
+                Source: Server::State
+                Mapping:
+                  Enabled: enabled
+          - Name: Boot
+            Entity:
+              - Source: Server
+                Fields:
+                  - Name: BootSourceOverrideEnabled
+                    SourceField: Server::fieldBootOverrideType
+                  - Name: BootSourceOverrideMode
+                    SourceField: HostBootProvider::fieldType
+                  - Name: BootSourceOverrideTarget
+                    SourceField: HostBootProvider::fieldMode
+                  - Name: AutomaticRetryConfig
+                    SourceField: BootSettingsProvider::fieldRetryConfig
+                  - Name: AutomaticRetryAttempts
+                    SourceField: RebootRemainingProvider::fieldAttemptsLeft
+            Enums:
+              - Name: AutomaticRetryConfig
+                Source: BootSettingsProvider::RetryConfig
+                Mapping:
+                  Disabled: disabled
+                  RetryAttempts: retryAttempts
+              - Name: BootSourceOverrideEnabled
+                Source: Server::BootOverrideType
+                Mapping:
+                  Disabled: none
+                  Once: once
+                  Continuous: continuous
+              - Name: BootSourceOverrideMode
+                Source: HostBootProvider::Type
+                Mapping:
+                  Legacy: legacy
+                  UEFI: uefi
+              - Name: BootSource
+                For: BootSourceOverrideTarget
+                Source: HostBootProvider::Mode
+                Mapping:
+                  None: none
+                  Pxe: pxe
+                  Cd: cd
+                  Usb: usb
+                  Hdd: hdd
+                  BiosSetup: biosSetup
+                  Diags: diags
+          - Name: ProcessorSummary
+            Entity:
+              - Source: ProcessorSummary
+                Fields:
+                  - Name: Count
+                    SourceField: ProcessorSummary::fieldCount
+            Fragments:
+              - Name: Status
+                Entity:
+                  - Source: ProcessorSummary
+                    Fields: *Health
+                Enums:
+                  - *HealthEnum
+                  - Name: State
+                    Source: Processor::State
+                    Mapping:
+                      Enabled: enabled
+                      Absent: absent
+          - Name: MemorySummary
+            Entity:
+              - Source: MemorySummary
+                Fields:
+                  - Name: TotalSystemMemoryGiB
+                    SourceField: MemorySummary::fieldTotalSize
+            Fragments:
+              - Name: Status
+                Entity:
+                  - Source: MemorySummary
+                    Fields: *Health
+                Enums:
+                  - *HealthEnum
+                  - &StatusState
+                    Name: State
+                    Source: DimmSMBiosProvider::State
+                    Mapping:
+                      Enabled: enabled
+          - Name: HostWatchdogTimer
+            Entity:
+              - Source: Server
+                Fields:
+                  - Name: FunctionEnabled
+                    SourceField: HostWatchdogProvider::fieldEnabled
+                  - Name: TimeoutAction
+                    SourceField: HostWatchdogProvider::fieldExpireAction
+            Fragments:
+              - Name: Status
+                Static:
+                  - Name: State
+                    Value: Enabled
+            Enums:
+              - Name: WatchdogTimeoutActions
+                For: TimeoutAction
+                Source: HostWatchdogProvider::WatchdogAction
+                Mapping:
+                  None: none
+                  ResetSystem: resetSystem
+                  PowerCycle: powerCycle
+                  PowerDown: powerDown
+        Links:
+          - Name: ManagedBy
+            Template: /redfish/v1/Managers/{ManagerId}
+            Parameters:
+              - Id: ManagerId
+                Entity: BmcManager
+                Field: BmcManager::fieldName
+          - Name: Chassis
+            Template: /redfish/v1/Chassis/{ChassisId}
+            Parameters:
+              - Id: ChassisId
+                Entity: Server
+                Field: Server::fieldName
+        Enums:
+          - Name: PowerRestorePolicyTypes
+            For: PowerRestorePolicy
+            Source: PowerRestorePolicyProvider::RestorePolicy
+            Mapping:
+              AlwaysOn: alwaysOn
+              AlwaysOff: alwaysOff
+              LastState: lastState
+      Reference:
+        - Node: Bios
+        - Node: LogServices
+        - Node: Memory
+        - Node: NetworkInterfaces
+        - Node: Processors
+        - Node: Storage
+        - Node:
+            - PCIeDevice
+          Field: PCIeDevices

@@ -1,0 +1,71 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+DriveNode@dynamic:
+  Name: Drive
+  Schema: Drive
+  Version: 1.15.0
+  Prefix: Drives
+  Parameter:
+    Type: Entity
+    Source: Drive
+    Parameter: DriveId
+    Value: Drive::fieldName
+  Actions:
+    Get:
+     Properties:
+        Entity:
+          - Source: Drive
+            Fields:
+              - Name: Id
+                SourceField: Drive::fieldId
+              - Name: Name
+                SourceField: Drive::fieldPrettyName
+              - Name: Manufacturer
+                SourceField: Drive::fieldManufacturer
+              - Name: Model
+                SourceField: Drive::fieldModel
+              - Name: PartNumber
+                SourceField: Drive::fieldPartNumber
+              - Name: SerialNumber
+                SourceField: Drive::fieldSerialNumber
+              - Name: Protocol
+                SourceField: Drive::fieldProtocol
+              - Name: MediaType
+                SourceField: Drive::fieldMediaType
+              - Name: CapacityBytes
+                SourceField: Drive::fieldCapacity
+        Fragments:
+          - Name: Status
+            Entity:
+              - Source: StorageControllers
+                Fields:
+                  - Name: Health
+                    SourceField: Drive::fieldStatus
+                  - Name: State
+                    SourceField: Drive::fieldState
+            Enums:
+              - Name: Health
+                Source: StatusProvider::Status
+                Mapping:
+                  OK: ok
+                  Warning: warning
+                  Critical: critical
+              - Name: State
+                Source: Drive::State
+                Mapping:
+                  Enabled: enabled
+                  Absent: absent
+        Enums:
+          - Name: Protocol
+            Source: Drive::Protocol
+            Mapping:
+              SAS: sas
+              SATA: sata
+              NVMe: nvme
+              FC: fc
+          - Name: MediaType
+            Source: Drive::MediaType
+            Mapping:
+              HDD: hdd
+              SSD: ssd

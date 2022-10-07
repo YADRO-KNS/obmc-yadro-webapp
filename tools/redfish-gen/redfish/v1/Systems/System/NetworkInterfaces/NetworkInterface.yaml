@@ -1,0 +1,22 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+NetworkInterface@dynamic:
+  Name: Network interface
+  Version: 1.2.1
+  Schema: NetworkInterface
+  Parameter:
+    Type: Entity
+    Source: NetAdapter
+    Parameter: NetworkInterfaceId
+    Value: NetAdapter::fieldName
+  Actions:
+    Get:
+      Properties:
+        Entity:
+          - Source: NetAdapter
+            Fields:
+              - Name: Id
+                SourceField: NetAdapter::fieldName
+      Reference:
+        - Node: NetworkDeviceFunctions

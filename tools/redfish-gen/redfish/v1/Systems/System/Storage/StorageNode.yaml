@@ -1,0 +1,49 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+StorageNode@dynamic:
+  Name: Storage
+  Schema: Storage
+  Version: 1.13.0
+  Parameter:
+    Type: Entity
+    Source: StorageControllers
+    Parameter: StorageId
+    Value: StorageControllers::fieldPrettyName
+  Actions:
+    Get:
+      Properties:
+        Entity:
+          - Source: StorageControllers
+            Fields:
+              - Name: Id
+                SourceField: StorageControllers::fieldId
+              - Name: Name
+                SourceField: StorageControllers::fieldPrettyName
+        Fragments:
+          - Name: Status
+            Entity:
+              - Source: StorageControllers
+                Fields:
+                  - Name: Health
+                    SourceField: StorageControllers::fieldStatus
+                  - Name: HealthRollup
+                    SourceField: StorageControllers::fieldStatus
+                  - Name: State
+                    SourceField: StorageControllers::fieldState
+            Enums:
+              - Name: Health
+                Source: StatusProvider::Status
+                Mapping:
+                  OK: ok
+                  Warning: warning
+                  Critical: critical
+              - Name: State
+                Source: Drive::State
+                Mapping:
+                  Enabled: enabled
+                  Absent: absent
+      Reference:
+        - Node:
+            - DriveNode
+          Field: Drives
