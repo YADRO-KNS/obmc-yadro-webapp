@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<edmx:Edmx xmlns:edmx="http://docs.oasis-open.org/odata/ns/edmx" Version="4.0">
+
+  <edmx:Reference Uri="http://docs.oasis-open.org/odata/odata/v4.0/errata03/csd01/complete/vocabularies/Org.OData.Core.V1.xml">
+    <edmx:Include Namespace="Org.OData.Core.V1" Alias="OData"/>
+  </edmx:Reference>
+  <edmx:Reference Uri="http://docs.oasis-open.org/odata/odata/v4.0/errata03/csd01/complete/vocabularies/Org.OData.Measures.V1.xml">
+    <edmx:Include Namespace="Org.OData.Measures.V1" Alias="Measures"/>
+  </edmx:Reference>
+  <edmx:Reference Uri="http://redfish.dmtf.org/schemas/v1/RedfishExtensions_v1.xml">
+    <edmx:Include Namespace="RedfishExtensions.v1_0_0" Alias="Redfish"/>
+  </edmx:Reference>
+  <edmx:Reference Uri="http://redfish.dmtf.org/schemas/v1/Resource_v1.xml">
+    <edmx:Include Namespace="Resource"/>
+    <edmx:Include Namespace="Resource.v1_0_0"/>
+  </edmx:Reference>
+  <edmx:DataServices>
+
+    <Schema xmlns="http://docs.oasis-open.org/odata/ns/edm" Namespace="OemThermal">
+      <Annotation Term="Redfish.OwningEntity" String="YADRO"/>
+    </Schema>
+
+    <Schema xmlns="http://docs.oasis-open.org/odata/ns/edm" Namespace="OemThermal.v1_0_0">
+      <Annotation Term="Redfish.OwningEntity" String="YADRO"/>
+      <Annotation Term="Redfish.Release" String="1.0"/>
+
+      <ComplexType Name="ReadingRPM" BaseType="Resource.OemObject">
+          <Annotation Term="OData.AdditionalProperties" Bool="false" />
+          <Annotation Term="OData.Description" String="This object shall contain the fan sensor reading is measured in revolutions per minute (RPM)." />
+
+          <Property Name="LowerThresholdCritical" Type="Edm.Decimal">
+            <Annotation Term="OData.Description" String="The value at which the reading is below normal range but not yet fatal."/>
+            <Annotation Term="OData.LongDescription" String="This property shall contain the value at which the Reading property is below the normal range but is not yet fatal.  The value of the property shall use the same units as the Reading property."/>
+            <Annotation Term="OData.Nullable" String="true"/>
+          </Property>
+          <Property Name="LowerThresholdNonCritical" Type="Edm.Decimal">
+            <Annotation Term="OData.Description" String="The value at which the reading is below normal range."/>
+            <Annotation Term="OData.LongDescription" String="This property shall contain the value at which the Reading property is below normal range.  The value of the property shall use the same units as the Reading property."/>
+            <Annotation Term="OData.Nullable" String="true"/>
+          </Property>
+          <Property Name="MinReadingRange" Type="Edm.Decimal">
+            <Annotation Term="OData.Description" String="Minimum value for this sensor."/>
+            <Annotation Term="OData.LongDescription" String="This property shall indicate the lowest possible value for the Reading property.  The value of the property shall use the same units as the Reading property."/>
+            <Annotation Term="OData.Nullable" String="true"/>
+          </Property>
+          <Property Name="MaxReadingRange" Type="Edm.Decimal">
+            <Annotation Term="OData.Description" String="Maximum value for this sensor."/>
+            <Annotation Term="OData.LongDescription" String="This property shall indicate the highest possible value for the Reading property.  The value of the property shall use the same units as the Reading property."/>
+            <Annotation Term="OData.Nullable" String="true"/>
+          </Property>
+          <Property Name="Reading" Type="Edm.Decimal">
+            <Annotation Term="OData.Description" String="The fan speed."/>
+            <Annotation Term="OData.LongDescription" String="The fan reading and thresholds are measured in revolutions per minute."/>
+            <Annotation Term="OData.Nullable" String="true"/>
+          </Property>
+          <Property Name="UpperThresholdCritical" Type="Edm.Decimal">
+            <Annotation Term="OData.Description" String="The value at which the reading is above normal range but not yet fatal."/>
+            <Annotation Term="OData.LongDescription" String="This property shall contain the value at which the Reading property is above the normal range but is not yet fatal.  The value of the property shall use the same units as the Reading property."/>
+            <Annotation Term="OData.Nullable" String="true"/>
+          </Property>
+          <Property Name="UpperThresholdNonCritical" Type="Edm.Decimal">
+            <Annotation Term="OData.Description" String="The value at which the reading is above normal range."/>
+            <Annotation Term="OData.LongDescription" String="This property shall contain the value at which the Reading property is above the normal range.  The value of the property shall use the same units as the Reading property."/>
+            <Annotation Term="OData.Nullable" String="true"/>
+          </Property>
+      </ComplexType>
+
+      <EntityType Name="Fans" BaseType="Resource.OemObject" Abstract="true">
+          <Annotation Term="OData.Description" String="OEM Extension for Thermal"/>
+          <Annotation Term="OData.LongDescription" String="OEM Extension for Thermal to support YADRO specific properties"/>
+          <Property Name="Connector" Type="Edm.String">
+              <Annotation Term="OData.Description" String="The name of a Fan physical connector."/>
+              <Annotation Term="OData.Nullable" String="false"/>
+              <Annotation Term="OData.Permissions" EnumMember="OData.Permission/Read"/>
+          </Property>
+          <NavigationProperty Name="Readings" Type="Collection(OemThermal.v1_0_0.ReadingRPM)" ContainsTarget="true">
+              <Annotation Term="OData.Description" String="The set of fan readings regards associated sensors." />
+              <Annotation Term="OData.Permissions" EnumMember="OData.Permission/Read"/>
+              <Annotation Term="OData.AutoExpand"/>
+              <Annotation Term="OData.Nullable" String="true"/>
+          </NavigationProperty>
+
+      </EntityType>
+    </Schema>
+  </edmx:DataServices>
+</edmx:Edmx>
+
