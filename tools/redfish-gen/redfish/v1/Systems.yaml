@@ -1,0 +1,12 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+Systems:
+  Name: The BMC systems collection
+  Schema: ComputerSystemCollection
+  Actions:
+    Get:
+      Reference:
+        - Node:
+            - System
+          Field: Members

@@ -1,0 +1,25 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+Bios:
+  Name: BIOS Configuration
+  Schema: Bios
+  Version: 1.2.0
+  Actions:
+    Get:
+      Properties:
+        Links:
+          - &SoftwareImages
+            Name: SoftwareImages
+            Template: /redfish/v1/UpdateService/FirmwareInventory/{SoftwareInventoryId}
+            Parameters:
+              - &InventoryId
+                Id: SoftwareInventoryId
+                Entity: Firmware
+                Field: FirmwareProvider::fieldId
+          - <<: *SoftwareImages
+            Name: ActiveSoftwareImage
+            Parameters:
+              - <<: *InventoryId
+                Conditions:
+                  - Preset: Firmware::activeFirmware
