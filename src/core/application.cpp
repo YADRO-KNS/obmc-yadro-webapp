@@ -9,17 +9,7 @@
 #include <csignal>
 #include <filesystem>
 
-#include <server.hpp>
-#include <chassis.hpp>
-#include <baseboard.hpp>
-#include <sensors.hpp>
-#include <settings.hpp>
-#include <network_interface.hpp>
-#include <network_adapter.hpp>
-#include <drive.hpp>
-#include <pid_control.hpp>
-#include <pcie.hpp>
-#include <power.hpp>
+#include <includes.hpp>
 
 namespace app
 {
