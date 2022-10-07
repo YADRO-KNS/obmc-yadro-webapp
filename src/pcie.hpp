@@ -35,36 +35,82 @@ class PCIeProvider final :
     public NamedEntity<PCIeProvider>
 {
   public:
-    static constexpr const char* fieldSBD = "Id";
-    static constexpr size_t pcieFunctionsCount = 8;
-    static constexpr const char* pcieFunctionFieldPrefix = "Function";
-    static constexpr const char* fieldSocket = "Socket";
-    static constexpr const char* fieldBus = "Bus";
-    static constexpr const char* fieldAddress = "Address";
-    static constexpr const char* fieldDevice = "Device";
-    static constexpr const char* fieldDeviceType = "DeviceType";
-    static constexpr const char* fieldSubsystem = "Subsystem";
+    enum class DeviceType {
+        singleFunction,
+        multiFunction,
+        unkown
+    };
+
+    enum class DeviceClass {
+        unclassifiedDevice,
+        massStorageController,
+        networkController,
+        displayController,
+        multimediaController,
+        memoryController,
+        bridge,
+        communicationController,
+        genericSystemPeripheral,
+        inputDeviceController,
+        dockingStation,
+        processor,
+        serialBusController,
+        wirelessController,
+        intelligentController,
+        satelliteCommunicationsController,
+        encryptionController,
+        signalProcessingController,
+        processingAccelerators,
+        nonEssentialInstrumentation,
+        coprocessor,
+        unassignedClass,
+        other
+    };
+
+    enum class FunctionType {
+        physicalFunction,
+        virtualFunction,
+        unkownFunction
+    };
+
+    static constexpr const uint8_t otherDeviceClassId = 0xFFU;
+
+    ENTITY_DECL_FIELD(std::string, Id)
+    ENTITY_DECL_FIELD(std::string, Function)
+    ENTITY_DECL_FIELD(std::string, Socket)
+    ENTITY_DECL_FIELD(std::string, Bus)
+    ENTITY_DECL_FIELD(std::string, Address)
+    ENTITY_DECL_FIELD(std::string, Device)
+    ENTITY_DECL_FIELD_ENUM(DeviceType, DeviceType, unkown)
+    ENTITY_DECL_FIELD(std::string, Subsystem)
     /* Dynamic fields */
-    static constexpr const char* fieldFunctionId = "FunctionId";
-    static constexpr const char* fieldClassCode = "ClassCode";
-    static constexpr const char* fieldDeviceClass = "DeviceClass";
-    static constexpr const char* fieldDeviceId = "DeviceId";
-    static constexpr const char* fieldDeviceName = "DeviceName";
-    static constexpr const char* fieldFunctionType = "FunctionType";
-    static constexpr const char* fieldRevisionId = "RevisionId";
-    static constexpr const char* fieldSubsystemId = "SubsystemId";
-    static constexpr const char* fieldSubsystemName = "SubsystemName";
-    static constexpr const char* fieldSubsystemVendorId = "SubsystemVendorId";
-    static constexpr const char* fieldVendorId = "VendorId";
-    static constexpr const char* fieldVendorName = "VendorName";
+    ENTITY_DECL_FIELD(std::string, FunctionId)
+    ENTITY_DECL_FIELD(std::string, ClassCode)
+    ENTITY_DECL_FIELD_DEF(uint8_t, DeviceClassId, otherDeviceClassId)
+    ENTITY_DECL_FIELD_ENUM(DeviceClass, DeviceClass, other)
+    ENTITY_DECL_FIELD(std::string, DeviceSubClass)
+    ENTITY_DECL_FIELD(std::string, DeviceId)
+    ENTITY_DECL_FIELD(std::string, DeviceName)
+    ENTITY_DECL_FIELD_ENUM(FunctionType, FunctionType, unkownFunction)
+    ENTITY_DECL_FIELD(std::string, RevisionId)
+    ENTITY_DECL_FIELD(std::string, SubsystemId)
+    ENTITY_DECL_FIELD(std::string, SubsystemName)
+    ENTITY_DECL_FIELD(std::string, SubsystemVendorId)
+    ENTITY_DECL_FIELD(std::string, VendorId)
+    ENTITY_DECL_FIELD(std::string, VendorName)
+
+    static constexpr const char* fieldSBD = fieldId;
+    static constexpr const char* pcieFunctionFieldPrefix = "Function";
+    static constexpr size_t pcieFunctionsCount = 8;
 
     static const MembersList& getDynamicFields()
     {
         static const MembersList fields{
-            fieldClassCode,   fieldDeviceClass,   fieldDeviceId,
-            fieldDeviceName,  fieldFunctionType,  fieldRevisionId,
-            fieldSubsystemId, fieldSubsystemName, fieldSubsystemVendorId,
-            fieldVendorId,    fieldVendorName,
+            fieldClassCode,     fieldDeviceId,          fieldDeviceClassId,
+            fieldDeviceClass,   fieldDeviceSubClass,    fieldDeviceName,
+            fieldFunctionType,  fieldRevisionId,        fieldSubsystemId,
+            fieldSubsystemName, fieldSubsystemVendorId, fieldVendorId,
+            fieldVendorName,
         };
         return fields;
     }
@@ -112,25 +158,109 @@ class PCIeProvider final :
 
             return dictionary;
         }
+        class FormatDeviceType : public query::dbus::IFormatter
+        {
+          public:
+            ~FormatDeviceType() override = default;
+
+            const DbusVariantType format(const PropertyName& property,
+                                         const DbusVariantType& value) override
+            {
+                static const std::map<std::string, DeviceType> types{
+                    {"SingleFunction", DeviceType::singleFunction},
+                    {"MultiFunction", DeviceType::multiFunction},
+                };
+
+                return formatValueFromDict(types, property, value,
+                                           DeviceType::unkown);
+            }
+        };
+        class FormatDeviceClass : public query::dbus::IFormatter
+        {
+          public:
+            ~FormatDeviceClass() override = default;
+
+            const DbusVariantType format(const PropertyName& property,
+                                         const DbusVariantType& value) override
+            {
+                // clang-format: off
+                static const std::map<uint8_t, DeviceClass> types{
+                    {0x00, DeviceClass::unclassifiedDevice},
+                    {0x01, DeviceClass::massStorageController},
+                    {0x02, DeviceClass::networkController},
+                    {0x03, DeviceClass::displayController},
+                    {0x04, DeviceClass::multimediaController},
+                    {0x05, DeviceClass::memoryController},
+                    {0x06, DeviceClass::bridge},
+                    {0x07, DeviceClass::communicationController},
+                    {0x08, DeviceClass::genericSystemPeripheral},
+                    {0x09, DeviceClass::inputDeviceController},
+                    {0x0a, DeviceClass::dockingStation},
+                    {0x0b, DeviceClass::processor},
+                    {0x0c, DeviceClass::serialBusController},
+                    {0x0d, DeviceClass::wirelessController},
+                    {0x0e, DeviceClass::intelligentController},
+                    {0x0f, DeviceClass::satelliteCommunicationsController},
+                    {0x10, DeviceClass::encryptionController},
+                    {0x11, DeviceClass::signalProcessingController},
+                    {0x12, DeviceClass::processingAccelerators},
+                    {0x13, DeviceClass::nonEssentialInstrumentation},
+                    {0x40, DeviceClass::coprocessor},
+                    {0xff, DeviceClass::unassignedClass}
+                };
+                // clang-format: on
+
+                return formatValueFromDict(types, property, value,
+                                           DeviceClass::other);
+            }
+        };
+
+        class FormatFunctionType : public query::dbus::IFormatter
+        {
+          public:
+            ~FormatFunctionType() override = default;
+
+            const DbusVariantType format(const PropertyName& property,
+                                         const DbusVariantType& value) override
+            {
+                // clang-format: off
+                static const std::map<std::string, FunctionType> types{
+                    {"Physical", FunctionType::physicalFunction},
+                    {"Virtual", FunctionType::virtualFunction},
+                };
+                // clang-format: on
+
+                return formatValueFromDict(types, property, value,
+                                           FunctionType::unkownFunction);
+            }
+        };
 
         static const DBusPropertySetters& getPCIeMemberNameDict()
         {
             static DBusPropertySetters pcieFunctionsFields{
                 DBUS_QUERY_EP_FIELDS_ONLY2(fieldDevice),
-                DBUS_QUERY_EP_FIELDS_ONLY2(fieldDeviceType),
                 DBUS_QUERY_EP_FIELDS_ONLY2(general::assets::manufacturer),
                 DBUS_QUERY_EP_FIELDS_ONLY2(fieldSubsystem),
+                DBUS_QUERY_EP_SET_FORMATTERS2(
+                    fieldDeviceType, DBUS_QUERY_EP_CSTR(FormatDeviceType)),
             };
-
+            static const std::map<std::string, DBusPropertyFormatters> fmtList{
+                {fieldFunctionType, DBUS_QUERY_EP_CSTR(FormatFunctionType)},
+            };
             for (size_t index = 0; index < pcieFunctionsCount; ++index)
             {
                 for (auto dynMemberName : getDynamicFields())
                 {
+                    DBusPropertyCasters casters;
                     auto fieldName =
                         getComplexFunctionMemberName(index, dynMemberName);
-                    pcieFunctionsFields.insert_or_assign(
-                        DBusPropertyReflection(fieldName, fieldName),
-                        DBusPropertyCasters());
+                    auto it = fmtList.find(dynMemberName);
+                    if (it != fmtList.end())
+                    {
+                        casters.first = std::move(it->second);
+                    }
+                    pcieFunctionsFields.emplace_back(
+                        DBusPropertyReflection(fieldName, fieldName), casters);
                 }
             }
 
@@ -141,6 +271,9 @@ class PCIeProvider final :
         {
             this->setSBD(instance);
             this->setStatus(instance);
+            this->setDeviceSubClass(instance);
+            // this->setDeviceClassId(instance);
+            // this->setDeviceClass(instance);
         }
 
       protected:
@@ -200,8 +333,69 @@ class PCIeProvider final :
         {
             // Currently, doesn't have a way to determine the PCIe status.
             // Set 'OK' as default.
-            instance->supplementOrUpdate(StatusProvider::fieldStatus,
-                                         StatusProvider::OK);
+            StatusProvider::setFieldStatus(instance,
+                                           StatusProvider::Status::ok);
+        }
+
+        void setDeviceClassId(const DBusInstancePtr& instance) const
+        {
+            StrHexToNumberFormatter formatter;
+            for (size_t index = 0; index < pcieFunctionsCount; ++index)
+            {
+                const auto classCodeFieldName =
+                    getComplexFunctionMemberName(index, fieldClassCode);
+                const auto deviceClassIdFieldName =
+                    getComplexFunctionMemberName(index, fieldDeviceClassId);
+                const auto classCodeField = instance->getField(classCodeFieldName);
+                auto cc = formatter.format(classCodeFieldName,
+                                           classCodeField->getStringValue());
+
+                uint8_t dci = otherDeviceClassId;
+                if (std::holds_alternative<uint64_t>(cc))
+                {
+                    dci = static_cast<uint8_t>((std::get<uint64_t>(cc) >> 16) &
+                                               0xFFU);
+                }
+                instance->supplementOrUpdate(deviceClassIdFieldName, dci);
+            }
+
+        }
+
+        void setDeviceClass(const DBusInstancePtr& instance) const
+        {
+            FormatDeviceClass formatter;
+            for (size_t index = 0; index < pcieFunctionsCount; ++index)
+            {
+                const auto deviceClassFieldName =
+                    getComplexFunctionMemberName(index, fieldDeviceClass);
+                const auto deviceClassIdFieldName =
+                    getComplexFunctionMemberName(index, fieldDeviceClassId);
+                const auto dci = std::get<uint8_t>(
+                    instance->getField(deviceClassIdFieldName)->getValue());
+                const auto dbusValue =
+                    formatter.format(deviceClassFieldName, dci);
+                int intEnumValue = static_cast<int>(DeviceClass::other);
+                if (std::holds_alternative<int>(dbusValue))
+                {
+                    intEnumValue = std::get<int>(dbusValue);
+                }
+                instance->supplementOrUpdate(deviceClassFieldName,
+                                             intEnumValue);
+            }
+        }
+
+        void setDeviceSubClass(const DBusInstancePtr& instance) const
+        {
+            for (size_t index = 0; index < pcieFunctionsCount; ++index)
+            {
+                const auto deviceClassFieldName =
+                    getComplexFunctionMemberName(index, fieldDeviceClass);
+                const auto deviceSubClassFieldName =
+                    getComplexFunctionMemberName(index, fieldDeviceSubClass);
+                const auto dsc =
+                    instance->getField(deviceClassFieldName)->getStringValue();
+                instance->supplementOrUpdate(deviceSubClassFieldName, dsc);
+            }
         }
     };
 
@@ -229,14 +423,7 @@ class PCIeDevice final :
     explicit PCIeDevice() :
         Collection(),
         query(std::make_shared<ProxyQuery>(PCIeProvider::getSingleton()))
-    {
-        PCIeProvider::getSingleton()->initialize();
-        createMember(PCIeProvider::fieldSBD);
-        createMember(PCIeProvider::fieldSocket);
-        createMember(PCIeProvider::fieldBus);
-        createMember(PCIeProvider::fieldAddress);
-        createMember(StatusProvider::fieldStatus);
-    }
+    {}
     ~PCIeDevice() override = default;
 
     static const IEntity::IRelation::RelationRulesList& realtionToFunctions()
@@ -253,8 +440,8 @@ class PCIeDevice final :
                     log<level::DEBUG>(
                         "Linking 'PCIDevice' and 'PCIFunction' entities",
                         entry("FIELD=%s", PCIeProvider::fieldSBD),
-                        entry("PCIDevice=%s", instance->getStringValue().c_str()),
-                        entry("PCIFunction=%s", destSBD.c_str()));
+                        entry("PCIEDEV=%s", instance->getStringValue().c_str()),
+                        entry("PCIEFUN=%s", destSBD.c_str()));
                     return instance->getStringValue() == destSBD;
                 },
             },
@@ -263,7 +450,7 @@ class PCIeDevice final :
     }
 
   protected:
-    ENTITY_DECL_RELATION(PCIeFunction, realtionToFunctions())
+    ENTITY_DECL_RELATIONS(ENTITY_DEF_RELATION(PCIeFunction, realtionToFunctions()))
     ENTITY_DECL_QUERY(query)
   private:
     ProxyQueryPtr query;
@@ -293,6 +480,7 @@ class PCIeFunction final :
          */
         const entity::IEntity::InstanceCollection process() override
         {
+            provider->populate();
             std::vector<InstancePtr> instancesToInit;
             constexpr const std::array directlyCopyEntityMembers{
                 PCIeProvider::fieldSBD,
@@ -303,9 +491,10 @@ class PCIeFunction final :
                 for (uint8_t funcIndex = 0;
                      funcIndex < PCIeProvider::pcieFunctionsCount; ++funcIndex)
                 {
+                    const auto funcIndexStr = std::to_string(funcIndex);
                     std::string identifyField =
                         PCIeProvider::pcieFunctionFieldPrefix +
-                        std::to_string(funcIndex) + PCIeProvider::fieldDeviceId;
+                        funcIndexStr + PCIeProvider::fieldDeviceId;
                     auto identifyMembery =
                         providerInstance->getField(identifyField);
                     if (identifyMembery->getStringValue().empty())
@@ -320,8 +509,7 @@ class PCIeFunction final :
                                 ->getStringValue());
 
                     // Set the PCI Function ID
-                    targetInstance->supplementOrUpdate(
-                        PCIeProvider::fieldFunctionId, funcIndex);
+                    PCIeProvider::setFieldFunctionId(targetInstance, funcIndexStr);
 
                     // Directly copy member instance from provider
                     for (auto directlyCopyMember : directlyCopyEntityMembers)
@@ -340,19 +528,6 @@ class PCIeFunction final :
                                 funcIndex, dynamicField);
                         auto field =
                             providerInstance->getField(pcieFuncMemberName);
-                        try
-                        {
-                            if (field->getStringValue().empty())
-                            {
-                                // Don't set the value of an empty string to
-                                // pass through the 'N/A' value.
-                                continue;
-                            }
-                        }
-                        catch (std::bad_variant_access&)
-                        {
-                            // pass through if the field is not valid
-                        }
 
                         targetInstance->supplementOrUpdate(dynamicField,
                                                            field->getValue());
@@ -373,7 +548,9 @@ class PCIeFunction final :
         {
             QueryFields fields{
                 PCIeProvider::fieldClassCode,
+                PCIeProvider::fieldDeviceClassId,
                 PCIeProvider::fieldDeviceClass,
+                PCIeProvider::fieldDeviceSubClass,
                 PCIeProvider::fieldDeviceId,
                 PCIeProvider::fieldDeviceName,
                 PCIeProvider::fieldFunctionType,
@@ -401,7 +578,7 @@ class PCIeFunction final :
 
   protected:
     ENTITY_DECL_QUERY(query)
-    ENTITY_DECL_RELATION(PCIeDevice, PCIeDevice::realtionToFunctions())
+    ENTITY_DECL_RELATIONS(ENTITY_DEF_RELATION(PCIeDevice, PCIeDevice::realtionToFunctions()))
   private:
     std::shared_ptr<FunctionProxyQuery> query;
 };
