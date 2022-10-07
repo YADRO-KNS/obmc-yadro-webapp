@@ -1,0 +1,31 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+CertificateLocations:
+  Name: Certificate Locations
+  Schema: CertificateLocations
+  Version: 1.0.2
+  Actions:
+    Get:
+      Properties:
+        Links:
+          - Name: Certificates
+            Classname: Truststore
+            Template: /redfish/v1/Managers/{ManagerId}/Certificates/{CertificateId}
+            Parameters:
+              - Id: ManagerId
+                Entity: BmcManager
+                Field: BmcManager::fieldName
+              - Id: CertificateId
+                Entity: TrustStoreCertificates
+                Field: CertificateBase::fieldId
+          - Name: Certificates
+            Classname: HTTPS
+            Template: /redfish/v1/Managers/{ManagerId}/NetworkProtocol/HTTPS/Certificates/{CertificateId}
+            Parameters:
+              - Id: ManagerId
+                Entity: BmcManager
+                Field: BmcManager::fieldName
+              - Id: CertificateId
+                Entity: HTTPSCertificates
+                Field: CertificateBase::fieldId
