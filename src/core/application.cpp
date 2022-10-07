@@ -113,6 +113,7 @@ void Application::initEntities()
     entityManager.buildEntity<PCIeDevice>();
     entityManager.buildEntity<PCIeFunction>();
     entityManager.buildEntity<HostPower>();
+    entityManager.buildEntity<PIDProfile>();
     entityManager.buildEntity<PIDZone>();
     entityManager.buildEntity<PID>();
     entityManager.buildEntity<NetworkConfig>();
