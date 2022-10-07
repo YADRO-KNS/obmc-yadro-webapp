@@ -1,0 +1,61 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+Assembly:
+  Name: Chassis assemblies
+  Schema: Assembly
+  Version: 1.3.0
+  Actions:
+    Get:
+      Properties:
+        Collection:
+          - Name: Assemblies
+            Source: Baseboard
+            Annotations:
+              - Type: ODataId
+            Entity:
+              - Source: Baseboard
+                Fields:
+                  - Name: MemberId
+                    SourceField: Baseboard::fieldId
+                  - Name: Name
+                    SourceField: Baseboard::fieldName
+                  - Name: Vendor
+                    SourceField: Baseboard::fieldManufacturer
+                  - Name: PartNumber
+                    SourceField: Baseboard::fieldPartNumber
+                  - Name: SerialNumber
+                    SourceField: Baseboard::fieldSerialNumber
+                  - Name: Model
+                    SourceField: Baseboard::fieldModel
+                  - Name: PhysicalContext
+                    SourceField: Baseboard::fieldType
+            Fragments:
+              - Name: Status
+                Static:
+                  - Name: State
+                    Value: Enabled
+                Entity:
+                  - Source: Baseboard
+                    Fields:
+                      - Name: Health
+                        SourceField: StatusProvider::fieldStatus
+                      - Name: HealthRollup
+                        SourceField: StatusProvider::fieldStatusRollup
+                Enums:
+                  - Name: Health
+                    Source: StatusProvider::Status
+                    Mapping:
+                      OK: ok
+                      Warning: warning
+                      Critical: critical
+            Enums:
+              - Name: PhysicalContext
+                Source: Baseboard::Type
+                Mapping:
+                  Backplane: backplane
+                  SystemBoard: systemBoard
+                  Board: board
+        Annotations:
+          - Type: ODataCount
+            Field: Assemblies

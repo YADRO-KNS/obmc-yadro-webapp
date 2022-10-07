@@ -1,0 +1,149 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+Thermal:
+  Name: Thermal
+  Schema: Thermal
+  Version: 1.7.1
+  Actions:
+    Get:
+      Properties:
+        Collection:
+          - Name: Temperatures
+            Source: Sensors
+            Conditions:
+              - Field: Sensors::fieldUnit
+                Value: Sensors::Unit::temperature
+            Entity:
+              - Source: Sensors
+                Fields:
+                  - Name: Name
+                    SourceField: Sensors::fieldName
+                  - Name: MemberId
+                    SourceField: Sensors::fieldId
+                  - Name: MaxReadingRangeTemp
+                    SourceField: Sensors::fieldMaxValue
+                  - Name: MinReadingRangeTemp
+                    SourceField: Sensors::fieldMinValue
+                  - Name: ReadingCelsius
+                    SourceField: Sensors::fieldReading
+                  - Name: LowerThresholdCritical
+                    SourceField: Sensors::fieldLowCritical
+                  - Name: LowerThresholdNonCritical
+                    SourceField: Sensors::fieldLowWarning
+                  - Name: UpperThresholdCritical
+                    SourceField: Sensors::fieldHighCritical
+                  - Name: UpperThresholdNonCritical
+                    SourceField: Sensors::fieldHighWarning
+            Annotations:
+              - Type: ODataId
+            Fragments:
+              - Name: Status
+                Entity:
+                  - Source: Sensors
+                    Fields:
+                      - Name: Health
+                        SourceField: StatusProvider::fieldStatus
+                      - Name: State
+                        SourceField: Sensors::fieldState
+                Enums:
+                  - &Health
+                    Name: Health
+                    Source: StatusProvider::Status
+                    Mapping:
+                      OK: ok
+                      Warning: warning
+                      Critical: critical
+                  - Name: State
+                    Source: Sensors::State
+                    Mapping:
+                      Enabled: enabled
+                      Absent: absent
+          - Name: Fans
+            Source: Fan
+            Entity:
+              - Source: Fan
+                Fields:
+                  - Name: Name
+                    SourceField: Fan::fieldPrettyName
+                  - Name: MemberId
+                    SourceField: Fan::fieldName
+                  - Name: Manufacturer
+                    SourceField: Fan::fieldManufacturer
+                  - Name: Model
+                    SourceField: Fan::fieldModel
+                  - Name: PartNumber
+                    SourceField: Fan::fieldPartNumber
+                  - Name: SerialNumber
+                    SourceField: Fan::fieldSerialNumber
+              - Source: Sensors
+                Conditions:
+                  - Preset: Fan::readingPWM
+                Fields:
+                  - Name: MaxReadingRange
+                    SourceField: Sensors::fieldMaxValue
+                  - Name: MinReadingRange
+                    SourceField: Sensors::fieldMinValue
+                  - Name: LowerThresholdCritical
+                    SourceField: Sensors::fieldLowCritical
+                  - Name: UpperThresholdCritical
+                    SourceField: Sensors::fieldHighCritical
+                  - Name: Reading
+                    SourceField: Sensors::fieldReading
+                  - Name: ReadingUnits
+                    SourceField: Sensors::fieldUnit
+            Enums:
+              - Name: ReadingUnits
+                Source: Sensors::Unit
+                Mapping:
+                  RPM: rotational
+                  Percent: percent
+            Annotations:
+              - Type: ODataId
+            Fragments:
+              - Name: Status
+                Entity:
+                  - Source: Fan
+                    Fields:
+                      - Name: Health
+                        SourceField: StatusProvider::fieldStatus
+                      - Name: HealthRollup
+                        SourceField: StatusProvider::fieldStatusRollup
+                      - Name: State
+                        SourceField: Fan::fieldState
+                Enums:
+                  - *Health
+                  - Name: State
+                    Source: Fan::State
+                    Mapping:
+                      Enabled: enabled
+            Oem:
+              - Name: OemThermal
+                Version: 1.0.0
+                Entity:
+                  - Source: Fan
+                    Fields:
+                      - Name: Connector
+                        SourceField: Fan::fieldConnector
+                Collection:
+                  - Name: Readings
+                    Source: Sensors
+                    Annotations:
+                      - Type: ODataId
+                    Conditions:
+                      - Preset: Fan::readingRPM
+                    Entity:
+                      - Source: Sensors
+                        Fields:
+                          - Name: MaxReadingRange
+                            SourceField: Sensors::fieldMaxValue
+                          - Name: MinReadingRange
+                            SourceField: Sensors::fieldMinValue
+                          - Name: LowerThresholdCritical
+                            SourceField: Sensors::fieldLowCritical
+                          - Name: UpperThresholdCritical
+                            SourceField: Sensors::fieldHighCritical
+                          - Name: Reading
+                            SourceField: Sensors::fieldReading
+                Annotations:
+                  - Type: ODataId

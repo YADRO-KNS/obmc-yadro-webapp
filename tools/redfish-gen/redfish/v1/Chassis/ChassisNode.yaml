@@ -1,0 +1,100 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+ChassisNode@dynamic:
+  Name: The Chassis service
+  Schema: Chassis
+  Version: 1.20.0
+  Parameter:
+    Type: Entity
+    Source: Server
+    Parameter: ChassisId
+    Value: Server::fieldName
+  Actions:
+    Get:
+      Properties:
+        Entity:
+          - Source: Chassis
+            Fields:
+              - Name: Manufacturer
+                SourceField: Chassis::fieldManufacturer
+              - Name: PartNumber
+                SourceField: Chassis::fieldPartNumber
+              - Name: ChassisType
+                SourceField: Chassis::fieldType
+              - Name: PowerState
+                SourceField: ChassisStateProvider::fieldPowerState
+          - Source: Server
+            Fields:
+            - Name: Model
+              SourceField: Server::fieldModel
+        Fragments:
+          - Name: Status
+            Entity:
+              - Source: Chassis
+                Fields:
+                  - Name: Health
+                    SourceField: StatusProvider::fieldStatus
+                  - Name: HealthRollup
+                    SourceField: StatusProvider::fieldStatusRollup
+                  - Name: State
+                    SourceField: ChassisStateProvider::fieldState
+            Enums:
+              - Name: Health
+                Source: StatusProvider::Status
+                Mapping:
+                  OK: ok
+                  Warning: warning
+                  Critical: critical
+              - Name: State
+                Source: ChassisStateProvider::State
+                Mapping:
+                  Enabled: enabled
+                  StandbyOffline: standbyOffline
+          - Name: PhysicalSecurity
+            Entity:
+              - Source: IntrusionSensor
+                Fields:
+                  - Name: IntrusionSensor
+                    SourceField: IntrusionSensor::fieldStatus
+            Static:
+              - Name: IntrusionSensorNumber
+                Value: 1
+            Enums:
+              - Name: IntrusionSensor
+                Source: IntrusionSensor::Status
+                Mapping:
+                  Normal: normal
+                  HardwareIntrusion: hardwareIntrusion
+                  TamperingDetected: tamperingDetected
+        Enums:
+          - Name: ChassisType
+            Source: Chassis::ChassisType
+            Mapping:
+              RackMount: RackMount
+              Other: Other
+          - Name: PowerState
+            Source: ChassisStateProvider::Power
+            Mapping:
+              "On": "on"
+              "Off": "off"
+        Links:
+          - Name: ManagedBy
+            Template: /redfish/v1/Managers/{ManagerId}
+            Parameters:
+              - Id: ManagerId
+                Entity: BmcManager
+                Field: BmcManager::fieldName
+          - Name: ComputerSystems
+            Template: /redfish/v1/Systems/{ComputerSystemId}
+            Parameters:
+              - Id: ComputerSystemId
+                Entity: Server
+                Field: Server::fieldServiceName
+      Reference:
+        - Node: PCIeDevices
+        - Node: Thermal
+        - Node: Power
+        - Node: Sensors
+        - Node: Assembly
+        - Node: NetworkAdapters

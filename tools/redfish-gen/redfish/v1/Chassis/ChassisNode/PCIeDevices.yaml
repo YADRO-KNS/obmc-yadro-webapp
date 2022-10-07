@@ -1,0 +1,12 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+PCIeDevices:
+  Name: PCI devices collection
+  Schema: PCIeDeviceCollection
+  Actions:
+    Get:
+      Reference:
+        - Node:
+            - PCIeDevice
+          Field: Members

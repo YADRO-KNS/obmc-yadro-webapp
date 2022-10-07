@@ -1,0 +1,12 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+Chassis:
+  Name: The chassis collection
+  Schema: ChassisCollection
+  Actions:
+    Get:
+      Reference:
+        - Node:
+            - ChassisNode
+          Field: Members
