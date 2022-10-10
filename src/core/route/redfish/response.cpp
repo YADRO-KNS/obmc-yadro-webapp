@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2022 YADRO
 
+#include <core/route/redfish/error_messages.hpp>
 #include <core/route/redfish/response.hpp>
 #include <phosphor-logging/log.hpp>
-#include <core/route/redfish/error_messages.hpp>
 
 namespace app
 {
@@ -125,8 +125,7 @@ const entity::IEntity::InstancePtr
 {
     return entityInstance;
 }
-const entity::EntityPtr
-    RedfishContext::ParameterCtx::getEntity() const
+const entity::EntityPtr RedfishContext::ParameterCtx::getEntity() const
 {
     return sourceEntity;
 }

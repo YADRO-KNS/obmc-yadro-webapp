@@ -53,7 +53,8 @@ class IStaticSegments
     virtual ~IStaticSegments() = default;
 
     template <typename TNode>
-    static inline bool verifyStaticSegments(const RedfishContextPtr ctx, size_t& depth)
+    static inline bool verifyStaticSegments(const RedfishContextPtr ctx,
+                                            size_t& depth)
     {
         const auto& pathInfo = ctx->getRequest()->environment().pathInfo;
         if (pathInfo.size() <= depth)
@@ -388,11 +389,12 @@ class Node : public INode
         }
     };
 
-    template<typename TEnumSource>
+    template <typename TEnumSource>
     class EnumGetter : public IAction
     {
         const std::string field;
         TEnumSource value;
+
       public:
         using FieldType = int;
         EnumGetter(const std::string& field, int value) :
@@ -419,6 +421,7 @@ class Node : public INode
         {
             return field;
         }
+
       protected:
         TEnumSource getValue() const
         {
@@ -426,7 +429,6 @@ class Node : public INode
         }
 
         virtual std::string castEnumToString() const = 0;
-
     };
 
     using CallableGetter = FieldGetter<std::function<std::string()>>;
@@ -442,7 +444,8 @@ class Node : public INode
         const std::string field;
 
       public:
-        ObjectGetter() : field(dummyFieldName) {}
+        ObjectGetter() : field(dummyFieldName)
+        {}
         ObjectGetter(const std::string& field) : field(field)
         {}
         ~ObjectGetter() override = default;
@@ -477,7 +480,8 @@ class Node : public INode
         const std::string field;
 
       public:
-        StaticCollectionGetter() : field(dummyFieldName) {}
+        StaticCollectionGetter() : field(dummyFieldName)
+        {}
         StaticCollectionGetter(const std::string& field) : field(field)
         {}
         ~StaticCollectionGetter() override = default;
@@ -485,11 +489,13 @@ class Node : public INode
         void process(const RedfishContextPtr& ctx) override
         {
             nlohmann::json::array_t array({});
-            auto mockComplexContext = std::make_shared<RedfishContext>(*ctx.get());
+            auto mockComplexContext =
+                std::make_shared<RedfishContext>(*ctx.get());
             mockComplexContext->addAnchorSegment(field);
             for (const auto valueGetter : this->childs(mockComplexContext))
             {
-                auto mockContext = std::make_shared<RedfishContext>(*mockComplexContext.get());
+                auto mockContext =
+                    std::make_shared<RedfishContext>(*mockComplexContext.get());
                 valueGetter->process(mockContext);
                 const auto payload =
                     mockContext->getResponse()
@@ -674,7 +680,7 @@ class Node : public INode
                 const app::entity::IEntity::InstancePtr instance) :
                 ScalarFieldGetter(field, sourceField, instance)
 
-            { }
+            {}
             ~EntityEnumFieldGetter() override = default;
 
             void process(const RedfishContextPtr& ctx) override
@@ -735,7 +741,7 @@ class Node : public INode
             }
         };
 
-        template<typename TSubTypeGetter>
+        template <typename TSubTypeGetter>
         class ListFieldGetter : public StaticCollectionGetter
         {
             template <class TVal, class... TItOf>
@@ -746,18 +752,20 @@ class Node : public INode
             const app::entity::IEntity::InstancePtr instance;
 
           public:
-            ListFieldGetter(
-                const std::string& field, const std::string& sourceField,
-                const app::entity::IEntity::InstancePtr instance) :
+            ListFieldGetter(const std::string& field,
+                            const std::string& sourceField,
+                            const app::entity::IEntity::InstancePtr instance) :
                 StaticCollectionGetter(field),
                 sourceField(sourceField), instance(instance)
             {}
             ~ListFieldGetter() override = default;
 
           protected:
-            const FieldHandlers childs(const RedfishContextPtr& ctx) const override
+            const FieldHandlers
+                childs(const RedfishContextPtr& ctx) const override
             {
-                const auto valVisitor = [ctx, this](auto&& values) -> auto {
+                const auto valVisitor = [ ctx, this ](auto&& values) -> auto
+                {
                     using TVal = std::decay_t<decltype(values)>;
                     using TFieldGetter = typename TSubTypeGetter::FieldType;
                     using TIterator = std::vector<TFieldGetter>;
@@ -777,8 +785,9 @@ class Node : public INode
                 };
                 try
                 {
-                    return std::visit(std::move(valVisitor),
-                               instance->getField(sourceField)->getValue());
+                    return std::visit(
+                        std::move(valVisitor),
+                        instance->getField(sourceField)->getValue());
                 }
                 catch (const std::exception& e)
                 {
@@ -854,13 +863,13 @@ class Node : public INode
         {
             FieldHandlers getters;
             const auto instances =
-                EntityGetter<TSourceEntity>::template getInstances<TParentEntity>(
-                    parentInstance, this->getConditions());
+                EntityGetter<TSourceEntity>::template getInstances<
+                    TParentEntity>(parentInstance, this->getConditions());
             size_t index = 0;
             for (const auto targetInstance : instances)
             {
-                getters.emplace_back(
-                    std::make_shared<TFragment>(std::to_string(index), targetInstance));
+                getters.emplace_back(std::make_shared<TFragment>(
+                    std::to_string(index), targetInstance));
                 index++;
             }
             return getters;
@@ -1118,7 +1127,8 @@ class Node : public INode
                 std::conjunction_v<std::disjunction<
                     std::is_base_of<LinkObjectGetter, TLinkGetter>,
                     std::is_base_of<LinkCollectionGetter, TLinkGetter>>...>,
-                "Invalid TLinkGetter definition. The TLinkGetter must be derrived "
+                "Invalid TLinkGetter definition. The TLinkGetter must be "
+                "derrived "
                 "from LinkObjectGetter or LinkCollectionGetter");
         }
         ~LinksGetter() override = default;
