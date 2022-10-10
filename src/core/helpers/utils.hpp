@@ -7,12 +7,13 @@
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 #include <systemd/sd-id128.h>
-#include <phosphor-logging/log.hpp>
-#include <iostream>
 
-#include <string>
-#include <sstream>
+#include <phosphor-logging/log.hpp>
+
 #include <filesystem>
+#include <iostream>
+#include <sstream>
+#include <string>
 #include <vector>
 
 namespace app
@@ -24,7 +25,7 @@ namespace utils
 using namespace phosphor::logging;
 
 inline long int countExtraSegmentsOfPath(const std::string& namespacePath,
-                                       const std::string& path)
+                                         const std::string& path)
 {
     if (namespacePath.length() >= path.length())
     {
@@ -182,24 +183,28 @@ inline std::string getUuid()
 
 /**
  * @brief Trim the string from start
- * 
- * @param s 
+ *
+ * @param s
  */
-static inline void ltrim(std::string &s) {
+static inline void ltrim(std::string& s)
+{
     s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
-        return !std::isspace(ch);
-    }));
+                return !std::isspace(ch);
+            }));
 }
 
 // Trim the string from end
-static inline void rtrim(std::string &s) {
-    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
-        return !std::isspace(ch);
-    }).base(), s.end());
+static inline void rtrim(std::string& s)
+{
+    s.erase(std::find_if(s.rbegin(), s.rend(),
+                         [](unsigned char ch) { return !std::isspace(ch); })
+                .base(),
+            s.end());
 }
 
 // Trim the string both start and end
-static inline const std::string trim(std::string s) {
+static inline const std::string trim(std::string s)
+{
     ltrim(s);
     rtrim(s);
     return s;
@@ -209,9 +214,9 @@ inline const auto getNetmask(uint32_t bits)
 {
     uint32_t value = 0xffffffff << (32 - bits);
     return std::to_string((value >> 24) & 0xff) + "." +
-                          std::to_string((value >> 16) & 0xff) + "." +
-                          std::to_string((value >> 8) & 0xff) + "." +
-                          std::to_string(value & 0xff);
+           std::to_string((value >> 16) & 0xff) + "." +
+           std::to_string((value >> 8) & 0xff) + "." +
+           std::to_string(value & 0xff);
 }
 
 static inline const std::vector<std::string> splitToVector(std::stringstream ss,
