@@ -22,7 +22,7 @@ class ObmcAppException : public std::runtime_error
     virtual ~ObmcAppException() = default;
 };
 
-class NotImplemented: public ObmcAppException
+class NotImplemented : public ObmcAppException
 {
   public:
     explicit NotImplemented(const std::string& target) :
@@ -32,7 +32,7 @@ class NotImplemented: public ObmcAppException
     virtual ~NotImplemented() = default;
 };
 
-class InvalidType: public ObmcAppException
+class InvalidType : public ObmcAppException
 {
   public:
     explicit InvalidType(const std::string& member) :

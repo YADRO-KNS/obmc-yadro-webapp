@@ -3,14 +3,13 @@
 
 #pragma once
 
+#include <core/helpers/utils.hpp>
 #include <core/request.hpp>
 #include <core/response.hpp>
-#include <core/helpers/utils.hpp>
+#include <phosphor-logging/log.hpp>
 
 #include <memory>
 #include <string>
-
-#include <phosphor-logging/log.hpp>
 
 namespace app
 {
@@ -31,11 +30,6 @@ class IRouteHandler
   public:
     virtual const ResponsePtr run(const RequestPtr& request) = 0;
     virtual bool preHandlers(const RequestPtr& request) = 0;
-    /**
-     * @brief Get the URI of handling resource
-     * 
-     * @return const std::string& - URI
-     */
     virtual ~IRouteHandler() = default;
 };
 
@@ -100,7 +94,8 @@ class Router
             return std::make_shared<THandler>(request);
         };
         auto isRegistered =
-            Router::dynamicRouterHandlers.emplace_back(rule, routerBuilder).second;
+            Router::dynamicRouterHandlers.emplace_back(rule, routerBuilder)
+                .second;
         if (!isRegistered)
         {
             throw std::runtime_error(
@@ -120,6 +115,7 @@ class Router
     }
 
     void setGeneralHeaders(const ResponsePtr);
+
   private:
     RequestPtr requestObject;
 

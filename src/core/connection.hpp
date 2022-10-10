@@ -3,21 +3,22 @@
 
 #pragma once
 
-#include <fastcgi++/request.hpp>
-#include <core/response.hpp>
-#include <core/request.hpp>
-#include <core/router.hpp>
-
 #include <config.h>
+
+#include <core/request.hpp>
+#include <core/response.hpp>
+#include <core/router.hpp>
+#include <fastcgi++/request.hpp>
 
 namespace app
 {
 namespace core
 {
 
-class Connection :public Fastcgipp::Request<char>
+class Connection : public Fastcgipp::Request<char>
 {
-    static constexpr const size_t maxBodySizeByte = (HTTP_REQ_BODY_LIMIT_MB << 20U);
+    static constexpr const size_t maxBodySizeByte =
+        (HTTP_REQ_BODY_LIMIT_MB << 20U);
 
   public:
     Connection();
@@ -42,6 +43,6 @@ class Connection :public Fastcgipp::Request<char>
     RouteUni router;
 };
 
-} // namespace entity
+} // namespace core
 
 } // namespace app

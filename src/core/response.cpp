@@ -2,10 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021 YADRO
 
-#include <core/response.hpp>
-
-#include <http/headers.hpp>
 #include <core/helpers/utils.hpp>
+#include <core/response.hpp>
+#include <http/headers.hpp>
 
 namespace app
 {
@@ -32,7 +31,8 @@ void Response::setStatus(const statuses::Code& status)
     this->status = status;
 }
 
-void Response::setHeader(const std::string& headerName, const std::string& value)
+void Response::setHeader(const std::string& headerName,
+                         const std::string& value)
 {
     headerBuffer += (app::http::header(headerName, value) + endHeaderLine);
 }

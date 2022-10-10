@@ -4,8 +4,8 @@
 #ifndef BMC_HEADERS_HPP
 #define BMC_HEADERS_HPP
 
-#include <string>
 #include <iostream>
+#include <string>
 
 namespace app
 {
@@ -24,7 +24,7 @@ constexpr const char* wwwAuthenticate = "WWW-Authenticate";
 namespace statuses
 {
 
-enum class Code: uint16_t
+enum class Code : uint16_t
 {
     /*####### 1xx - Informational #######*/
     /* Indicates an interim response for communicating connection status
@@ -61,11 +61,10 @@ enum class Code: uint16_t
     NoContent = 204, // Indicates that the server has successfully fulfilled
                      // the request and that there is no additional content to
                      // send in the response payload body.
-    ResetContent =
-        205, // Indicates that the server has fulfilled the request and
-             // desires that the user agent reset the \"document view\", which
-             // caused the request to be sent, to its original state as
-             // received from the origin server.
+    ResetContent = 205, // Indicates that the server has fulfilled the request
+                        // and desires that the user agent reset the \"document
+                        // view\", which caused the request to be sent, to its
+                        // original state as received from the origin server.
     PartialContent =
         206, // Indicates that the server is successfully fulfilling a range
              // request for the target resource by transferring one or more
@@ -124,19 +123,19 @@ enum class Code: uint16_t
     /*####### 4xx - Client Error #######*/
     /* Indicates that the client seems to have erred.
      */
-    BadRequest = 400, // Indicates that the server cannot or will not process
-                      // the request because the received syntax is invalid,
-                      // nonsensical, or exceeds some limitation on what the
-                      // server is willing to process.
+    BadRequest = 400,   // Indicates that the server cannot or will not process
+                        // the request because the received syntax is invalid,
+                        // nonsensical, or exceeds some limitation on what the
+                        // server is willing to process.
     Unauthorized = 401, // Indicates that the request has not been applied
                         // because it lacks valid authentication credentials
                         // for the target resource.
     PaymentRequired = 402, // *Reserved*
     Forbidden = 403, // Indicates that the server understood the request but
                      // refuses to authorize it.
-    NotFound = 404, // Indicates that the origin server did not find a current
-                    // representation for the target resource or is not
-                    // willing to disclose that one exists.
+    NotFound = 404,  // Indicates that the origin server did not find a current
+                     // representation for the target resource or is not
+                     // willing to disclose that one exists.
     MethodNotAllowed = 405, // Indicates that the method specified in the
                             // request-line is known by the origin server but
                             // not supported by the target resource.
@@ -154,9 +153,9 @@ enum class Code: uint16_t
              // message within the time that it was prepared to wait.
     Conflict = 409, // Indicates that the request could not be completed due
                     // to a conflict with the current state of the resource.
-    Gone = 410, // Indicates that access to the target resource is no longer
-                // available at the origin server and that this condition is
-                // likely to be permanent.
+    Gone = 410,     // Indicates that access to the target resource is no longer
+                    // available at the origin server and that this condition is
+                    // likely to be permanent.
     LengthRequired = 411, // Indicates that the server refuses to accept the
                           // request without a defined Content-Length.
     PreconditionFailed =
@@ -202,9 +201,8 @@ enum class Code: uint16_t
              // client upgrades to a different protocol.
     PreconditionRequired = 428, // Indicates that the origin server requires
                                 // the request to be conditional.
-    TooManyRequests =
-        429, // Indicates that the user has sent too many requests in a given
-             // amount of time (\"rate limiting\").
+    TooManyRequests = 429, // Indicates that the user has sent too many requests
+                           // in a given amount of time (\"rate limiting\").
     RequestHeaderFieldsTooLarge =
         431, // Indicates that the server is unwilling to process the request
              // because its header fields are too large.
@@ -252,9 +250,8 @@ enum class Code: uint16_t
              // "Depth: infinity". [RFC 5842]
     NotExtended = 510, // The policy for accessing the resource has not been
                        // met in the request. [RFC 2774]
-    NetworkAuthenticationRequired =
-        511, // Indicates that the client needs to authenticate to gain
-             // network access.
+    NetworkAuthenticationRequired = 511, // Indicates that the client needs to
+                                         // authenticate to gain network access.
 };
 
 /**
@@ -318,8 +315,7 @@ inline bool isError(Code code)
     return isError(static_cast<int>(code));
 } // @overload
 
-
-static const std::map<Code, std::string> reasonPhraseDict {
+static const std::map<Code, std::string> reasonPhraseDict{
     {Code::Continue, "Continue"},
     {Code::SwitchingProtocols, "Switching Protocols"},
     {Code::Processing, "Processing"},
@@ -417,9 +413,10 @@ namespace content_types
 {
 constexpr const char* applicationJson = "application/json; charset=UTF-8";
 constexpr const char* textPlain = "text/plain; charset=UTF-8";
-}
+} // namespace content_types
 
-inline const std::string header(const std::string& name, const std::string& value)
+inline const std::string header(const std::string& name,
+                                const std::string& value)
 {
     return std::move(name + ": " + value);
 }
