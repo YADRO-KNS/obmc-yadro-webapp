@@ -113,7 +113,7 @@ static session::UserSessionPtr
 }
 
 static bool authenticate(const app::core::RequestPtr& request,
-                         app::core::ResponseUni& response)
+                         const app::core::ResponsePtr& response)
 {
     const session::AuthConfigMethods& authMethodsConfig =
         session::SessionStore::getInstance().getAuthMethodsConfig();
