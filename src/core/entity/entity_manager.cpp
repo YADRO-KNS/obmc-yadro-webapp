@@ -2,8 +2,10 @@
 // Copyright (C) 2022, KNS Group LLC (YADRO)
 
 #include "core/entity/entity_manager.hpp"
-#include <core/entity/entity.hpp>
+
 #include "core/exceptions.hpp"
+
+#include <core/entity/entity.hpp>
 
 namespace app
 {
@@ -14,7 +16,7 @@ using namespace exceptions;
 
 void EntityManager::configure()
 {
-    for(auto entity : entityDictionary)
+    for (auto entity : entityDictionary)
     {
         entity.second->initialize();
     }
@@ -49,7 +51,7 @@ const EntityPtr EntityManager::getEntity(const std::string& entityName) const
 
 void EntityManager::update()
 {
-    for(auto entity : entityDictionary)
+    for (auto entity : entityDictionary)
     {
         entity.second->populate();
         log<level::INFO>(

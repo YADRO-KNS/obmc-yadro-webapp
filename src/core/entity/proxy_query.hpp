@@ -78,11 +78,12 @@ class ProxyQuery : public IQuery
         }
         return std::forward<QueryFields>(fields);
     }
-    protected:
-      const EntitySupplementProviderPtr& getProvider() const
-      {
-          return provider;
-      }
+
+  protected:
+    const EntitySupplementProviderPtr& getProvider() const
+    {
+        return provider;
+    }
 };
 
 } // namespace proxy

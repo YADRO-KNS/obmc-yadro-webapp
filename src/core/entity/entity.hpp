@@ -3,12 +3,12 @@
 
 #pragma once
 
-#include <phosphor-logging/log.hpp>
-#include <core/exceptions.hpp>
-
 #include <core/entity/entity_interface.hpp>
 #include <core/entity/entity_manager.hpp>
+#include <core/exceptions.hpp>
+#include <phosphor-logging/log.hpp>
 
+#include <chrono>
 #include <functional>
 #include <map>
 #include <memory>
@@ -16,7 +16,6 @@
 #include <string>
 #include <variant>
 #include <vector>
-#include <chrono>
 
 namespace app
 {
@@ -154,6 +153,7 @@ class BaseEntity : virtual public IEntity
         class StaticInstance : public IEntityMember::IInstance
         {
             std::optional<FieldType> value;
+
           public:
             StaticInstance(const StaticInstance&) = delete;
             StaticInstance& operator=(const StaticInstance&) = delete;
@@ -163,8 +163,7 @@ class BaseEntity : virtual public IEntity
             explicit StaticInstance() noexcept = default;
             explicit StaticInstance(const FieldType& fieldValue) noexcept :
                 value(fieldValue)
-            {
-            }
+            {}
             ~StaticInstance() override = default;
 
             const FieldType& getValue() const noexcept
@@ -179,7 +178,8 @@ class BaseEntity : virtual public IEntity
             const std::string& getStringValue() const override
             {
                 static const std::string naVal(fieldValueNotAvailable);
-                if (!std::holds_alternative<std::string>(getValue()) || isNull())
+                if (!std::holds_alternative<std::string>(getValue()) ||
+                    isNull())
                 {
                     return naVal;
                 }
@@ -316,7 +316,7 @@ class BaseEntity : virtual public IEntity
 
         template <typename TRightValue>
         static const ConditionPtr buildNonEqual(const std::string& fieldName,
-                                             TRightValue value)
+                                                TRightValue value)
         {
             return build<NonEqual<TRightValue>, TRightValue>(fieldName, value);
         }
@@ -369,6 +369,7 @@ class BaseEntity : virtual public IEntity
         const std::vector<ConditionPtr>
             getConditions(const InstancePtr) const override;
         LinkWay getLinkWay() const override;
+
       public:
         static const RelationPtr build(const EntityPtr source,
                                        const EntityPtr dest,
@@ -505,8 +506,8 @@ class BaseEntity : virtual public IEntity
                                     const IEntity::InstancePtr& target);
 };
 
-template<typename TEntity>
-class NamedEntity: public virtual IEntity
+template <typename TEntity>
+class NamedEntity : public virtual IEntity
 {
   public:
     const EntityName getName() const override
@@ -543,9 +544,10 @@ class NamedEntity: public virtual IEntity
  * @brief The behavior of populating IEntity data.
  *        The data should be filled by an cache update engine.
  */
-class CachedSource: public virtual IEntity
+class CachedSource : public virtual IEntity
 {
     bool initialized;
+
   public:
     CachedSource() : initialized(false)
     {}
@@ -572,14 +574,14 @@ class CachedSource: public virtual IEntity
  *        lifetime.
  */
 template <int64_t timeToCacheInSec>
-class ShortTimeCachedSource: public virtual IEntity
+class ShortTimeCachedSource : public virtual IEntity
 {
     system_clock::time_point cacheTimePoint;
+
   public:
     ShortTimeCachedSource() :
         cacheTimePoint(system_clock::now() - timeToCache())
-    {
-    }
+    {}
     void populate() override
     {
         if (isCacheExpiried())
@@ -594,6 +596,7 @@ class ShortTimeCachedSource: public virtual IEntity
         query->configure(std::ref(*this));
     }
     ~ShortTimeCachedSource() override = default;
+
   private:
     void setTimePoint()
     {
@@ -667,7 +670,8 @@ class Entity : public BaseEntity
     const InstancePtr get() const
     {
         const auto instances = this->getInstances();
-        if (instances.size() == 0) {
+        if (instances.size() == 0)
+        {
             return std::make_shared<StaticInstance>(
                 EntityMember::fieldValueNotAvailable);
         }
@@ -735,7 +739,8 @@ class EntitySupplementProvider :
 
     /**
      * @brief Get Rerefernce type.
-     *        Providers has a formless type that is depends on the requesting resources.
+     *        Providers has a formless type that is depends on the requesting
+     *        resources.
      *
      * @return Type IEntity::Type::reference
      */
