@@ -1,0 +1,224 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+BmcManager@dynamic:
+  Name: The YADRO BMC Manager
+  Schema: Manager
+  Version: 1.15.0
+  Parameter:
+    Type: Entity
+    Source: BmcManager
+    Parameter: ManagerId
+    Value: BmcManager::fieldName
+  Actions:
+    Get:
+      Properties:
+        Entity:
+          - Source: BmcManager
+            Fields:
+              - Name: LastResetTime
+                SourceField: BmcManager::fieldLastRebootTimeFmt
+              - Name: DateTime
+                SourceField: BmcManager::fieldDatetime
+              - Name: PowerState
+                SourceField: BmcManager::fieldPowerState
+              - Name: Model
+                SourceField: BmcManager::fieldModel
+              - Name: ManagerType
+                SourceField: BmcManager::fieldManagerType
+              - Name: UUID
+                SourceField: BmcManager::fieldUUID
+          - Source: Server
+            Fields:
+            - Name: ServiceEntryPointUUID
+              SourceField: Server::fieldUUID
+          - Source: Firmware
+            Conditions:
+              - Preset: Firmware::activeFirmware
+            Fields:
+            - Name: FirmwareVersion
+              SourceField: FirmwareProvider::fieldVersion
+        Fragments:
+          - Name: Status
+            Entity:
+              - Source: BmcManager
+                Fields:
+                  - Name: Health
+                    SourceField: StatusProvider::fieldStatus
+                  - Name: HealthRollup
+                    SourceField: StatusProvider::fieldStatusRollup
+            Enums:
+              - Name: Health
+                Source: StatusProvider::Status
+                Mapping:
+                  OK: ok
+                  Warning: warning
+                  Critical: critical
+          - Name: SerialConsole
+            Static:
+              - Name: ServiceEnabled
+                Value: True
+            Entity:
+              - Source: BmcManager
+                Fields:
+                  - Name: ConnectTypesSupported
+                    SourceField: BmcManager::fieldSCTypeSupported
+                  - Name: MaxConcurrentSessions
+                    SourceField: BmcManager::fieldSCCount
+            Enums:
+              - Name: SerialConnectTypesSupported
+                For: ConnectTypesSupported
+                Source: BmcManager::SerialConnect
+                Mapping:
+                  IPMI: ipmi
+                  SSH: ssh
+          - Name: GraphicalConsole
+            Static:
+              - Name: ServiceEnabled
+                Value: True
+            Entity:
+              - Source: BmcManager
+                Fields:
+                  - Name: MaxConcurrentSessions
+                    SourceField: BmcManager::fieldGCCount
+                  - Name: ConnectTypesSupported
+                    SourceField: BmcManager::fieldGCTypeSupported
+            Enums:
+              - Name: GraphicalConnectTypesSupported
+                For: ConnectTypesSupported
+                Source: BmcManager::GraphicalConnect
+                Mapping:
+                  KVMIP: kvmip
+        Oem:
+          - Name: OemManager
+            Version: 1.0.0
+            Fragments:
+              - Name: Fan
+                Annotations:
+                  - Type: ODataId
+                Entity:
+                  - Source: PIDProfile
+                    Fields:
+                      - Name: Profile
+                        SourceField: PIDProfile::fieldProfile
+                Enums:
+                  - Name: PIDProfile
+                    For: Profile
+                    Source: PIDProfile::Profile
+                    Mapping:
+                      Acoustic: acoustic
+                      Performance: performance
+                Collection:
+                  - Name: FanZones
+                    Source: PIDZone
+                    Annotations:
+                      - Type: ODataId
+                    Entity:
+                      - Source: PIDZone
+                        Fields:
+                          - Name: Name
+                            SourceField: PIDZone::fieldName
+                          - Name: FailSafePercent
+                            SourceField: PIDZone::fieldFailSafePercent
+                          - Name: MinThermalOutput
+                            SourceField: PIDZone::fieldMinOutputPercent
+                  - Name: FanControllers
+                    Source: PID
+                    Annotations:
+                      - Type: ODataId
+                    Conditions:
+                      - Field: PID::fieldClass
+                        Value: "fan"
+                    Entity:
+                      - Source: PID
+                        Fields: &PIDFields
+                          - Name: Name
+                            SourceField: PID::fieldName
+                          - Name: FFGainCoefficient
+                            SourceField: PID::fieldFeedForwardGainCoef
+                          - Name: FFOffCoefficient
+                            SourceField: PID::fieldFeedForwardOffsetCoef
+                          - Name: ICoefficient
+                            SourceField: PID::fieldIntegralCoef
+                          - Name: ILimitMax
+                            SourceField: PID::fieldIntegralLimitMax
+                          - Name: ILimitMin
+                            SourceField: PID::fieldIntegralLimitMin
+                          - Name: Inputs
+                            SourceField: PID::fieldInputs
+                          - Name: NegativeHysteresis
+                            SourceField: PID::fieldNegativeHyst
+                          - Name: OutLimitMax
+                            SourceField: PID::fieldOutputMax
+                          - Name: OutLimitMin
+                            SourceField: PID::fieldOutputMin
+                          - Name: Outputs
+                            SourceField: PID::fieldOutputs
+                          - Name: PCoefficient
+                            SourceField: PID::fieldProportionalCoef
+                          - Name: PositiveHysteresis
+                            SourceField: PID::fieldPositiveHyst
+                          - Name: SlewNeg
+                            SourceField: PID::fieldSlewNegative
+                          - Name: SlewPos
+                            SourceField: PID::fieldSlewPositive
+                  - Name: PidControllers
+                    Source: PID
+                    Annotations:
+                      - Type: ODataId
+                    Conditions:
+                      - Field: PID::fieldClass
+                        Value: "temp"
+                    Entity:
+                      - Source: PID
+                        Fields: *PIDFields
+
+        Links:
+          - Name: ManagerForChassis
+            Template: /redfish/v1/Chassis/{ChassisId}
+            Parameters:
+              - Id: ChassisId
+                Entity: Server
+                Field: Server::fieldName
+          - Name: ManagerForServers
+            Template: /redfish/v1/Systems/{ComputerSystemId}
+            Parameters:
+              - Id: ComputerSystemId
+                Entity: Server
+                Field: Server::fieldServiceName
+          - Name: ManagerInChassis
+            Template: /redfish/v1/Chassis/{ChassisId}
+            Parameters:
+              - Id: ChassisId
+                Entity: Server
+                Field: Server::fieldName
+          - &SoftwareImages
+            Name: SoftwareImages
+            Template: /redfish/v1/UpdateService/FirmwareInventory/{SoftwareInventoryId}
+            Parameters:
+              - &InventoryId
+                Id: SoftwareInventoryId
+                Entity: Firmware
+                Field: FirmwareProvider::fieldId
+          - <<: *SoftwareImages
+            Name: ActiveSoftwareImage
+            Parameters:
+              - <<: *InventoryId
+                Conditions:
+                  - Preset: Firmware::activeFirmware
+        Enums:
+          - Name: PowerState
+            Source: BmcManager::PowerState
+            Mapping:
+              "On": "on"
+              "PoweringOn": "poweringOn"
+              "PoweringOff": "poweringOff"
+          - Name: ManagerType
+            Source: EntityManagerType
+            Mapping:
+              BMC: bmc
+      Reference:
+        - Node: VirtualMedia
+        - Node: NetworkProtocol
+        - Node: EthernetInterfaces
+        - Node: Certificates

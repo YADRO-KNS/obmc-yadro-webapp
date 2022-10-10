@@ -1,0 +1,12 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+EthernetInterfaces:
+  Name: Ethernet Network Interface Collection
+  Schema: EthernetInterfaceCollection
+  Actions:
+    Get:
+      Reference:
+        - Node:
+            - EthernetInterfaceNode
+          Field: Members
