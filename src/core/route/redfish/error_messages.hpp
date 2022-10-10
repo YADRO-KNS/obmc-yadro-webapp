@@ -15,8 +15,8 @@
 */
 #pragma once
 
-#include <nlohmann/json.hpp>
 #include <core/route/redfish/response.hpp>
+#include <nlohmann/json.hpp>
 
 namespace app
 {
@@ -55,7 +55,8 @@ void malformedJSON(const RedfishContextPtr& context);
  * @param[in] arg1 Parameter of message that will replace %1 in its body.
  *
  * @returns Message ResourceMissingAtURI formatted to JSON */
-void resourceMissingAtURI(const RedfishContextPtr& context, const std::string& arg1);
+void resourceMissingAtURI(const RedfishContextPtr& context,
+                          const std::string& arg1);
 
 /**
  * @brief Formats ActionParameterValueFormatError message into JSON
@@ -84,7 +85,8 @@ void internalError(const RedfishContextPtr& context);
  * service error.  The service is still operational."
  * @param[in] property The name of the property to be attached into message
  */
-void internalError(const RedfishContextPtr& context, const std::string& property);
+void internalError(const RedfishContextPtr& context,
+                   const std::string& property);
 
 /**
  * @brief Formats MethodNotAllowed message into JSON
@@ -109,7 +111,8 @@ void unrecognizedRequestBody(const RedfishContextPtr& context);
  * @param[in] arg2 Parameter of message that will replace %2 in its body.
  *
  * @returns Message ResourceAtUriUnauthorized formatted to JSON */
-void resourceAtUriUnauthorized(const RedfishContextPtr& context, const std::string& arg1,
+void resourceAtUriUnauthorized(const RedfishContextPtr& context,
+                               const std::string& arg1,
                                const std::string& arg2);
 
 /**
@@ -121,8 +124,8 @@ void resourceAtUriUnauthorized(const RedfishContextPtr& context, const std::stri
  * @param[in] arg2 Parameter of message that will replace %2 in its body.
  *
  * @returns Message ActionParameterUnknown formatted to JSON */
-void actionParameterUnknown(const RedfishContextPtr& context, const std::string& arg1,
-                            const std::string& arg2);
+void actionParameterUnknown(const RedfishContextPtr& context,
+                            const std::string& arg1, const std::string& arg2);
 
 /**
  * @brief Formats ResourceCannotBeDeleted message into JSON
@@ -140,7 +143,8 @@ void resourceCannotBeDeleted(const RedfishContextPtr& context);
  * @param[in] arg1 Parameter of message that will replace %1 in its body.
  *
  * @returns Message PropertyDuplicate formatted to JSON */
-void propertyDuplicate(const RedfishContextPtr& context, const std::string& arg1);
+void propertyDuplicate(const RedfishContextPtr& context,
+                       const std::string& arg1);
 
 /**
  * @brief Formats ServiceTemporarilyUnavailable message into JSON
@@ -163,8 +167,9 @@ void serviceTemporarilyUnavailable(const RedfishContextPtr& context,
  * @param[in] arg3 Parameter of message that will replace %3 in its body.
  *
  * @returns Message ResourceAlreadyExists formatted to JSON */
-void resourceAlreadyExists(const RedfishContextPtr& context, const std::string& arg1,
-                           const std::string& arg2, const std::string& arg3);
+void resourceAlreadyExists(const RedfishContextPtr& context,
+                           const std::string& arg1, const std::string& arg2,
+                           const std::string& arg3);
 
 /**
  * @brief Formats AccountForSessionNoLongerExists message into JSON
@@ -195,8 +200,8 @@ void createFailedMissingReqProperties(const RedfishContextPtr& context,
  * @param[in] arg2 Parameter of message that will replace %2 in its body.
  *
  * @returns Message PropertyValueFormatError formatted to JSON */
-void propertyValueFormatError(const RedfishContextPtr& context, const std::string& arg1,
-                              const std::string& arg2);
+void propertyValueFormatError(const RedfishContextPtr& context,
+                              const std::string& arg1, const std::string& arg2);
 
 /**
  * @brief Formats PropertyValueNotInList message into JSON
@@ -207,8 +212,8 @@ void propertyValueFormatError(const RedfishContextPtr& context, const std::strin
  * @param[in] arg2 Parameter of message that will replace %2 in its body.
  *
  * @returns Message PropertyValueNotInList formatted to JSON */
-void propertyValueNotInList(const RedfishContextPtr& context, const std::string& arg1,
-                            const std::string& arg2);
+void propertyValueNotInList(const RedfishContextPtr& context,
+                            const std::string& arg1, const std::string& arg2);
 
 /**
  * @brief Formats ResourceAtUriInUnknownFormat message into JSON
@@ -248,8 +253,8 @@ void eventSubscriptionLimitExceeded(const RedfishContextPtr& context);
  * @param[in] arg2 Parameter of message that will replace %2 in its body.
  *
  * @returns Message ActionParameterMissing formatted to JSON */
-void actionParameterMissing(const RedfishContextPtr& context, const std::string& arg1,
-                            const std::string& arg2);
+void actionParameterMissing(const RedfishContextPtr& context,
+                            const std::string& arg1, const std::string& arg2);
 
 /**
  * @brief Formats StringValueTooLong message into JSON
@@ -259,8 +264,8 @@ void actionParameterMissing(const RedfishContextPtr& context, const std::string&
  * @param[in] arg2 Parameter of message that will replace %2 in its body.
  *
  * @returns Message StringValueTooLong formatted to JSON */
-void stringValueTooLong(const RedfishContextPtr& context, const std::string& arg1,
-                        const int& arg2);
+void stringValueTooLong(const RedfishContextPtr& context,
+                        const std::string& arg1, const int& arg2);
 
 /**
  * @brief Formats SessionTerminated message into JSON
@@ -287,8 +292,8 @@ void subscriptionTerminated(const RedfishContextPtr& context);
  * @param[in] arg2 Parameter of message that will replace %2 in its body.
  *
  * @returns Message ResourceTypeIncompatible formatted to JSON */
-void resourceTypeIncompatible(const RedfishContextPtr& context, const std::string& arg1,
-                              const std::string& arg2);
+void resourceTypeIncompatible(const RedfishContextPtr& context,
+                              const std::string& arg1, const std::string& arg2);
 
 /**
  * @brief Formats ResetRequired message into JSON
@@ -333,8 +338,8 @@ void chassisPowerStateOffRequired(const RedfishContextPtr& context,
  * @param[in] arg2 Parameter of message that will replace %2 in its body.
  *
  * @returns Message PropertyValueConflict formatted to JSON */
-void propertyValueConflict(const RedfishContextPtr& context, const std::string& arg1,
-                           const std::string& arg2);
+void propertyValueConflict(const RedfishContextPtr& context,
+                           const std::string& arg1, const std::string& arg2);
 
 /**
  * @brief Formats PropertyValueIncorrect message into JSON
@@ -346,8 +351,8 @@ void propertyValueConflict(const RedfishContextPtr& context, const std::string& 
  * @param[in] arg2 Parameter of message that will replace %2 in its body.
  *
  * @returns Message PropertyValueIncorrect formatted to JSON */
-void propertyValueIncorrect(const RedfishContextPtr& context, const std::string& arg1,
-                            const std::string& arg2);
+void propertyValueIncorrect(const RedfishContextPtr& context,
+                            const std::string& arg1, const std::string& arg2);
 
 /**
  * @brief Formats ResourceCreationConflict message into JSON
@@ -357,7 +362,8 @@ void propertyValueIncorrect(const RedfishContextPtr& context, const std::string&
  * @param[in] arg1 Parameter of message that will replace %1 in its body.
  *
  * @returns Message ResourceCreationConflict formatted to JSON */
-void resourceCreationConflict(const RedfishContextPtr& context, const std::string& arg1);
+void resourceCreationConflict(const RedfishContextPtr& context,
+                              const std::string& arg1);
 
 /**
  * @brief Formats MaximumErrorsExceeded message into JSON
@@ -412,8 +418,8 @@ void operationTimeout(const RedfishContextPtr& context);
  * @param[in] arg2 Parameter of message that will replace %2 in its body.
  *
  * @returns Message PropertyValueTypeError formatted to JSON */
-void propertyValueTypeError(const RedfishContextPtr& context, const std::string& arg1,
-                            const std::string& arg2);
+void propertyValueTypeError(const RedfishContextPtr& context,
+                            const std::string& arg1, const std::string& arg2);
 
 /**
  * @brief Formats ResourceNotFound message into JSON
@@ -453,7 +459,8 @@ void couldNotEstablishConnection(const RedfishContextPtr& context,
  * @param[in] arg1 Parameter of message that will replace %1 in its body.
  *
  * @returns Message PropertyNotWritable formatted to JSON */
-void propertyNotWritable(const RedfishContextPtr& context, const std::string& arg1);
+void propertyNotWritable(const RedfishContextPtr& context,
+                         const std::string& arg1);
 
 /**
  * @brief Formats QueryParameterValueTypeError message into JSON
@@ -486,8 +493,8 @@ void serviceShuttingDown(const RedfishContextPtr& context);
  * @param[in] arg2 Parameter of message that will replace %2 in its body.
  *
  * @returns Message ActionParameterDuplicate formatted to JSON */
-void actionParameterDuplicate(const RedfishContextPtr& context, const std::string& arg1,
-                              const std::string& arg2);
+void actionParameterDuplicate(const RedfishContextPtr& context,
+                              const std::string& arg1, const std::string& arg2);
 
 /**
  * @brief Formats ActionParameterNotSupported message into JSON
@@ -663,7 +670,8 @@ void sessionLimitExceeded(const RedfishContextPtr& context);
  *
  * @returns Message ActionNotSupported formatted to JSON
  */
-void actionNotSupported(const RedfishContextPtr& context, const std::string& arg1);
+void actionNotSupported(const RedfishContextPtr& context,
+                        const std::string& arg1);
 
 /**
  * @brief Formats InvalidIndex message into JSON
@@ -734,8 +742,8 @@ void insufficientPrivilege(const RedfishContextPtr& context);
  *
  * @returns Message PropertyValueModified formatted to JSON
  */
-void propertyValueModified(const RedfishContextPtr& context, const std::string& arg1,
-                           const std::string& arg2);
+void propertyValueModified(const RedfishContextPtr& context,
+                           const std::string& arg1, const std::string& arg2);
 
 /**
  * @brief Formats AccountNotModified message into JSON
@@ -778,7 +786,8 @@ void propertyMissing(const RedfishContextPtr& context, const std::string& arg1);
  * @param[in] arg1 Parameter of message that will replace %1 in its body.
  *
  * @returns Message ResourceExhaustion formatted to JSON */
-void resourceExhaustion(const RedfishContextPtr& context, const std::string& arg1);
+void resourceExhaustion(const RedfishContextPtr& context,
+                        const std::string& arg1);
 
 /**
  * @brief Formats AccountModified message into JSON
@@ -798,8 +807,9 @@ void accountModified(const RedfishContextPtr& context);
  * @param[in] arg3 Parameter of message that will replace %3 in its body.
  *
  * @returns Message QueryParameterOutOfRange formatted to JSON */
-void queryParameterOutOfRange(const RedfishContextPtr& context, const std::string& arg1,
-                              const std::string& arg2, const std::string& arg3);
+void queryParameterOutOfRange(const RedfishContextPtr& context,
+                              const std::string& arg1, const std::string& arg2,
+                              const std::string& arg3);
 
 /**
  * @brief Formats PasswordChangeRequired message into JSON
@@ -810,7 +820,8 @@ void queryParameterOutOfRange(const RedfishContextPtr& context, const std::strin
  * @param[in] arg1 Parameter of message that will replace %1 in its body.
  *
  * @returns Message PasswordChangeRequired formatted to JSON */
-void passwordChangeRequired(const RedfishContextPtr& context, const std::string& arg1);
+void passwordChangeRequired(const RedfishContextPtr& context,
+                            const std::string& arg1);
 
 /**
  * @brief Formats InvalidUpload message into JSON
@@ -830,7 +841,8 @@ void invalidUpload(const RedfishContextPtr& context, const std::string& arg1,
  * @param[in] arg2 Parameter of message that will replace %2 in its body.
  *
  * @returns Message MutualExclusiveProperties formatted to JSON */
-void mutualExclusiveProperties(const RedfishContextPtr& context, const std::string& arg1,
+void mutualExclusiveProperties(const RedfishContextPtr& context,
+                               const std::string& arg1,
                                const std::string& arg2);
 
 } // namespace messages

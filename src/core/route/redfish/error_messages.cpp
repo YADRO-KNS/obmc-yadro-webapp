@@ -191,7 +191,8 @@ void internalError(const RedfishContextPtr& context)
     context->getResponse()->addError(internalError());
 }
 
-void internalError(const RedfishContextPtr& context, const std::string& property)
+void internalError(const RedfishContextPtr& context,
+                   const std::string& property)
 {
     context->getResponse()->setStatus(
         http::statuses::Code::InternalServerError);
@@ -509,7 +510,8 @@ nlohmann::json propertyValueNotInList(const std::string& arg1,
 }
 
 void propertyValueNotInList(const RedfishContextPtr& context,
-                            const std::string& value, const std::string& property)
+                            const std::string& value,
+                            const std::string& property)
 {
     context->getResponse()->setStatus(http::statuses::Code::BadRequest);
     context->getResponse()->propertyError(

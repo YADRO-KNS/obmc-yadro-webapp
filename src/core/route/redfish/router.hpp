@@ -7,7 +7,6 @@
 #include <core/exceptions.hpp>
 #include <core/route/redfish/error_messages.hpp>
 #include <core/route/redfish/redfish_root.hpp>
-#include <core/route/redfish/redfish_metadata.hpp>
 #include <core/route/redfish/response.hpp>
 #include <core/router.hpp>
 #include <phosphor-logging/log.hpp>
