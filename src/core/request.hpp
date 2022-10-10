@@ -4,10 +4,9 @@
 #pragma once
 
 #include <fastcgi++/http.hpp>
+#include <service/session.hpp>
 
 #include <memory>
-
-#include <service/session.hpp>
 
 namespace app
 {

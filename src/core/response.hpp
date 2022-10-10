@@ -56,7 +56,7 @@ class IResponse
     virtual void setStatus(const statuses::Code&) = 0;
     /**
      * @brief Set the Content Type of response
-     * 
+     *
      * @param contentType - the type of content contains at the response
      */
     virtual void setContentType(const std::string&) = 0;
@@ -122,7 +122,7 @@ class Response : public IResponse
     Response& operator=(const Response&&) = delete;
 
     ~Response() override = default;
-    
+
     size_t totalSize() const override;
 
     const std::string& getBody() const override;

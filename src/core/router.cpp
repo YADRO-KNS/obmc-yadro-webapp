@@ -3,13 +3,13 @@
 // Copyright (C) 2021 YADRO
 
 #include <core/router.hpp>
-
-#include <phosphor-logging/log.hpp>
-
 #include <nlohmann/json.hpp>
-
-#include <service/authorization.hpp>
+#include <phosphor-logging/log.hpp>
 #include <service/configuration.hpp>
+#include <service/authorization.hpp>
+
+#include <iterator>
+#include <sstream>
 
 namespace app
 {
@@ -30,23 +30,22 @@ const ResponsePtr Router::process()
     // in fact, works via filesystem synchronization. Hence, we need to re-read
     // the config file for each new connection.
     service::config::getConfig().readData();
-    if (!app::service::authorization::authenticate(getRequest(), getResponse()))
+    const auto authResponse = std::make_shared<app::core::Response>();
+    if (!app::service::authorization::authenticate(getRequest(), authResponse))
     {
         log<level::INFO>(
             "Unauthorized access registried",
-            entry("REMOTE=%s",
-                  getRequest()->environment().remoteAddress.m_data.data()));
-        return getResponse();
+            entry("REMOTE=%s", getRequest()->getClientIp().c_str()));
+        return authResponse;
     }
 
-    if (!this->handler) {
-        auto response = std::make_shared<app::core::Response>();
-        setGeneralHeaders(response);
-        response->setStatus(http::statuses::Code::NotFound);
-        return response;
+    if (!this->handler)
+    {
+        setGeneralHeaders(authResponse);
+        authResponse->setStatus(http::statuses::Code::NotFound);
+        return authResponse;
     }
 
-    
     auto response = handler->run(getRequest());
     setGeneralHeaders(response);
     log<level::DEBUG>(response->getHead().c_str());
