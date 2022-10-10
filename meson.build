@@ -137,13 +137,6 @@ if (cxx.get_id() == 'gcc' and cxx.version().version_compare('>8.0'))
       endif
     endif
   endif
-
-  summary(
-    {
-      'log-level' : get_option('bmc-logging')
-    },
-    section : 'Enabled Features'
-  )
 endif
 
 # Set Compiler Security flags

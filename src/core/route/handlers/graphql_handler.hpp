@@ -11,7 +11,6 @@
 #include <core/entity/entity.hpp>
 #include <core/exceptions.hpp>
 #include <core/router.hpp>
-#include <logger/logger.hpp>
 #include <nlohmann/json.hpp>
 
 #include <exception>
@@ -56,7 +55,8 @@ class IGqlBuild
     virtual void supplement(const std::string&, GqlBuildPtr) = 0;
 
     virtual void pushFragmentToParent() = 0;
-    virtual const json getFragment(std::optional<std::size_t> = std::nullopt) const = 0;
+    virtual const json
+        getFragment(std::optional<std::size_t> = std::nullopt) const = 0;
     virtual GqlBuildPtr getParent() const = 0;
     virtual const std::string getFieldName() const = 0;
     virtual const entity::IEntity::InstancePtr getCurrentInstance() const = 0;
@@ -75,6 +75,7 @@ class GqlObjectBuild :
     json fragment;
     std::optional<std::string> alias;
     entity::IEntity::InstancePtr currentInstance;
+
   public:
     GqlObjectBuild(const std::string& objectName) :
         name(objectName), entityObject(), parent(GqlBuildPtr()),
@@ -82,7 +83,8 @@ class GqlObjectBuild :
     {}
 
     GqlObjectBuild(const std::string&, const entity::EntityPtr, GqlBuildPtr);
-    GqlObjectBuild(const std::string&, const entity::IEntity::RelationPtr, GqlBuildPtr);
+    GqlObjectBuild(const std::string&, const entity::IEntity::RelationPtr,
+                   GqlBuildPtr);
 
     GqlObjectBuild(const GqlObjectBuild&) = delete;
     GqlObjectBuild(const GqlObjectBuild&&) = delete;
@@ -97,7 +99,8 @@ class GqlObjectBuild :
     void supplement(const std::string&) override;
     void supplement(const std::string&, GqlBuildPtr) override;
 
-    const json getFragment(std::optional<std::size_t> = std::nullopt) const override;
+    const json
+        getFragment(std::optional<std::size_t> = std::nullopt) const override;
     GqlBuildPtr getParent() const override;
     const std::string getFieldName() const override;
     void pushFragmentToParent() override;
@@ -206,9 +209,9 @@ class GraphqlRouter : public IRouteHandler
     GraphqlRouter& operator=(const GraphqlRouter&) = delete;
     GraphqlRouter& operator=(const GraphqlRouter&&) = delete;
 
-    void run(const RequestPtr& request, ResponseUni& response) override;
+    const ResponsePtr run(const RequestPtr& request) override;
     bool preHandlers(const RequestPtr& request) override;
-
+    // const std::string& getUriPath() const override;
     virtual ~GraphqlRouter() = default;
 
   private:
@@ -253,8 +256,7 @@ class GqlQueryVisitor : public visitor::AstVisitor
     GqlQueryVisitor& operator=(const GqlQueryVisitor&) = delete;
     GqlQueryVisitor& operator=(const GqlQueryVisitor&&) = delete;
 
-    bool visitVariableDefinition(
-        const VariableDefinition&) override;
+    bool visitVariableDefinition(const VariableDefinition&) override;
 
     bool visitArgument(const Argument&) override;
     void endVisitArgument(const Argument&) override;

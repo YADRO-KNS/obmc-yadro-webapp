@@ -5,7 +5,7 @@
 
 #include <core/application.hpp>
 #include <core/route/handlers/graphql_handler.hpp>
-#include <logger/logger.hpp>
+#include <http/headers.hpp>
 #include <nlohmann/json.hpp>
 
 #include <functional>
@@ -25,21 +25,22 @@ using namespace nlohmann;
 using namespace facebook::graphql;
 using namespace facebook::graphql::ast;
 
+using namespace phosphor::logging;
+
 GqlObjectBuild::GqlObjectBuild(const std::string& objectName,
                                const entity::IEntity::RelationPtr inputRelation,
                                GqlBuildPtr parentBuilder) :
     name(objectName),
     relation(inputRelation), parent(parentBuilder), fragment(json::object({}))
 {
-    BMC_LOG_DEBUG << "Build Objects " << objectName;
-
+    const auto targetEntity = getEntity();
     if (!relation)
     {
-        BMC_LOG_WARNING << "Attempt to create builder without Entity object";
+        log<level::DEBUG>("Attempt to create builder without Entity object");
         return;
     }
 
-    for (auto instance : getEntity()->getInstances())
+    for (auto instance : targetEntity->getInstances())
     {
         // init each one json object for each specified entity instance
         fragment[std::to_string(instance->getHash())] = json::object({});
@@ -52,11 +53,9 @@ GqlObjectBuild::GqlObjectBuild(const std::string& objectName,
     name(objectName),
     entityObject(inputEntity), parent(parentBuilder), fragment(json::object({}))
 {
-    BMC_LOG_DEBUG << "Build Objects " << objectName;
-
     if (!entityObject)
     {
-        BMC_LOG_WARNING << "Attempt to create builder without Entity object";
+        log<level::DEBUG>("Attempt to create builder without Entity object");
         return;
     }
 
@@ -70,16 +69,11 @@ GqlObjectBuild::GqlObjectBuild(const std::string& objectName,
 bool ObmcGqlVisitor::visitOperationDefinition(
     const OperationDefinition& operationDefinition)
 {
-    BMC_LOG_DEBUG << "visitOperationDefinition: "
-              << operationDefinition.getOperation();
-
     result.push_back({operationDefinition.getOperation(), json::object({})});
 
-    BMC_LOG_DEBUG << "Make visitor";
     decltype(auto) visitor = VisitorFactory::build(
         operationDefinition.getOperation(), result.back());
 
-    BMC_LOG_DEBUG << "visitor created";
     if (!visitor)
     {
         throw exceptions::NotSupported(operationDefinition.getOperation());
@@ -91,10 +85,7 @@ bool ObmcGqlVisitor::visitOperationDefinition(
 
 void ObmcGqlVisitor::endVisitOperationDefinition(
     const OperationDefinition& operationDefinition)
-{
-    BMC_LOG_DEBUG << "endVisitOperationDefinition: "
-              << operationDefinition.getOperation();
-}
+{}
 
 const nlohmann::json& ObmcGqlVisitor::getResult() const
 {
@@ -102,8 +93,7 @@ const nlohmann::json& ObmcGqlVisitor::getResult() const
 }
 
 // QUERY VISITOR
-bool GqlQueryVisitor::visitVariableDefinition(
-    const VariableDefinition&)
+bool GqlQueryVisitor::visitVariableDefinition(const VariableDefinition&)
 {
     throw exceptions::NotSupported(
         "GQL Variable definition temporarry not supported");
@@ -111,32 +101,22 @@ bool GqlQueryVisitor::visitVariableDefinition(
 
 bool GqlQueryVisitor::visitArgument(const Argument& argument)
 {
-    BMC_LOG_DEBUG << "visitArgument: "
-              << argument.getName().getValue() << " with value ";
     return true;
 }
 
 void GqlQueryVisitor::endVisitArgument(const Argument& argument)
-{
-    BMC_LOG_DEBUG << "endVisitArgument: "
-              << argument.getName().getValue() << " with value ";
-}
+{}
 
 bool GqlQueryVisitor::visitStringValue(const StringValue& stringValue)
 {
-    BMC_LOG_DEBUG << "visitStringValue: " << stringValue.getValue();
     return true;
 }
 
 void GqlQueryVisitor::endVisitStringValue(const StringValue& stringValue)
-{
-    BMC_LOG_DEBUG << "endVisitStringValue: " << stringValue.getValue();
-}
+{}
 
 bool GqlQueryVisitor::visitField(const Field& field)
 {
-    BMC_LOG_DEBUG << "visitField: " << field.getName().getValue();
-
     const std::string fieldName = field.getName().getValue();
     auto fieldAlias =
         field.getAlias()
@@ -145,13 +125,8 @@ bool GqlQueryVisitor::visitField(const Field& field)
 
     if (field.getSelectionSet())
     {
-        // This is object
-        BMC_LOG_DEBUG << "This is object";
-
         if (!fragmentBuilder)
         {
-            BMC_LOG_ERROR << "Not found builder for the " << fieldName
-                      << " field (aliased)";
             throw exceptions::GqlInternalError("The builder was not found");
         }
 
@@ -164,23 +139,20 @@ bool GqlQueryVisitor::visitField(const Field& field)
                 entity = application.getEntityManager().getEntity(fieldName);
                 childObjectBuilder = std::make_shared<GqlObjectBuild>(
                     fieldName, entity, fragmentBuilder);
-                BMC_LOG_DEBUG << "Root Entity Object: " << entity->getName();
             }
             else
             {
-                BMC_LOG_DEBUG << "Attempt to get a Relation to the " << fieldName
-                              << " from " << entity->getName();
                 auto relation = entity->getRelation(fieldName);
                 if (!relation)
                 {
-                    BMC_LOG_DEBUG << "Relation not found. Destination: " << fieldName;
                     throw exceptions::GqlInvalidArgument(
                         fieldName,
                         "Relation to the " + fieldName + " was not found");
                 }
                 childObjectBuilder = std::make_shared<GqlObjectBuild>(
                     fieldName, relation, fragmentBuilder);
-                BMC_LOG_DEBUG << "Relation Entity: " << childObjectBuilder->getEntity()->getName();
+
+                auto entityOfChild = childObjectBuilder->getEntity();
             }
 
             if (fieldAlias.has_value())
@@ -192,12 +164,10 @@ bool GqlQueryVisitor::visitField(const Field& field)
         }
         catch (entity::exceptions::EntityException& ex)
         {
-            BMC_LOG_ERROR << "Not found object " << fieldName;
             throw exceptions::GqlAstError(ex.what());
         }
         catch (nlohmann::detail::type_error& ex)
         {
-            BMC_LOG_ERROR << "JSON type error: " << ex.what();
             throw exceptions::GqlAstError(
                 "Internal GQL implementation error or requested AST structure "
                 "is not supported");
@@ -206,15 +176,11 @@ bool GqlQueryVisitor::visitField(const Field& field)
     else
     {
         // Scalar field
-        BMC_LOG_DEBUG << "Scalar field";
         if (!fragmentBuilder)
         {
-            BMC_LOG_ERROR << "Not found builder for the " << fieldName
-                      << " field (aliased)";
             throw exceptions::GqlInternalError("Not builder found");
         }
 
-        BMC_LOG_DEBUG << "Set field value";
         fragmentBuilder->supplement(fieldAlias.has_value() ? *fieldAlias
                                                            : fieldName);
     }
@@ -224,11 +190,9 @@ bool GqlQueryVisitor::visitField(const Field& field)
 
 void GqlQueryVisitor::endVisitField(const Field& field)
 {
-    BMC_LOG_DEBUG << "endVisitField: " << field.getName().getValue();
     if (field.getSelectionSet())
     {
         // this is object
-        BMC_LOG_DEBUG << "Reset builder to the parent";
         fragmentBuilder->pushFragmentToParent();
         if (fragmentBuilder->getParent())
         {
@@ -248,7 +212,6 @@ const GqlBuildPtr GqlQueryVisitor::getBuilder() const
 }
 
 // ROUTER
-
 bool GraphqlRouter::preHandlers(const RequestPtr& request)
 {
     // Hmm, here something bad is happening without a critical section...
@@ -262,23 +225,19 @@ bool GraphqlRouter::preHandlers(const RequestPtr& request)
 
     if (postBuffer.empty())
     {
-        BMC_LOG_DEBUG << "No data in POST. Skip parse body";
+        log<level::DEBUG>("No data in POST. Skip parse body");
         return true;
     }
-    BMC_LOG_DEBUG << "Buffer length=" << postBuffer.size();
-    BMC_LOG_DEBUG << "Content length=" << request->environment().contentLength;
 
     std::string data(postBuffer.begin(), postBuffer.end());
 
     auto jsonData = json::parse(data.c_str(), nullptr, false);
     if (jsonData.is_discarded() || !jsonData["query"].is_string())
     {
-        BMC_LOG_ERROR << "Error parsing GQL request in json file.";
-        BMC_LOG_DEBUG << "Input Buffer: " << postBuffer.data();
+        log<level::DEBUG>("Error parsing GQL request in json file.");
         return true;
     }
 
-    BMC_LOG_DEBUG << "GraphQL Schema: " << jsonData.dump(4);
     try
     {
         auto astData = jsonData["query"].get<const std::string>();
@@ -286,23 +245,22 @@ bool GraphqlRouter::preHandlers(const RequestPtr& request)
 
         if (!gqlNode)
         {
-            BMC_LOG_ERROR << "Can't parse AST GQL: " << error;
             free(const_cast<char*>(error));
         }
     }
     catch (std::exception& ex)
     {
-        BMC_LOG_ERROR << "Error parsing GQL request:" << ex.what();
+        log<level::DEBUG>("Error parsing GQL request.",
+                          entry("ERROR=%s", ex.what()));
     }
     return true;
 }
 
-void GraphqlRouter::run(const RequestPtr& request, ResponseUni& response)
+const ResponsePtr GraphqlRouter::run(const RequestPtr& request)
 {
     ObmcGqlVisitor visitor;
     json result = json::object({});
 
-    BMC_LOG_DEBUG << "Run route: " << request->environment().requestUri;
     try
     {
         if (!gqlNode)
@@ -318,70 +276,78 @@ void GraphqlRouter::run(const RequestPtr& request, ResponseUni& response)
     }
     catch (exceptions::GqlException& gqlException)
     {
-        BMC_LOG_ERROR << "Error handle GQL request:";
-        BMC_LOG_ERROR << gqlException.what();
+        log<level::DEBUG>("Error handle GQL request.",
+                          entry("ERROR=%s", gqlException.what()));
         result.push_back({fields::respFieldError, gqlException.whatJson()});
     }
-
+    auto response = std::make_shared<Response>();
     response->push(result.dump(2));
     response->setStatus(statuses::Code::OK);
     response->setContentType(http::content_types::applicationJson);
+    return response;
 }
 
 // BUILDERS
 void GqlObjectBuild::supplement(const std::string& fieldName)
 {
-    if (!fragment.type_name() || fragment.is_null() || !getEntity())
+    auto targetEntity = getEntity();
+    if (!fragment.type_name() || fragment.is_null() || !targetEntity)
     {
-        BMC_LOG_ERROR << "GQL Invalid Structure";
+        log<level::ERR>("GQL Invalid Structure");
         throw exceptions::GqlAstError("Invalid Structure");
     }
 
     try
     {
-        auto member = getEntity()->getMember(fieldName);
-
-        for (auto instance : getEntity()->getInstances())
+        auto member = targetEntity->getMember(fieldName);
+        const auto& instances = targetEntity->getInstances();
+        for (auto instance : instances)
         {
             auto& jsonObject = fragment[std::to_string(instance->getHash())];
 
             auto valVisitor = [&jsonObject, fieldName](auto&& value) {
                 jsonObject.push_back({fieldName, value});
             };
-            std::visit(std::move(valVisitor),
-                       instance->getField(member)->getValue());
+            if (!instance->getField(member)->isNull())
+            {
+                std::visit(std::move(valVisitor),
+                           instance->getField(member)->getValue());
+                continue;
+            }
+            valVisitor(nullptr);
         }
     }
     catch (entity::exceptions::EntityException& ex)
     {
-        BMC_LOG_ERROR << "GQL Invalid Argument: " << ex.what();
+        log<level::DEBUG>("GQL Invalid Argument.",
+                          entry("ERROR=%s", ex.what()));
         throw exceptions::GqlInvalidArgument(fieldName, "Field not found");
     }
     catch (std::out_of_range& ex)
     {
-        BMC_LOG_ERROR << "Out of range: " << ex.what();
+        log<level::DEBUG>("Out of range", entry("ERROR=%s", ex.what()));
         throw exceptions::GqlInternalError("Internal GQL logic error");
     }
 }
 
-void GqlObjectBuild::supplement(const std::string& fieldName,
-                                GqlBuildPtr child)
+void GqlObjectBuild::supplement(const std::string& fieldName, GqlBuildPtr child)
 {
     if (this->fragment.is_object())
     {
         for (auto& [hashStr, item] : this->fragment.items())
         {
-            BMC_LOG_DEBUG << "hashStr=" << hashStr;
             std::optional<std::size_t> hash;
-            try {
+            try
+            {
                 hash.emplace(std::stoull(hashStr));
-            } catch (std::invalid_argument& ex)
+            }
+            catch (std::invalid_argument& ex)
             {
                 // The root node might haven't the valid instance hash. Hence,
                 // suppress the raized exception
-                BMC_LOG_DEBUG
-                    << "Can't cast instance hash string to numeric hash view: "
-                    << ex.what();
+                log<level::DEBUG>(
+                    "Can't cast instance hash string to numeric hash view",
+                    entry("ERROR=%s", ex.what()));
             }
             auto childJsonNode =
                 std::forward<const json>(child->getFragment(hash));
@@ -390,13 +356,14 @@ void GqlObjectBuild::supplement(const std::string& fieldName,
     }
     else
     {
-        BMC_LOG_ERROR << "The internal JSON fragment type is not supproted. Type="
-                  << this->fragment.type_name();
-        throw exceptions::GqlInternalError("A GQL parser implementation error.");
+        log<level::DEBUG>("The internal JSON fragment type is not supproted.");
+        throw exceptions::GqlInternalError(
+            "A GQL parser implementation error.");
     }
 }
 
-const json GqlObjectBuild::getFragment(std::optional<std::size_t> parentInstanceHash) const
+const json GqlObjectBuild::getFragment(
+    std::optional<std::size_t> parentInstanceHash) const
 {
     json result(json::object({}));
 
@@ -412,25 +379,21 @@ const json GqlObjectBuild::getFragment(std::optional<std::size_t> parentInstance
             std::vector<entity::IEntity::ConditionPtr> conditions;
             if (this->relation && parentInstanceHash.has_value())
             {
-                BMC_LOG_DEBUG << "HASH:" << parentInstanceHash.value();
                 conditions = std::move(
                     this->relation->getConditions(*parentInstanceHash));
             }
-            BMC_LOG_DEBUG << "Count conditions: " << conditions.size();
             auto& instances = entity->getInstances(conditions);
             if (instances.size() == 1 &&
                 entity->getType() != entity::IEntity::Type::array)
             {
-                BMC_LOG_DEBUG << "GQL: Fill a single instanced object";
                 result =
                     fragment.at(std::to_string(instances.back()->getHash()));
             }
             else if (instances.size() > 1 ||
                      entity->getType() == entity::IEntity::Type::array)
             {
-                BMC_LOG_DEBUG << "GQL: Fill a list of the instanced objects";
                 result = json::array({});
-                for (auto instance: instances)
+                for (auto instance : instances)
                 {
                     result.push_back(
                         fragment.at(std::to_string(instance->getHash())));
@@ -466,8 +429,8 @@ void GqlObjectBuild::pushFragmentToParent()
 {
     if (!this->parent)
     {
-        BMC_LOG_DEBUG << "The parent builder not specified. Skip pushing the JSON "
-                     "framgent to the parent builder";
+        log<level::DEBUG>("The parent builder not specified. Skip pushing the "
+                          "JSON framgent to the parent builder");
         return;
     }
     this->parent->supplement(getFieldName(), shared_from_this());
@@ -483,8 +446,7 @@ const entity::EntityPtr GqlObjectBuild::getEntity() const
     if (!entityObject &&
         (!relation || (relation && !relation->getDestinationTarget())))
     {
-        BMC_LOG_DEBUG << "Attempt to access the empty Entity";
-        BMC_LOG_DEBUG << "PTR: " << entityObject << "|" << relation;
+        log<level::DEBUG>("Attempt to access the empty Entity");
         return nullptr;
     }
     return entityObject ? this->entityObject : relation->getDestinationTarget();
