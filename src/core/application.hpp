@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2021 YADRO
+// Copyright (C) 2021, KNS Group LLC (YADRO)
 
 #pragma once
 
+#include <core/connect/dbus_connect.hpp>
+#include <core/connection.hpp>
+#include <core/entity/entity_manager.hpp>
 #include <fastcgi++/manager.hpp>
 #include <phosphor-logging/log.hpp>
-#include <core/connection.hpp>
-#include <core/connect/dbus_connect.hpp>
-#include <core/entity/entity_manager.hpp>
+
 #include <memory>
 
 namespace app
@@ -59,6 +60,7 @@ class Application final
     }
 
     const connect::DBusConnectUni& getDBusConnect() const;
+
   protected:
     void initEntities();
     void initDBusConnect();
@@ -67,6 +69,7 @@ class Application final
     void waitBootingBmc();
 
     static void handleSignals(int signal);
+
   private:
     connect::DBusConnectUni dbusConnection;
     entity::EntityManager entityManager;

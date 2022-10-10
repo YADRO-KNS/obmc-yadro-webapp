@@ -2,14 +2,12 @@
 // Copyright (C) 2021, KNS Group LLC (YADRO)
 
 #include <core/application.hpp>
-#include <phosphor-logging/log.hpp>
-
 #include <core/route/handlers/graphql_handler.hpp>
+#include <includes.hpp>
+#include <phosphor-logging/log.hpp>
 
 #include <csignal>
 #include <filesystem>
-
-#include <includes.hpp>
 
 namespace app
 {
@@ -38,10 +36,6 @@ void Application::configure()
     // run observe dbus signals
     // register handlers
     std::signal(SIGINT, &Application::handleSignals);
-
-    // TODO include IProtocol abstraction which incapsulate own specific
-    // handlers. Need to remove a static class/methods.
-    route::handlers::VisitorFactory::registerGqlVisitors();
 }
 
 void Application::start()
@@ -63,12 +57,12 @@ void Application::terminate()
 
 void Application::waitBootingBmc()
 {
-    constexpr const char * bootingFilePath = "/run/bmc-booting";
+    constexpr const char* bootingFilePath = "/run/bmc-booting";
     using namespace std::literals;
 
     // Don't initialize the application until the BMC boot processing to avoid
     // query to dbus-services which an incomplete state.
-    while(std::filesystem::exists(bootingFilePath))
+    while (std::filesystem::exists(bootingFilePath))
     {
         log<level::INFO>("Wait for BMC boot completed...");
         std::this_thread::sleep_for(1s);
