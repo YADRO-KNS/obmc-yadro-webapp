@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021 YADRO
 
-#include <core/application.hpp>
-#include <core/entity/entity.hpp>
-#include <core/entity/dbus_query.hpp>
-
 #include "assert.h"
+
+#include <core/application.hpp>
+#include <core/entity/dbus_query.hpp>
+#include <core/entity/entity.hpp>
 
 namespace app
 {
@@ -26,7 +26,8 @@ const IEntity::IEntityMember::InstancePtr&
     return this->instance;
 }
 
-void BaseEntity::Relation::addConditionBuildRules(const RelationRulesList& rules)
+void BaseEntity::Relation::addConditionBuildRules(
+    const RelationRulesList& rules)
 {
     conditionBuildRules.insert(conditionBuildRules.end(), rules.begin(),
                                rules.end());
@@ -41,7 +42,7 @@ const std::vector<IEntity::ConditionPtr>
     BaseEntity::Relation::getConditions(InstanceHash sourceInstanceHash) const
 {
     std::vector<IEntity::ConditionPtr> conditions;
-    for(auto [memberSource, memberDest, compareLiteral]: conditionBuildRules)
+    for (auto [memberSource, memberDest, compareLiteral] : conditionBuildRules)
     {
         if (memberSource == dummyField)
         {
@@ -50,15 +51,15 @@ const std::vector<IEntity::ConditionPtr>
             continue;
         }
         auto sourceMember = this->source.lock()->getMember(memberSource);
-        auto sourceInstance = this->source.lock()->getInstance(sourceInstanceHash);
+        auto sourceInstance =
+            this->source.lock()->getInstance(sourceInstanceHash);
         if (!sourceMember || !sourceInstance)
         {
             // to be certain that we haven't invalid pointers
             assert("Some pointers of important object are invalid");
             continue;
         }
-        auto compareValue =
-            sourceInstance->getField(sourceMember)->getValue();
+        auto compareValue = sourceInstance->getField(sourceMember)->getValue();
 
         log<level::DEBUG>("Acquire conditions for rule",
                           entry("DEST_MEMBER=%s", memberDest.c_str()));
@@ -106,8 +107,8 @@ const IEntity::IEntityMember::InstancePtr& BaseEntity::StaticInstance::getField(
     return getField(entityMember->getName());
 }
 
-const IEntity::IEntityMember::InstancePtr&
-    BaseEntity::StaticInstance::getField(const MemberName& entityMemberName) const
+const IEntity::IEntityMember::InstancePtr& BaseEntity::StaticInstance::getField(
+    const MemberName& entityMemberName) const
 {
     auto findInstanceIt = memberInstances.find(entityMemberName);
     if (findInstanceIt == memberInstances.end())
@@ -141,8 +142,9 @@ void BaseEntity::StaticInstance::supplement(
     }
 }
 
-void BaseEntity::StaticInstance::supplementOrUpdate(const MemberName& memberName,
-                                const IEntity::IEntityMember::IInstance::FieldType& value)
+void BaseEntity::StaticInstance::supplementOrUpdate(
+    const MemberName& memberName,
+    const IEntity::IEntityMember::IInstance::FieldType& value)
 {
     if (hasField(memberName))
     {
@@ -174,7 +176,8 @@ bool BaseEntity::StaticInstance::checkCondition(
     return !condition || condition->check(*this);
 }
 
-const std::map<std::size_t, IEntity::InstancePtr> BaseEntity::StaticInstance::getComplex() const
+const std::map<std::size_t, IEntity::InstancePtr>
+    BaseEntity::StaticInstance::getComplex() const
 {
     return std::map<std::size_t, IEntity::InstancePtr>();
 }
@@ -209,7 +212,8 @@ void BaseEntity::Condition::addRule(
     const IEntity::IEntityMember::IInstance::FieldType& value,
     CompareCallback compareCallback)
 {
-    this->rules.emplace_back(std::make_pair(destinationMember, value), compareCallback);
+    this->rules.emplace_back(std::make_pair(destinationMember, value),
+                             compareCallback);
 }
 
 void BaseEntity::Condition::addRule(const MemberName& destinationMember,
@@ -223,7 +227,8 @@ void BaseEntity::Condition::addRule(const MemberName& destinationMember,
         });
 }
 
-bool BaseEntity::Condition::check(const IEntity::IInstance& sourceInstance) const
+bool BaseEntity::Condition::check(
+    const IEntity::IInstance& sourceInstance) const
 {
     return fieldValueCompare(sourceInstance);
 }
@@ -370,8 +375,7 @@ IEntity::InstancePtr BaseEntity::mergeInstance(InstancePtr instance)
     InstancesHashmap::iterator foundIt = instances.find(instance->getHash());
     if (foundIt == instances.end())
     {
-        this->instances.insert_or_assign(instance->getHash(),
-                                         instance);
+        this->instances.insert_or_assign(instance->getHash(), instance);
         return instance;
     }
     foundIt->second->supplementOrUpdate(instance);
@@ -408,19 +412,18 @@ void BaseEntity::initMembers()
     log<level::DEBUG>("Entity members initialize",
                       entry("ENTITY=%s", getName().c_str()),
                       entry("MEMBERS_CNT=%ld", membersNames.size()));
-    for (auto member: membersNames)
+    for (auto member : membersNames)
     {
         createMember(member);
     }
 }
 
 void BaseEntity::initRelations()
-{
-}
+{}
 
 void BaseEntity::initProviders()
 {
-    for (auto providerRule: getProviders())
+    for (auto providerRule : getProviders())
     {
         providerRule.first->initialize();
     }
@@ -465,7 +468,7 @@ const BaseEntity::MembersList BaseEntity::getMembersNames() const
     BaseEntity::MembersList membersList;
     for (auto query : getQueries())
     {
-        for (auto memberName: query->getFields())
+        for (auto memberName : query->getFields())
         {
             membersList.emplace_back(memberName);
         }
@@ -487,7 +490,7 @@ const IEntity::RelationPtr
                       entry("ENTITY=%s", getName().c_str()),
                       entry("DESTINATION=%s", entityName.c_str()),
                       entry("TOTAL_RELS=%ld", relations.size()));
-    for (auto relation: relations)
+    for (auto relation : relations)
     {
         if (relation->getDestinationTarget()->getName() == entityName)
         {
@@ -519,7 +522,7 @@ void EntitySupplementProvider::supplementInstance(
 }
 
 void BaseEntity::defaultLinkProvider(const IEntity::InstancePtr& supplement,
-                                 const IEntity::InstancePtr& target)
+                                     const IEntity::InstancePtr& target)
 {
     target->supplementOrUpdate(supplement);
 }

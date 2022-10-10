@@ -3,9 +3,11 @@
 
 #pragma once
 
-#include <core/entity/entity_interface.hpp>
 #include "core/exceptions.hpp"
+
 #include <cxxabi.h>
+
+#include <core/entity/entity_interface.hpp>
 
 namespace app
 {
@@ -84,7 +86,7 @@ class EntityManager final
      * @return const EntityPtr      - Entity object which contains the target
      *                           instances
      */
-    template<typename TEntity>
+    template <typename TEntity>
     const std::shared_ptr<TEntity> getEntity() const
     {
         int status;
@@ -119,7 +121,6 @@ class EntityManager final
     void update();
 
   protected:
-
   private:
     EntityMap entityDictionary;
 };

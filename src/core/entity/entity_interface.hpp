@@ -6,12 +6,12 @@
 #include <core/exceptions.hpp>
 #include <phosphor-logging/log.hpp>
 
+#include <functional>
 #include <map>
-#include <vector>
 #include <memory>
 #include <string>
 #include <variant>
-#include <functional>
+#include <vector>
 
 using namespace phosphor::logging;
 
@@ -209,7 +209,7 @@ class IEntity
         using CustomCompareCallback =
             std::function<bool(const IEntityMember::InstancePtr&)>;
 
-        template<typename TValue = std::string>
+        template <typename TValue = std::string>
         struct Equal
         {
             virtual ~Equal() = default;
@@ -296,6 +296,18 @@ class IEntity
         virtual const std::vector<ConditionPtr>
             getConditions(const InstancePtr) const = 0;
         virtual LinkWay getLinkWay() const = 0;
+
+        static const RelationRulesList& directLinkingRule()
+        {
+            using namespace std::placeholders;
+            static const RelationRulesList relations{
+                {
+                    {IRelation::dummyField, IRelation::dummyField,
+                     [](auto&, auto&) -> bool { return true; }},
+                },
+            };
+            return relations;
+        }
     };
 
     class IFormatter
@@ -370,7 +382,8 @@ namespace query
 class IQuery
 {
   public:
-    class QueryException: public app::core::exceptions::ObmcAppException{
+    class QueryException : public app::core::exceptions::ObmcAppException
+    {
       public:
         explicit QueryException(const std::string& error) :
             ObmcAppException("Query failure: " + error) _GLIBCXX_TXN_SAFE
