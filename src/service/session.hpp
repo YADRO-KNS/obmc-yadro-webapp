@@ -5,10 +5,8 @@
 
 #include <core/exceptions.hpp>
 #include <core/helpers/utils.hpp>
-
-#include <phosphor-logging/log.hpp>
-
 #include <nlohmann/json.hpp>
+#include <phosphor-logging/log.hpp>
 
 #include <memory>
 
@@ -150,7 +148,6 @@ struct UserSession
 
         return userSession;
     }
-
 };
 
 struct AuthConfigMethods
