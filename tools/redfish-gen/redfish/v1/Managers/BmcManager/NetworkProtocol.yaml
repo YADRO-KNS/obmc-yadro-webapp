@@ -1,0 +1,174 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+NetworkProtocol:
+  Name: Manager Network Service
+  Schema: ManagerNetworkProtocol
+  Version: 1.8.1
+  Actions:
+    Get:
+      Reference:
+        - Node: HTTPSCertificates
+          Hide: True
+      Properties:
+        Entity:
+          - Source: NetworkConfig
+            Fields:
+              - Name: HostName
+                SourceField: NetworkConfig::fieldHostName
+          - Source: Ethernet
+            Conditions:
+              - Field: Ethernet::fieldInterfaceName
+                Value: eth0
+            Fields:
+              - Name: FQDN
+                SourceField: Ethernet::fieldFQDN
+        Fragments:
+          - Name: HTTPS
+            Entity:
+              - Source: NetworkProtocol
+                Conditions:
+                  - Field: NetworkProtocol::fieldPurpose
+                    Value: NetworkProtocol::Purpose::https
+                Fields:
+                  - Name: ProtocolEnabled
+                    SourceField: NetworkProtocol::fieldEnabled
+                  - Name: Port
+                    SourceField: NetworkProtocol::fieldPort
+            RelatedItems:
+              - Name: Certificates
+                Field: Certificates
+                Template: /redfish/v1/Managers/{ManagerId}/NetworkProtocol/HTTPS/Certificates
+                Parameters:
+                  - Id: ManagerId
+                    Entity: BmcManager
+                    Field: BmcManager::fieldName
+          - Name: IPMI
+            Entity:
+              - Source: NetworkProtocol
+                Conditions:
+                  - Field: NetworkProtocol::fieldPurpose
+                    Value: NetworkProtocol::Purpose::ipmi
+                Fields:
+                  - Name: ProtocolEnabled
+                    SourceField: NetworkProtocol::fieldEnabled
+                  - Name: Port
+                    SourceField: NetworkProtocol::fieldPort
+          - Name: KVMIP
+            Entity:
+              - Source: NetworkProtocol
+                Conditions:
+                  - Field: NetworkProtocol::fieldPurpose
+                    Value: NetworkProtocol::Purpose::kvmip
+                Fields:
+                  - Name: ProtocolEnabled
+                    SourceField: NetworkProtocol::fieldEnabled
+                  - Name: Port
+                    SourceField: NetworkProtocol::fieldPort
+          - Name: NTP
+            Entity:
+              - Source: NetworkProtocol
+                Conditions:
+                  - Field: NetworkProtocol::fieldPurpose
+                    Value: NetworkProtocol::Purpose::ntp
+                Fields:
+                  - Name: ProtocolEnabled
+                    SourceField: NetworkProtocol::fieldEnabled
+              - Source: Ethernet
+                Conditions:
+                  - Field: Ethernet::fieldInterfaceName
+                    Value: "eth0"
+                Fields:
+                  - Name: NTPServers
+                    SourceField: Ethernet::fieldNTPServers
+          - Name: SNMP
+            Static:
+              - Name: AuthenticationProtocol
+                Value: CommunityString
+              - Name: CommunityAccessMode
+                Value: Limited
+              - Name: EncryptionProtocol
+                Value: None
+            Collection:
+              - Name: CommunityStrings
+                Source: SnmpProtocol
+                Static:
+                  - Name: AccessMode
+                    Value: Limited
+                  - Name: Name
+                    Value: Default
+                Value: None
+                Entity:
+                  - Source: SnmpProtocol
+                    Fields:
+                      - Name: CommunityString
+                        SourceField: SnmpProtocol::fieldCommunityString
+            Entity:
+              - Source: NetworkProtocol
+                Conditions:
+                  - Field: NetworkProtocol::fieldPurpose
+                    Value: NetworkProtocol::Purpose::snmp
+                Fields:
+                  - Name: ProtocolEnabled
+                    SourceField: NetworkProtocol::fieldEnabled
+              - Source: SnmpProtocol
+                Fields:
+                  - Name: EnableSNMPv1
+                    SourceField: SnmpProtocol::fieldEnableSNMPv1
+                  - Name: EnableSNMPv2c
+                    SourceField: SnmpProtocol::fieldEnableSNMPv2c
+                  - Name: EnableSNMPv3
+                    SourceField: SnmpProtocol::fieldEnableSNMPv3
+                  - Name: EngineId
+                    SourceField: SnmpProtocol::fieldEngineId
+                  - Name: HideCommunityStrings
+                    SourceField: SnmpProtocol::fieldHideCommunityStrings
+                  - Name: Port
+                    SourceField: NetworkProtocol::fieldPort
+          - Name: SSH
+            Entity:
+              - Source: NetworkProtocol
+                Conditions:
+                  - Field: NetworkProtocol::fieldPurpose
+                    Value: NetworkProtocol::Purpose::ssh
+                Fields:
+                  - Name: ProtocolEnabled
+                    SourceField: NetworkProtocol::fieldEnabled
+                  - Name: Port
+                    SourceField: NetworkProtocol::fieldPort
+          - Name: Status
+            Static:
+              - Name: Health
+                Value: OK
+              - Name: HealthRollup
+                Value: OK
+              - Name: State
+                Value: Enabled
+        Oem:
+          - Name: OemManagerNetworkProtocol
+            Version: 1.0.0
+            Fragments:
+              - Name: SOL
+                Annotations:
+                  - Type: ODataId
+                Fragments:
+                  - Name: IPMI
+                    Entity:
+                      - Source: NetworkProtocol
+                        Conditions:
+                          - Field: NetworkProtocol::fieldPurpose
+                            Value: NetworkProtocol::Purpose::ipmisol
+                        Fields:
+                          - Name: ProtocolEnabled
+                            SourceField: NetworkProtocol::fieldEnabled
+                  - Name: SSH
+                    Entity:
+                      - Source: NetworkProtocol
+                        Conditions:
+                          - Field: NetworkProtocol::fieldPurpose
+                            Value: NetworkProtocol::Purpose::sol
+                        Fields:
+                          - Name: ProtocolEnabled
+                            SourceField: NetworkProtocol::fieldEnabled
+                          - Name: Port
+                            SourceField: NetworkProtocol::fieldPort

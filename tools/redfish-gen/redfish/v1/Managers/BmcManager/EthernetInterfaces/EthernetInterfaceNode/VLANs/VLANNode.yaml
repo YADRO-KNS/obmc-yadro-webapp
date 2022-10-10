@@ -1,0 +1,25 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+VLANNode@dynamic:
+  Name: Manager VLAN Interface
+  Schema: VLanNetworkInterface
+  Version: 1.3.0
+  Parameter:
+    Type: Entity
+    Source: Ethernet
+    Parameter: VLanNetworkInterfaceId
+    Value: Ethernet::fieldVLANName
+  Actions:
+    Get:
+      Properties:
+        Static:
+          - Name: VLANEnable
+            Value: True
+        Entity:
+          - Source: Ethernet
+            Fields:
+              - Name: Id
+                SourceField: Ethernet::fieldVLANName
+              - Name: VLANId
+                SourceField: Ethernet::fieldVLANId

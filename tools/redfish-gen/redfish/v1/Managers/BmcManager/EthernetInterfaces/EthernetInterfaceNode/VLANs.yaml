@@ -1,0 +1,12 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+VLANs:
+  Name: VLAN Network Interface Collection
+  Schema: VLanNetworkInterfaceCollection
+  Actions:
+    Get:
+      Reference:
+        - Node:
+            - VLANNode
+          Field: Members

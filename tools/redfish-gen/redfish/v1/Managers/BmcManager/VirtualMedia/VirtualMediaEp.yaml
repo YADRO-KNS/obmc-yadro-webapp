@@ -1,0 +1,103 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+VirtualMediaEp@dynamic:
+  Name: Virtual Media device
+  Schema: VirtualMedia
+  Version: 1.5.1
+  Parameter:
+    Type: Entity
+    Source: VirtualMedia
+    Parameter: VirtualMediaId
+    Value: VirtualMedia::fieldId
+  Actions:
+    Get:
+      Properties:
+        Static:
+          - Name: TransferMethod
+            Value: Stream
+        Entity:
+          - Source: VirtualMedia
+            Fields:
+              - Name: Image
+                SourceField: VirtualMedia::fieldImageURL
+              - Name: ImageName
+                SourceField: VirtualMedia::fieldExportName
+              - Name: ConnectedVia
+                SourceField: VirtualMedia::fieldConnectionType
+              - Name: TransferProtocolType
+                SourceField: VirtualMedia::fieldTransferProtocol
+              - Name: Inserted
+                SourceField: VirtualMedia::fieldActive
+        Enums:
+          - Name: ConnectedVia
+            Source: VirtualMedia::ConnectionType
+            Mapping:
+              NotConnected: notConnected
+              URI: uri
+              Applet: applet
+          - &MediaType
+            Name: MediaType
+            For: MediaTypes
+            Source: VirtualMedia::InterfaceType
+            Mapping:
+              USBStick: usb
+              Floppy: hdd
+              CD: cdrom
+          - Name: TransferProtocolType
+            Source: VirtualMedia::TransferProtocol
+            Mapping:
+              CIFS: cifs
+              FTP: ftp
+              SFTP: sftp
+              HTTP: http
+              HTTPS: https
+              NFS: nfs
+              SCP: scp
+              TFTP: tftp
+              OEM: oem
+        Fragments:
+          - Name: Status
+            Entity:
+              - Source: VirtualMedia
+                Fields:
+                  - Name: Health
+                    SourceField: StatusProvider::fieldStatus
+                  - Name: State
+                    SourceField: VirtualMedia::fieldState
+            Enums:
+              - Name: Health
+                Source: StatusProvider::Status
+                Mapping:
+                  OK: ok
+                  Warning: warning
+                  Critical: critical
+              - Name: State
+                Source: VirtualMedia::State
+                Mapping:
+                  Enabled: enabled
+                  Disabled: disabled
+                  StandbyOffline: standbyOffline
+        Oem:
+          - Name: OemVirtualMedia
+            Version: 1.0.0
+            Annotations:
+              - Type: ODataId
+            Entity:
+              - Source: VirtualMedia
+                Fields:
+                  - Name: WebSocketAddress
+                    SourceField: VirtualMedia::fieldWebSocketAddress
+                  - Name: MediaType
+                    SourceField: VirtualMedia::fieldInterfaceType
+                  - Name: TransferProtocolType
+                    SourceField: VirtualMedia::fieldOemTransferProtocol
+            Enums:
+              - <<: *MediaType
+                For: MediaType
+              - Name: OemTransferProtocolType
+                For: TransferProtocolType
+                Source: VirtualMedia::OemTransferProtocol
+                Mapping:
+                  NBD: nbd
+                  Absent: absent

@@ -1,0 +1,14 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+HTTPSCertificates:
+  Name: HTTPS certificate collection
+  Schema: CertificateCollection
+  Prefix: HTTPS
+  Segment: Certificates
+  Actions:
+    Get:
+      Reference:
+        - Node:
+            - HTTPSCertificateEp
+          Field: Members
