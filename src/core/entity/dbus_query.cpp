@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021 YADRO
 
-#include <core/entity/dbus_query.hpp>
-
+#include <common_fields.hpp>
+#include <core/application.hpp>
 #include <core/connect/dbus_connect.hpp>
+#include <core/entity/dbus_query.hpp>
 #include <core/exceptions.hpp>
 #include <core/helpers/utils.hpp>
-#include <core/application.hpp>
-
 #include <sdbusplus/exception.hpp>
-#include <common_fields.hpp>
 
 namespace app
 {
@@ -147,8 +145,7 @@ const entity::IEntity::InstanceCollection GetObjectDBusQuery::process()
 }
 
 bool GetObjectDBusQuery::checkCriteria(
-    const ObjectPath& objectPath,
-    const InterfaceList& inputInterfaces,
+    const ObjectPath& objectPath, const InterfaceList& inputInterfaces,
     std::optional<ServiceName> optionalServiceName) const
 {
     if (!optionalServiceName.has_value() || *optionalServiceName != serviceName)
@@ -374,19 +371,19 @@ const DBusPropertiesMap
     DBusInstance::queryProperties(const connect::DBusConnectUni& connect,
                                   const InterfaceName& interface)
 {
-   DBusPropertiesMap properties;
+    DBusPropertiesMap properties;
 
-   log<level::DEBUG>("Query properties of DBus instance cache",
-                     entry("DBUS_SVC=%s", serviceName.c_str()),
-                     entry("DBUS_OBJ=%s", objectPath.c_str()),
-                     entry("DBUS_IFACE=%s", interface.c_str()));
+    log<level::DEBUG>("Query properties of DBus instance cache",
+                      entry("DBUS_SVC=%s", serviceName.c_str()),
+                      entry("DBUS_OBJ=%s", objectPath.c_str()),
+                      entry("DBUS_IFACE=%s", interface.c_str()));
 
-   try
-   {
-       return std::forward<const DBusPropertiesMap>(
-           connect->callMethodAndRead<DBusPropertiesMap>(
-               serviceName, objectPath, "org.freedesktop.DBus.Properties",
-               "GetAll", interface));
+    try
+    {
+        return std::forward<const DBusPropertiesMap>(
+            connect->callMethodAndRead<DBusPropertiesMap>(
+                serviceName, objectPath, "org.freedesktop.DBus.Properties",
+                "GetAll", interface));
     }
     catch (const sdbusplus::exception_t& e)
     {
@@ -412,7 +409,8 @@ void DBusInstance::bindListeners(const connect::DBusConnectUni& connection)
     {
         auto matcher = connection->createWatcher(
             rules::propertiesChanged(this->getObjectPath(), interface),
-            [selfWeak, queryPtr = dbusQuery](sdbusplus::message::message& message) {
+            [selfWeak,
+             queryPtr = dbusQuery](sdbusplus::message::message& message) {
                 std::map<PropertyName, DbusVariantType> changedValues;
                 InterfaceName interfaceName;
                 auto self = selfWeak.lock();
@@ -458,14 +456,16 @@ const InterfaceName& DBusInstance::getService() const
     return serviceName;
 }
 
-void DBusInstance::supplement(const MemberName& memberName,
-        const IEntity::IEntityMember::IInstance::FieldType& value)
+void DBusInstance::supplement(
+    const MemberName& memberName,
+    const IEntity::IEntityMember::IInstance::FieldType& value)
 {
     Entity::StaticInstance::supplement(memberName, value);
 }
 
-void DBusInstance::supplementOrUpdate(const MemberName& memberName,
-        const IEntity::IEntityMember::IInstance::FieldType& value)
+void DBusInstance::supplementOrUpdate(
+    const MemberName& memberName,
+    const IEntity::IEntityMember::IInstance::FieldType& value)
 {
     Entity::StaticInstance::supplementOrUpdate(memberName, value);
 }
@@ -534,8 +534,7 @@ void DBusInstance::captureDBusAssociations(
             destObjectPath + "__meta/" + destination + "/" + source;
 
         auto childInstance = std::make_shared<DBusInstance>(
-            serviceName, complexAssocDummyPath, targetProperties,
-            dbusQuery);
+            serviceName, complexAssocDummyPath, targetProperties, dbusQuery);
         DBusPropertiesMap properties{
             {fieldSource, source},
             {fieldDestination, destination},
@@ -633,7 +632,7 @@ const DbusVariantType DBusQuery::processFormatters(const PropertyName& property,
     }
 
     DbusVariantType formattedValue(value);
-    for (auto formatter: formatters)
+    for (auto formatter : formatters)
     {
         formattedValue = formatter->format(property, formattedValue);
     }
@@ -659,9 +658,9 @@ void DBusQuery::registerObjectCreationObserver(
         catch (sdbusplus::exception_t& ex)
         {
             log<level::ERR>("Failed to process DBus signal handler",
-                                    entry("SIGNAL=InterfaceAdded"),
-                                    entry("DBUS_OBJ=%s", message.get_path()),
-                                    entry("ERROR=%s", ex.what()));
+                            entry("SIGNAL=InterfaceAdded"),
+                            entry("DBUS_OBJ=%s", message.get_path()),
+                            entry("ERROR=%s", ex.what()));
             return;
         }
 
@@ -780,7 +779,7 @@ void DBusQuery::registerObjectRemovingObserver(
     };
 
     addObserver(this->getConnect()->createWatcher(rules::interfacesRemoved(),
-                                            std::move(handler)));
+                                                  std::move(handler)));
 }
 
 const DBusPropertyFormatters&
@@ -789,9 +788,9 @@ const DBusPropertyFormatters&
     const auto& eps = getSearchPropertiesMap();
     for (auto& [_, setters] : eps)
     {
-        for (auto& [reflection, casters]: setters)
+        for (auto& [reflection, casters] : setters)
         {
-            if(reflection.first != property)
+            if (reflection.first != property)
             {
                 continue;
             }
@@ -807,11 +806,11 @@ const DBusPropertyValidators&
     static const DBusPropertyValidators noValidators;
 
     const auto& eps = getSearchPropertiesMap();
-    for(auto& [_, setters] : eps)
+    for (auto& [_, setters] : eps)
     {
-        for (auto& [reflection, casters]: setters)
+        for (auto& [reflection, casters] : setters)
         {
-            if(reflection.first != property)
+            if (reflection.first != property)
             {
                 continue;
             }

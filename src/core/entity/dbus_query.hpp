@@ -9,10 +9,9 @@
 
 #include <functional>
 #include <map>
-#include <utility>
-#include <variant>
 #include <tuple>
 #include <utility>
+#include <variant>
 #include <vector>
 
 namespace app
@@ -110,6 +109,7 @@ class DBusInstance final :
      *        remove/update
      */
     std::vector<sdbusplus::bus::match::match> listeners;
+
   public:
     DBusInstance(const DBusInstance&) = delete;
     DBusInstance& operator=(const DBusInstance&) = delete;
@@ -332,6 +332,7 @@ class DBusInstance final :
      *        obtained
      */
     void initDefaultFieldsValue() override;
+
   protected:
     /**
      * @brief Get setters for specified interfaces.
@@ -366,7 +367,7 @@ class DBusQuery : public IQuery
     }
 #define DBUS_QUERY_EP_SET(p, m, f, v)                                          \
     {                                                                          \
-        {p, m}, {f, v}                                                         \
+        {p, m}, {f, v},                                                        \
     }
 #define DBUS_QUERY_EP_SET_FORMATTERS(p, m, f) DBUS_QUERY_EP_SET(p, m, f, {})
 #define DBUS_QUERY_EP_SET_VALIDATORS(p, m, v) DBUS_QUERY_EP_SET(p, m, {}, v)
@@ -618,7 +619,8 @@ class IntrospectServiceDBusQuery :
 template <typename TCallResult, typename... Args>
 class DBusQueryViaMethodCall :
     public DBusQuery,
-    public std::enable_shared_from_this<DBusQueryViaMethodCall<TCallResult, Args...>>
+    public std::enable_shared_from_this<
+        DBusQueryViaMethodCall<TCallResult, Args...>>
 {
     using MethodName = std::string;
     using MethodParams = std::tuple<Args...>;
@@ -662,8 +664,9 @@ class DBusQueryViaMethodCall :
         return {};
     }
 
-    bool checkCriteria(const ObjectPath&, const InterfaceList&,
-                       std::optional<ServiceName> = std::nullopt) const override final
+    bool checkCriteria(
+        const ObjectPath&, const InterfaceList&,
+        std::optional<ServiceName> = std::nullopt) const override final
     {
         // A criteria checkup required to support cache instances only.
         return false;
@@ -677,7 +680,7 @@ class DBusQueryViaMethodCall :
   protected:
     template <std::size_t... ISeq>
     const TCallResult callDBusWithParams(const MethodParams& params,
-                            std::index_sequence<ISeq...>)
+                                         std::index_sequence<ISeq...>)
     {
         return getConnect()->callMethodAndRead<TCallResult, Args...>(
             this->service, this->object, this->interface, this->method,
