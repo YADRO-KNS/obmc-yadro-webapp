@@ -1,0 +1,177 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+EthernetInterfaceNode@dynamic:
+  Name: Manager Ethernet Interface
+  Schema: EthernetInterface
+  Version: 1.8.0
+  Parameter:
+    Type: Entity
+    Source: Ethernet
+    Parameter: EthernetInterfaceId
+    Value: Ethernet::fieldInterfaceName
+    Conditions:
+      - Field: Ethernet::fieldKind
+        Value: Ethernet::Kind::physical
+  Actions:
+    Get:
+      Properties:
+        Entity:
+          - Source: Ethernet
+            Fields:
+              - Name: FQDN
+                SourceField: Ethernet::fieldFQDN
+              - Name: InterfaceEnabled
+                SourceField: Ethernet::fieldNICEnabled
+              - Name: SpeedMbps
+                SourceField: Ethernet::fieldSpeed
+              - Name: NameServers
+                SourceField: Ethernet::fieldNameservers
+              - Name: StaticNameServers
+                SourceField: Ethernet::fieldStaticNameServers
+              - Name: MACAddress
+                SourceField: Ethernet::fieldMACAddress
+              - Name: LinkStatus
+                SourceField: Ethernet::fieldLinkStatus
+          - Source: NetworkConfig
+            Fields:
+              - Name: HostName
+                SourceField: NetworkConfig::fieldHostName
+              - Name: IPv6DefaultGateway
+                SourceField: NetworkConfig::fieldDefaultIPv6Gateway
+        Enums:
+          - Name: LinkStatus
+            Source: Ethernet::LinkStatus
+            Mapping:
+              LinkUp: linkUp
+              NoLink: noLink
+              LinkDown: linkDown
+        Collection:
+          - &IPv4
+            Name: IPv4Addresses
+            Source: IP
+            Conditions:
+              - Field: IP::fieldType
+                Value: IP::Type::ipv4
+              - Preset: IP::nonStaticIp
+            Entity:
+              - Source: IP
+                Fields:
+                  - Name: Address
+                    SourceField: IP::fieldAddress
+                  - Name: Gateway
+                    SourceField: IP::fieldGateway
+                  - Name: SubnetMask
+                    SourceField: IP::fieldSubnetMask
+                  - Name: AddressOrigin
+                    SourceField: IP::fieldOrigin
+            Enums:
+              - Name: IPv4AddressOrigin
+                For: AddressOrigin
+                Source: IP::Origin
+                Mapping:
+                  Static: staticOrigin
+                  DHCP: dhcp
+                  IPv4LinkLocal: linkLocal
+          - <<: *IPv4
+            Name: IPv4StaticAddresses
+            Conditions:
+              - Field: IP::fieldType
+                Value: IP::Type::ipv4
+              - Preset: IP::staticIp
+          - Name: IPv6Addresses
+            Source: IP
+            Conditions:
+              - Field: IP::fieldType
+                Value: IP::Type::ipv6
+              - Preset: IP::nonStaticIp
+            Entity:
+              - Source: IP
+                Fields:
+                  - Name: Address
+                    SourceField: IP::fieldAddress
+                  - Name: PrefixLength
+                    SourceField: IP::fieldPrefixLength
+                  - Name: AddressOrigin
+                    SourceField: IP::fieldOrigin
+            Enums:
+              - Name: IPv6AddressOrigin
+                For: AddressOrigin
+                Source: IP::Origin
+                Mapping:
+                  Static: staticOrigin
+                  DHCPv6: dhcp
+                  LinkLocal: linkLocal
+                  SLAAC: slaac
+          - Name: IPv6StaticAddresses
+            Source: IP
+            Conditions:
+              - Field: IP::fieldType
+                Value: IP::Type::ipv6
+              - Preset: IP::staticIp
+            Entity:
+              - Source: IP
+                Fields:
+                  - Name: Address
+                    SourceField: IP::fieldAddress
+                  - Name: PrefixLength
+                    SourceField: IP::fieldPrefixLength
+        Fragments:
+          - Name: Status
+            Static:
+              - Name: Health
+                Value: OK
+              - Name: HealthRollup
+                Value: OK
+            Entity:
+              - Source: Ethernet
+                Fields:
+                  - Name: State
+                    SourceField: Ethernet::fieldState
+            Enums:
+              - Name: State
+                Source: Ethernet::State
+                Mapping:
+                  Enabled: enabled
+                  Disabled: disabled
+          - Name: DHCPv4
+            Entity:
+              - Source: Ethernet
+                Name: DHCPv4EthConfig
+                Fields:
+                  - Name: DHCPEnabled
+                    SourceField: Ethernet::fieldDHCPv4Enabled
+              - Source: NetworkDHCPConfig
+                Name: DHCPv4Config
+                Fields:
+                  - Name: UseDomainName
+                    SourceField: NetworkDHCPConfig::fieldHostNameEnabled
+                  - Name: UseDNSServers
+                    SourceField: NetworkDHCPConfig::fieldDNSEnabled
+                  - Name: UseNTPServers
+                    SourceField: NetworkDHCPConfig::fieldNTPEnabled
+          - Name: DHCPv6
+            Entity:
+              - Source: Ethernet
+                Name: DHCPv6EthConfig
+                Fields:
+                  - Name: OperatingMode
+                    SourceField: Ethernet::fieldOperatingMode
+              - Source: NetworkDHCPConfig
+                Name: DHCPv6Config
+                Fields:
+                  - Name: UseDomainName
+                    SourceField: NetworkDHCPConfig::fieldHostNameEnabled
+                  - Name: UseDNSServers
+                    SourceField: NetworkDHCPConfig::fieldDNSEnabled
+                  - Name: UseNTPServers
+                    SourceField: NetworkDHCPConfig::fieldNTPEnabled
+            Enums:
+              - Name: DHCPv6OperatingMode
+                For: OperatingMode
+                Source: Ethernet::OperatingMode
+                Mapping:
+                  Stateful: stateful
+                  Disabled: disabled
+      Reference:
+        - Node: VLANs

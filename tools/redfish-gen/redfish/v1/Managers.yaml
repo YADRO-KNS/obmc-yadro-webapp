@@ -1,0 +1,13 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+Managers:
+  Name: The managers collection
+  Schema: ManagerCollection
+  Actions:
+    Get:
+      Reference:
+        - Node:
+            - BmcManager
+          Source: Static
+          Field: Members

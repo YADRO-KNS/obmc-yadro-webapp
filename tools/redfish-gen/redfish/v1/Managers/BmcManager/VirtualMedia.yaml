@@ -1,0 +1,12 @@
+## SPDX-License-Identifier: Apache-2.0
+## Copyright (C) 2022, KNS Group LLC (YADRO)
+
+VirtualMedia:
+  Name: Virtual Media Services
+  Schema: VirtualMediaCollection
+  Actions:
+    Get:
+      Reference:
+        - Node:
+            - VirtualMediaEp
+          Field: Members
