@@ -34,9 +34,11 @@ class HostPower final :
     static constexpr const char* statusInTest = "InTest";
     static constexpr const char* statusDisabled = "Disabled";
 
+  public:
     static constexpr const char* fieldState = "PowerState";
     static constexpr const char* fieldStatus = "Status";
 
+  private:
     class Query final : public dbus::FindObjectDBusQuery
     {
         static constexpr const char* hostServiceName =
@@ -66,7 +68,7 @@ class HostPower final :
                 DBUS_QUERY_EP_FIELDS_ONLY(propHostState, metaStatus),
             )
         )
-        
+
         void supplementByStaticFields(const DBusInstancePtr& instance) const override
         {
             this->setStatusPower(instance);
