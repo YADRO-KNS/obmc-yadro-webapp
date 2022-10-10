@@ -62,5 +62,12 @@ const std::string Request::getUriPath() const
     return uri.str();
 }
 
+const std::string Request::getClientIp() const
+{
+    std::stringstream clientIpStream;
+    clientIpStream << environment().remoteAddress;
+    return clientIpStream.str();
+}
+
 } // namespace core
 } // namespace app
