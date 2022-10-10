@@ -1,0 +1,14 @@
+[Unit]
+Description=Start yaweb server
+
+PartOf=lighttpd.service
+After=lighttpd.service
+
+[Service]
+ExecReload=kill -s HUP $MAINPID
+ExecStart=@MESON_INSTALL_PREFIX@/bin/yaweb
+Type=simple
+WorkingDirectory=/home/root
+
+[Install]
+WantedBy=lighttpd.service

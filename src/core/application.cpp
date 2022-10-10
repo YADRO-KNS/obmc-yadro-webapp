@@ -44,7 +44,7 @@ void Application::start()
      * there are no requests and efficiently manage them when there are many.
      */
     fastCgiManager.setupSignals();
-    fastCgiManager.listen();
+    fastCgiManager.listen(FASTCGI_SOCKET_PATH);
     fastCgiManager.start();
     fastCgiManager.join();
 }
