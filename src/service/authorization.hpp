@@ -26,7 +26,7 @@ constexpr const char* cookieSession = "SESSION";
 static session::UserSessionPtr performTokenAuth(std::string_view auth_header)
 {
     log<level::DEBUG>("[AuthMiddleware] Token authentication");
-                      
+
     std::string_view token = auth_header.substr(strlen(authToken));
     auto session =
         session::SessionStore::getInstance().loginSessionByToken(token);
@@ -40,8 +40,7 @@ static session::UserSessionPtr
 
     try
     {
-        std::string_view token =
-            request->environment().others.at(xAuthToken);
+        std::string_view token = request->environment().others.at(xAuthToken);
         if (token.empty())
         {
             return nullptr;
@@ -64,7 +63,8 @@ static session::UserSessionPtr
     auto sessionValueIt = request->environment().cookies.find(cookieSession);
     if (sessionValueIt == request->environment().cookies.end())
     {
-        log<level::DEBUG>("[AuthMiddleware] The 'SESSION' Cookie is not present");
+        log<level::DEBUG>(
+            "[AuthMiddleware] The 'SESSION' Cookie is not present");
         return nullptr;
     }
 

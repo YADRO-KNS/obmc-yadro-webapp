@@ -3,18 +3,17 @@
 
 #pragma once
 
-#include <phosphor-logging/log.hpp>
 #include <core/exceptions.hpp>
 #include <core/helpers/utils.hpp>
-
-#include <service/session.hpp>
+#include <phosphor-logging/log.hpp>
 #include <service/configuration.hpp>
+#include <service/session.hpp>
 
-#include <map>
-#include <string>
-#include <functional>
 #include <filesystem>
 #include <fstream>
+#include <functional>
+#include <map>
+#include <string>
 
 namespace app
 {
@@ -129,8 +128,9 @@ class ConfigFile
                                 "Restored session",
                                 entry("SESSION_ID=%s",
                                       newSession->uniqueId.c_str()));
-                            session::SessionStore::getInstance().authTokens.emplace(
-                                newSession->sessionToken, newSession);
+                            session::SessionStore::getInstance()
+                                .authTokens.emplace(newSession->sessionToken,
+                                                    newSession);
                         }
                     }
                     else if (item.key() == keyTimeout)
@@ -148,8 +148,8 @@ class ConfigFile
                             "Session timeout successfully restored",
                             entry("TIMEOUT=%ld",
                                   sessionTimeoutInseconds.count()));
-                        session::SessionStore::getInstance().updateSessionTimeout(
-                            sessionTimeoutInseconds);
+                        session::SessionStore::getInstance()
+                            .updateSessionTimeout(sessionTimeoutInseconds);
                     }
                     else
                     {
