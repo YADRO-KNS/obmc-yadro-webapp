@@ -261,7 +261,8 @@ summary(
 conf_data = configuration_data()
 conf_data.set('MESON_INSTALL_PREFIX',get_option('prefix'))
 conf_data.set('HTTP_REQ_BODY_LIMIT_MB',get_option('http-body-limit'))
-conf_data.set('BMC_LOGGING_LEVEL',get_option('bmc-logging'))
+conf_data.set('FASTCGI_SOCKET_PATH', '"' + get_option('fcgi-socket-path') + '"')
+
 if get_option('dbus-connect-type') == 'remote'
   conf_data.set('BMC_DBUS_REMOTE_HOST','"' + get_option('dbus-remote-host') + '"')
   summary(
@@ -281,6 +282,12 @@ configure_file(output: 'config.h', configuration: conf_data)
 systemd_system_unit_dir = systemd.get_pkgconfig_variable('systemdsystemunitdir')
 
 bindir = get_option('prefix') + '/' +get_option('bindir')
+
+configure_file(input : 'yaweb.service.in',
+               output : 'yaweb.service',
+               install_dir: systemd_system_unit_dir,
+               configuration: conf_data,
+               install : true)
 
 summary({
           'prefix' : get_option('prefix'),
