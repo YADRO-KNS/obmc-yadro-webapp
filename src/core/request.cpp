@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021 YADRO
 
+#include <core/helpers/utils.hpp>
 #include <core/request.hpp>
 
 #include <set>
@@ -45,6 +46,26 @@ const service::session::UserSessionPtr& Request::getSession() const
 bool Request::isSessionEmpty() const
 {
     return !this->userSession;
+}
+
+bool Request::isBrowserRequest() const
+{
+    using namespace app::helpers::utils;
+    const auto acceptContentTypes = environment().acceptContentTypes;
+    const auto encodings =
+        splitToVector(std::stringstream(acceptContentTypes), ',');
+    for (const std::string& encoding : encodings)
+    {
+        if (encoding == "text/html")
+        {
+            return true;
+        }
+        if (encoding == "application/json")
+        {
+            return false;
+        }
+    }
+    return false;
 }
 
 const std::string Request::getUriPath() const

@@ -26,7 +26,8 @@ class RedfishResponse : public Response
     static constexpr const char* errorField = "error";
 
   public:
-    explicit RedfishResponse() : Response(), payload(nlohmann::json({}))
+    RedfishResponse(bool prettyOutput) :
+        Response(), payload(nlohmann::json({})), prettyOutput(prettyOutput)
     {}
     RedfishResponse(const RedfishResponse&) = delete;
     RedfishResponse(const RedfishResponse&&) = delete;
@@ -75,11 +76,15 @@ class RedfishResponse : public Response
      */
     void flash();
 
+  protected:
+    void prettyPrintRedfish();
+
   private:
     /**
      * @brief Internal REDFISH payload buffer
      */
     nlohmann::json payload;
+    bool prettyOutput;
 };
 
 class ICacheEntity
@@ -136,11 +141,13 @@ class RedfishContext
      * @param request
      */
     explicit RedfishContext(const RequestPtr& request) :
-        request(request), response(std::make_shared<RedfishResponse>()),
+        request(request), response(std::make_shared<RedfishResponse>(
+                              request->isBrowserRequest())),
         anchor(request->getUriPath() + "#")
     {}
     explicit RedfishContext(const RedfishContext& other) :
-        request(other.request), response(std::make_shared<RedfishResponse>()),
+        request(other.request), response(std::make_shared<RedfishResponse>(
+                                    request->isBrowserRequest())),
         parameterCtx(other.parameterCtx), parameters(other.parameters),
         anchor(other.anchor)
     {}

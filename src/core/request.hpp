@@ -37,6 +37,7 @@ class IRequest
     virtual void setSession(const service::session::UserSessionPtr&) = 0;
     virtual const service::session::UserSessionPtr& getSession() const = 0;
     virtual bool isSessionEmpty() const = 0;
+    virtual bool isBrowserRequest() const = 0;
 };
 
 /**
@@ -72,6 +73,7 @@ class Request : public IRequest
     void setSession(const service::session::UserSessionPtr&) override;
     const service::session::UserSessionPtr& getSession() const override;
     bool isSessionEmpty() const override;
+    bool isBrowserRequest() const override;
 };
 
 using RequestUni = std::unique_ptr<IRequest>;
