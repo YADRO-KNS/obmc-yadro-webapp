@@ -5,7 +5,6 @@
 #include <core/router.hpp>
 #include <nlohmann/json.hpp>
 #include <phosphor-logging/log.hpp>
-#include <service/configuration.hpp>
 #include <service/authorization.hpp>
 
 #include <iterator>
@@ -29,7 +28,7 @@ const ResponsePtr Router::process()
     // Current session sharing architecture between BMCWEB and WEBAPP processes,
     // in fact, works via filesystem synchronization. Hence, we need to re-read
     // the config file for each new connection.
-    service::config::getConfig().readData();
+    service::session::ConfigFile::getConfig().readData();
     const auto authResponse = std::make_shared<app::core::Response>();
     if (!app::service::authorization::authenticate(getRequest(), authResponse))
     {

@@ -7,7 +7,9 @@
 #include <core/helpers/utils.hpp>
 #include <nlohmann/json.hpp>
 #include <phosphor-logging/log.hpp>
+#include <session_manager.hpp>
 
+#include <fstream>
 #include <memory>
 
 namespace app
@@ -18,15 +20,15 @@ namespace session
 {
 
 using namespace phosphor::logging;
+using namespace obmc::entity;
 
 struct UserSession;
-
 using UserSessionPtr = std::shared_ptr<UserSession>;
 
 // entropy: 20 characters, 62 possibilities.  log2(62^20) = 119 bits of
 // entropy.  OWASP recommends at least 64
 // https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html#session-id-entropy
-constexpr std::size_t sessionTokenSize = 20;
+static constexpr std::size_t sessionTokenSize = 20;
 
 enum class PersistenceType
 {
@@ -62,6 +64,7 @@ struct UserSession
     // by default keep sessions in the HEAP
     configFileStorageType storageType =
         configFileStorageType::configCurrentServiceSession;
+    std::string obmcSessionId = "";
 
     // There are two sources of truth for isConfigureSelfOnly:
     //  1. When pamAuthenticateUser() returns PAM_NEW_AUTHTOK_REQD.
@@ -81,73 +84,7 @@ struct UserSession
      * @return a shared pointer if data has been loaded properly, nullptr
      * otherwise
      */
-    static std::shared_ptr<UserSession> fromJson(const nlohmann::json& j)
-    {
-        std::shared_ptr<UserSession> userSession =
-            std::make_shared<UserSession>();
-        for (const auto& element : j.items())
-        {
-            const std::string* thisValue =
-                element.value().get_ptr<const std::string*>();
-            if (thisValue == nullptr)
-            {
-                log<level::ERR>("Error reading persistent store.",
-                                entry("MSG=Property was not of type string"),
-                                entry("PROPERTY=%s", element.key().c_str()));
-                continue;
-            }
-            if (element.key() == "unique_id")
-            {
-                userSession->uniqueId = *thisValue;
-            }
-            else if (element.key() == "session_token")
-            {
-                userSession->sessionToken = *thisValue;
-            }
-            else if (element.key() == "csrf_token")
-            {
-                userSession->csrfToken = *thisValue;
-            }
-            else if (element.key() == "username")
-            {
-                userSession->username = *thisValue;
-            }
-            else if (element.key() == "client_ip")
-            {
-                userSession->clientIp = *thisValue;
-            }
-
-            else
-            {
-                log<level::ERR>(
-                    "Got unexpected property reading persistent file",
-                    entry("PROPERTY=%s", element.key().c_str()));
-                continue;
-            }
-        }
-        // If any of these fields are missing, we can't restore the session, as
-        // we don't have enough information.  These 4 fields have been present
-        // in every version of this file in bmcwebs history, so any file, even
-        // on upgrade, should have these present
-        if (userSession->uniqueId.empty() || userSession->username.empty() ||
-            userSession->sessionToken.empty() || userSession->csrfToken.empty())
-        {
-            log<level::DEBUG>("Session missing required security information, "
-                              "refusing to restore");
-            return nullptr;
-        }
-
-        // For now, sessions that were persisted through a reboot get their idle
-        // timer reset.  This could probably be overcome with a better
-        // understanding of wall clock time and steady timer time, possibly
-        // persisting values with wall clock time instead of steady timer, but
-        // the tradeoffs of all the corner cases involved are non-trivial, so
-        // this is done temporarily
-        userSession->lastUpdated = std::chrono::steady_clock::now();
-        userSession->persistence = PersistenceType::TIMEOUT;
-
-        return userSession;
-    }
+    static const UserSessionPtr fromJson(const nlohmann::json& j);
 };
 
 struct AuthConfigMethods
@@ -158,166 +95,136 @@ struct AuthConfigMethods
     bool basic = true;
     bool tls = false;
 
-    void fromJson(const nlohmann::json& j)
-    {
-        for (const auto& element : j.items())
-        {
-            const bool* value = element.value().get_ptr<const bool*>();
-            if (value == nullptr)
-            {
-                continue;
-            }
-
-            if (element.key() == "XToken")
-            {
-                xtoken = *value;
-            }
-            else if (element.key() == "Cookie")
-            {
-                cookie = *value;
-            }
-            else if (element.key() == "SessionToken")
-            {
-                sessionToken = *value;
-            }
-            else if (element.key() == "BasicAuth")
-            {
-                basic = *value;
-            }
-            else if (element.key() == "TLS")
-            {
-                tls = *value;
-            }
-        }
-    }
+    void fromJson(const nlohmann::json& j);
 };
 
 class SessionStore
 {
+    const UserSessionPtr generateUserSession(
+        const std::string_view username,
+        PersistenceType persistence = PersistenceType::TIMEOUT,
+        bool isConfigureSelfOnly = false, const std::string_view clientId = "",
+        const std::string_view clientIp = "",
+        const configFileStorageType storageType =
+            configFileStorageType::configLongTermStorage);
+
   public:
-    std::shared_ptr<UserSession>
-        loginSessionByToken(const std::string_view token)
-    {
-        applySessionTimeouts();
-        if (token.size() != sessionTokenSize)
-        {
-            log<level::DEBUG>("Invalid token size");
-            return nullptr;
-        }
-        auto sessionIt = authTokens.find(std::string(token));
-        if (sessionIt == authTokens.end())
-        {
-            log<level::DEBUG>("Token not found");
-            return nullptr;
-        }
-        std::shared_ptr<UserSession> userSession = sessionIt->second;
-        userSession->lastUpdated = std::chrono::steady_clock::now();
-        return userSession;
-    }
+    using AuthTokenDict =
+        std::unordered_map<std::string, UserSessionPtr, std::hash<std::string>,
+                           app::helpers::utils::ConstantTimeCompare>;
 
-    std::shared_ptr<UserSession> getSessionByUid(const std::string_view uid)
-    {
-        applySessionTimeouts();
-        // TODO(Ed) this is inefficient
-        auto sessionIt = authTokens.begin();
-        while (sessionIt != authTokens.end())
-        {
-            if (sessionIt->second->uniqueId == uid)
-            {
-                return sessionIt->second;
-            }
-            sessionIt++;
-        }
-        return nullptr;
-    }
-
+    const UserSessionPtr newBasicAuthSession(const std::string_view username,
+                                             bool isConfigureSelfOnly,
+                                             const std::string_view clientIp);
+    const UserSessionPtr
+        newStandardLoginSession(const std::string_view username,
+                                bool isConfigureSelfOnly,
+                                const std::string_view clientIp);
+    const UserSessionPtr loginSessionByToken(const std::string_view token);
+    const UserSessionPtr getSessionByUid(const std::string_view uid);
     std::vector<const std::string*> getUniqueIds(
         bool getAll = true,
-        const PersistenceType& type = PersistenceType::SINGLE_REQUEST)
-    {
-        applySessionTimeouts();
-
-        std::vector<const std::string*> ret;
-        ret.reserve(authTokens.size());
-        for (auto& session : authTokens)
-        {
-            if (getAll || type == session.second->persistence)
-            {
-                ret.push_back(&session.second->uniqueId);
-            }
-        }
-        return ret;
-    }
-
-    void updateAuthMethodsConfig(const AuthConfigMethods& config)
-    {
-        bool isTLSchanged = (authMethodsConfig.tls != config.tls);
-        authMethodsConfig = config;
-        if (isTLSchanged)
-        {
-            // recreate socket connections with new settings
-            // TODO(IK) send SIGHUP signal to the lighttpd service
-        }
-    }
-
-    void updateSessionTimeout(std::chrono::seconds newTimeoutInSeconds)
-    {
-        timeoutInSeconds = newTimeoutInSeconds;
-    }
-
-    AuthConfigMethods& getAuthMethodsConfig()
-    {
-        return authMethodsConfig;
-    }
-
-    int64_t getTimeoutInSeconds() const
-    {
-        return std::chrono::seconds(timeoutInSeconds).count();
-    }
-
-    static SessionStore& getInstance()
-    {
-        static SessionStore sessionStore;
-        return sessionStore;
-    }
-
-    void applySessionTimeouts()
-    {
-        auto timeNow = std::chrono::steady_clock::now();
-        if (timeNow - lastTimeoutUpdate > std::chrono::seconds(1))
-        {
-            lastTimeoutUpdate = timeNow;
-            auto authTokensIt = authTokens.begin();
-            while (authTokensIt != authTokens.end())
-            {
-                if (timeNow - authTokensIt->second->lastUpdated >=
-                    timeoutInSeconds)
-                {
-                    authTokensIt = authTokens.erase(authTokensIt);
-                }
-                else
-                {
-                    authTokensIt++;
-                }
-            }
-        }
-    }
+        const PersistenceType& type = PersistenceType::SINGLE_REQUEST);
+    void updateAuthMethodsConfig(const AuthConfigMethods& config);
+    void removeSession(const UserSessionPtr& session);
+    void updateSessionTimeout(std::chrono::seconds newTimeoutInSeconds);
+    AuthConfigMethods& getAuthMethodsConfig();
+    int64_t getTimeoutInSeconds() const;
+    static SessionStore& getInstance();
+    void applySessionTimeouts();
+    const AuthTokenDict& getAuthTokenDict() const;
+    void restore(const UserSessionPtr& session);
 
     SessionStore(const SessionStore&) = delete;
     SessionStore& operator=(const SessionStore&) = delete;
-
-    std::unordered_map<std::string, std::shared_ptr<UserSession>,
-                       std::hash<std::string>,
-                       app::helpers::utils::ConstantTimeCompare>
-        authTokens;
 
     std::chrono::time_point<std::chrono::steady_clock> lastTimeoutUpdate;
     std::chrono::seconds timeoutInSeconds;
     AuthConfigMethods authMethodsConfig;
 
+    AuthTokenDict::iterator storeAuthToken(const std::string& token,
+                                           const UserSessionPtr session);
+
   private:
     SessionStore() : timeoutInSeconds(3600)
     {}
+    AuthTokenDict authTokens;
+};
+
+using ConfigFilePath = std::string;
+using ConfigFileName = std::string;
+
+class ConfigFile
+{
+    using TPopulate = std::function<void(nlohmann::json&)>;
+
+    static constexpr const char* keyRevision = "revision";
+    static constexpr const char* keyAuthConfig = "auth_config";
+    static constexpr const char* keySystemUUID = "system_uuid";
+    static constexpr const char* keyTimeout = "timeout";
+    static constexpr const char* keySessions = "sessions";
+
+  public:
+    ConfigFile();
+    ~ConfigFile();
+    void readData();
+    void commit();
+    const std::string& getSystemUUID();
+
+    static ConfigFile& getConfig();
+
+  private:
+    void readData(const session::configFileStorageType storageType,
+                  const ConfigFilePath& configPath,
+                  const ConfigFileName& configFileName);
+    void writeData(const configFileStorageType storageType,
+                   const ConfigFilePath& configPath,
+                   const ConfigFileName& configFileName);
+    inline void createConfigPath(const ConfigFilePath& configPath);
+    void populateRevision(nlohmann::json& config);
+    void populateSystemUUID(nlohmann::json& config);
+    void populateAuthConfig(nlohmann::json& config);
+    void populateTimeout(nlohmann::json& config);
+    void populateSessions(nlohmann::json& config,
+                          const configFileStorageType storageType);
+    /** Configuration fields definition depending on storage type. */
+    const std::map<configFileStorageType, std::vector<TPopulate>>
+        configPopulatHandlersDict{
+            {
+                configFileStorageType::configLongTermStorage,
+                {
+                    std::bind(&ConfigFile::populateRevision, this,
+                              std::placeholders::_1),
+                    std::bind(&ConfigFile::populateAuthConfig, this,
+                              std::placeholders::_1),
+                    std::bind(&ConfigFile::populateSystemUUID, this,
+                              std::placeholders::_1),
+                    std::bind(&ConfigFile::populateTimeout, this,
+                              std::placeholders::_1),
+                    std::bind(&ConfigFile::populateSessions, this,
+                              std::placeholders::_1,
+                              configFileStorageType::configLongTermStorage),
+                },
+            },
+            {
+                configFileStorageType::configCurrentBmcSession,
+                {
+                    std::bind(&ConfigFile::populateRevision, this,
+                              std::placeholders::_1),
+                    std::bind(&ConfigFile::populateSessions, this,
+                              std::placeholders::_1,
+                              configFileStorageType::configCurrentBmcSession),
+                },
+            },
+        };
+
+    std::string systemUuid{""};
+    uint64_t jsonRevision = 1;
+    // set the permission of the file to 640
+    std::filesystem::perms configPermission =
+        std::filesystem::perms::owner_read |
+        std::filesystem::perms::owner_write |
+        std::filesystem::perms::group_read;
 };
 
 } // namespace session

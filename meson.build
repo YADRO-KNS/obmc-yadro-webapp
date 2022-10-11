@@ -173,6 +173,8 @@ sdbusplus_dep = dependency('sdbusplus')
 systemd = dependency('systemd', required : true)
 zlib = dependency('zlib', required : true)
 phosphor_logging_dep = dependency('phosphor-logging')
+pam = cxx.find_library('pam', required: true)
+uuid = dependency('uuid', required: true)
 
 fastcgipp = cxx.find_library('fastcgipp', required : false)
 if not fastcgipp.found()
@@ -192,6 +194,8 @@ obmc_webapp_dependencies += [
   graphqlparser,
   sdbusplus_dep,
   phosphor_logging_dep,
+  pam,
+  uuid,
 ]
 
 if cxx.has_header('nlohmann/json.hpp')
@@ -227,6 +231,7 @@ srcfiles_obmc_webapp = [
   'src/core/request.cpp',
   'src/core/router.cpp',
   'src/routes.cpp',
+  'src/service/session.cpp',
   # protocol handlers
   'src/core/route/handlers/graphql_handler.cpp',
   # entities

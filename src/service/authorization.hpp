@@ -6,6 +6,7 @@
 #include <core/exceptions.hpp>
 #include <core/helpers/utils.hpp>
 #include <phosphor-logging/log.hpp>
+#include <service/pam_authenticate.hpp>
 #include <service/session.hpp>
 
 namespace app
@@ -16,6 +17,7 @@ namespace authorization
 {
 
 using namespace phosphor::logging;
+using namespace app::helpers::utils;
 
 constexpr const char* xXSRFToken = "HTTP_X_XSRF_TOKEN";
 constexpr const char* xAuthToken = "HTTP_X_AUTH_TOKEN";
@@ -68,9 +70,8 @@ static session::UserSessionPtr
         return nullptr;
     }
 
-    std::shared_ptr<session::UserSession> session =
-        session::SessionStore::getInstance().loginSessionByToken(
-            sessionValueIt->second);
+    auto session = session::SessionStore::getInstance().loginSessionByToken(
+        sessionValueIt->second);
     if (session == nullptr)
     {
         return nullptr;
@@ -96,8 +97,7 @@ static session::UserSessionPtr
                 return nullptr;
             }
             // Reject if csrf token not available
-            if (!app::helpers::utils::constantTimeStringCompare(
-                    csrf, session->csrfToken))
+            if (!constantTimeStringCompare(csrf, session->csrfToken))
             {
                 return nullptr;
             }
@@ -112,9 +112,100 @@ static session::UserSessionPtr
     return session;
 }
 
+static session::UserSessionPtr
+    performBasicAuth(const app::core::RequestPtr& request)
+{
+    log<level::DEBUG>("[AuthMiddleware] Basic authentication");
+
+    std::string authData;
+    const auto authHeader = request->environment().authorization;
+    const auto param = authHeader.substr(strlen(authBasic));
+    try
+    {
+        authData = base64Decode(param);
+    }
+    catch (...)
+    {
+        return nullptr;
+    }
+    std::size_t separator = authData.find(':');
+    if (separator == std::string::npos)
+    {
+        return nullptr;
+    }
+
+    std::string user = authData.substr(0, separator);
+    separator += 1;
+    if (separator > authData.size())
+    {
+        return nullptr;
+    }
+    std::string pass = authData.substr(separator);
+
+    log<level::DEBUG>("[AuthMiddleware] Authenticating...",
+                      entry("USER=%s", user.c_str()),
+                      entry("DEST_IP=%s", request->getClientIp().c_str()));
+
+    int pamrc = pamAuthenticateUser(user, pass);
+    bool isConfigureSelfOnly = pamrc == PAM_NEW_AUTHTOK_REQD;
+    if ((pamrc != PAM_SUCCESS) && !isConfigureSelfOnly)
+    {
+        return nullptr;
+    }
+
+    // TODO(ed) generateUserSession is a little expensive for basic
+    // auth, as it generates some random identifiers that will never be
+    // used.  This should have a "fast" path for when user tokens aren't
+    // needed.
+    // This whole flow needs to be revisited anyway, as we can't be
+    // calling directly into pam for every request
+    auto session = session::SessionStore::getInstance().newBasicAuthSession(
+        user, isConfigureSelfOnly, request->getClientIp());
+
+    return session;
+}
+
+// checks if request can be forwarded without authentication
+inline bool isOnWhitelist(const app::core::RequestPtr& req)
+{
+    // it's allowed to GET root node without authentication
+    const auto url = req->getUriPath();
+    const auto compare = [url](const auto& value) -> bool {
+        return value == url;
+    };
+    bool isOnWhitelist = false;
+    if (Fastcgipp::Http::RequestMethod::GET == req->environment().requestMethod)
+    {
+        static constexpr std::array whiteListGetUris{
+            "/redfish/", "/redfish/v1/", "/redfish/v1/odata/"};
+        isOnWhitelist = std::any_of(whiteListGetUris.begin(),
+                                    whiteListGetUris.end(), compare);
+    }
+
+    // it's allowed to POST on session collection & login without
+    // authentication
+    if (Fastcgipp::Http::RequestMethod::POST ==
+        req->environment().requestMethod)
+    {
+        static constexpr std::array whiteListPostUris{
+            "/login/",
+            "/redfish/v1/SessionService/Sessions/",
+        };
+        isOnWhitelist = std::any_of(whiteListPostUris.begin(),
+                                    whiteListPostUris.end(), compare);
+    }
+
+    return isOnWhitelist;
+}
+
 static bool authenticate(const app::core::RequestPtr& request,
                          const app::core::ResponsePtr& response)
 {
+    if (isOnWhitelist(request))
+    {
+        return true;
+    }
+
     const session::AuthConfigMethods& authMethodsConfig =
         session::SessionStore::getInstance().getAuthMethodsConfig();
 
@@ -140,8 +231,7 @@ static bool authenticate(const app::core::RequestPtr& request,
             else if (authHeader.starts_with(authBasic) &&
                      authMethodsConfig.basic)
             {
-                throw app::core::exceptions::NotImplemented(
-                    "Basic athorization not supported by BMC WEBAPP");
+                request->setSession(performBasicAuth(request));
             }
         }
     }
@@ -160,7 +250,10 @@ static bool authenticate(const app::core::RequestPtr& request,
 
         return false;
     }
-
+    if (!request->isSessionEmpty())
+    {
+        session::ConfigFile::getConfig().commit();
+    }
     return !request->isSessionEmpty();
 }
 
