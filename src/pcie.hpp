@@ -294,7 +294,7 @@ class PCIeProvider final :
          */
         void setSBD(const DBusInstancePtr& instance) const
         {
-            auto& objectPath = instance->getObjectPath();
+            const auto& objectPath = instance->getObjectPath();
             auto SBD = app::helpers::utils::getNameFromLastSegmentObjectPath(
                 objectPath);
 

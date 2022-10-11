@@ -26,7 +26,7 @@ std::size_t FindObjectDBusQuery::DBusObjectEndpoint::getHash() const
     std::size_t hashDepth = std::hash<int32_t>{}(depth);
     std::size_t hashInterfaces;
 
-    for (auto& interface : interfaces)
+    for (const auto& interface : interfaces)
     {
         hashInterfaces ^= std::hash<std::string>{}(interface);
     }
@@ -60,9 +60,9 @@ const entity::IEntity::InstanceCollection FindObjectDBusQuery::process()
             entry("ERROR=%s", ex.what()));
     }
 
-    for (auto& [objectPath, serviceInfoList] : mapperResponse)
+    for (const auto& [objectPath, serviceInfoList] : mapperResponse)
     {
-        for (auto& [serviceName, interfaces] : serviceInfoList)
+        for (const auto& [serviceName, interfaces] : serviceInfoList)
         {
             if (getQueryCriteria().service.has_value() &&
                 getQueryCriteria().service.value() != serviceName)
@@ -92,7 +92,7 @@ bool FindObjectDBusQuery::checkCriteria(
     const ObjectPath& objectPath, const InterfaceList& interfacesToCheck,
     std::optional<ServiceName> optionalServiceName) const
 {
-    auto& criteriaInterfaces = getQueryCriteria().interfaces;
+    const auto& criteriaInterfaces = getQueryCriteria().interfaces;
 
     if (optionalServiceName.has_value() &&
         getQueryCriteria().service.has_value() &&
@@ -211,13 +211,13 @@ const IEntity::InstanceCollection IntrospectServiceDBusQuery::process()
                           entry("DBUS_SVC=%s", serviceName.c_str()),
                           entry("ERROR=%s", e.what()));
     }
-    for (auto& [objectPath, interfaces] : interfacesResponse)
+    for (const auto& [objectPath, interfaces] : interfacesResponse)
     {
         auto instance = std::make_shared<DBusInstance>(
             serviceName, objectPath.str, getSearchPropertiesMap(),
             getWeakPtr());
 
-        for (auto& [interfaceName, propertiesMap] : interfaces)
+        for (const auto& [interfaceName, propertiesMap] : interfaces)
         {
             instance->fillMembers(interfaceName, propertiesMap);
         }
@@ -237,7 +237,7 @@ bool IntrospectServiceDBusQuery::checkCriteria(
 {
     InterfaceList notMatchedInterfaces;
     InterfaceList activeInterfaces;
-    for (auto& seachPropIt : getSearchPropertiesMap())
+    for (const auto& seachPropIt : getSearchPropertiesMap())
     {
         activeInterfaces.push_back(seachPropIt.first);
     }
@@ -282,7 +282,7 @@ DBusInstancePtr DBusQuery::createInstance(const ServiceName& serviceName,
 {
     auto instance = std::make_shared<DBusInstance>(
         serviceName, objectPath, getSearchPropertiesMap(), getWeakPtr());
-    for (auto& interface : interfaces)
+    for (const auto& interface : interfaces)
     {
         auto properties = instance->queryProperties(getConnect(), interface);
         instance->fillMembers(interface, properties);
@@ -329,7 +329,7 @@ bool DBusInstance::fillMembers(
         return false;
     }
 
-    for (auto& [propertyReflection, setters] : propertySetters)
+    for (const auto& [propertyReflection, setters] : propertySetters)
     {
         auto findProperty = properties.find(propertyReflection.first);
         if (findProperty == properties.end())
@@ -472,7 +472,7 @@ void DBusInstance::supplementOrUpdate(
 
 void DBusInstance::supplementOrUpdate(const IEntity::InstancePtr& destination)
 {
-    for (auto& memberName : destination->getMemberNames())
+    for (const auto& memberName : destination->getMemberNames())
     {
         if (memberName.starts_with("__meta_"))
         {
@@ -518,7 +518,7 @@ void DBusInstance::captureDBusAssociations(
     this->complexInstances.clear();
     // Since the complex association is a disclose of shadow one DBus Property,
     // we should clear outdated instances with the same specified interface
-    for (auto& [source, destination, destObjectPath] : associations)
+    for (const auto& [source, destination, destObjectPath] : associations)
     {
         log<level::DEBUG>(
             "Strip an association down into members of child instance",
@@ -671,7 +671,7 @@ void DBusQuery::registerObjectCreationObserver(
                 dbusQueryShr->getConnect()->getWellKnownServiceName(
                     message.get_sender());
 
-            for (auto& [interfaceName, _] : interfacesAdded)
+            for (const auto& [interfaceName, _] : interfacesAdded)
             {
                 interfacesList.push_back(interfaceName);
             }
@@ -685,7 +685,7 @@ void DBusQuery::registerObjectCreationObserver(
             // this is must have because the interfacesAdded might missing a
             // required interfeses.
             interfacesList.clear();
-            for (auto& [interfaceName, _] : actualProperties.get())
+            for (const auto& [interfaceName, _] : actualProperties.get())
             {
                 interfacesList.push_back(interfaceName);
             }
@@ -786,9 +786,9 @@ const DBusPropertyFormatters&
     DBusQuery::getFormatters(const PropertyName& property) const
 {
     const auto& eps = getSearchPropertiesMap();
-    for (auto& [_, setters] : eps)
+    for (const auto& [_, setters] : eps)
     {
-        for (auto& [reflection, casters] : setters)
+        for (const auto& [reflection, casters] : setters)
         {
             if (reflection.first != property)
             {
@@ -806,9 +806,9 @@ const DBusPropertyValidators&
     static const DBusPropertyValidators noValidators;
 
     const auto& eps = getSearchPropertiesMap();
-    for (auto& [_, setters] : eps)
+    for (const auto& [_, setters] : eps)
     {
-        for (auto& [reflection, casters] : setters)
+        for (const auto& [reflection, casters] : setters)
         {
             if (reflection.first != property)
             {
