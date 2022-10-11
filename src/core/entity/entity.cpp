@@ -122,7 +122,7 @@ const IEntity::IEntityMember::InstancePtr& BaseEntity::StaticInstance::getField(
 const std::vector<MemberName> BaseEntity::StaticInstance::getMemberNames() const
 {
     std::vector<MemberName> result;
-    for (auto& [memberName, memberInstance] : memberInstances)
+    for (const auto& [memberName, memberInstance] : memberInstances)
     {
         result.emplace_back(memberName);
     }
@@ -158,7 +158,7 @@ void BaseEntity::StaticInstance::supplementOrUpdate(
 void BaseEntity::StaticInstance::supplementOrUpdate(
     const IEntity::InstancePtr& destination)
 {
-    for (auto& memberName : destination->getMemberNames())
+    for (const auto& memberName : destination->getMemberNames())
     {
         this->supplementOrUpdate(memberName,
                                  destination->getField(memberName)->getValue());
@@ -237,7 +237,7 @@ bool BaseEntity::Condition::fieldValueCompare(
     const IEntity::IInstance& sourceInstance) const
 {
     bool result = true;
-    for (auto& [ruleMeta, compareCallback] : rules)
+    for (const auto& [ruleMeta, compareCallback] : rules)
     {
         MemberName memberName;
         IEntityMember::IInstance::FieldType rightValue;
@@ -290,7 +290,7 @@ const IEntity::EntityMemberPtr
     auto it = this->members.find(memberName);
     if (it == this->members.end())
     {
-        auto& providersRules = getProviders();
+        const auto& providersRules = getProviders();
         for (auto [provider, _] : providersRules)
         {
             try
@@ -363,7 +363,7 @@ const std::vector<IEntity::InstancePtr>
 
 void BaseEntity::setInstances(std::vector<InstancePtr> instancesList)
 {
-    for (auto& inputInstance : instancesList)
+    for (const auto& inputInstance : instancesList)
     {
         this->instances.insert_or_assign(inputInstance->getHash(),
                                          inputInstance);

@@ -334,7 +334,7 @@ void GqlObjectBuild::supplement(const std::string& fieldName, GqlBuildPtr child)
 {
     if (this->fragment.is_object())
     {
-        for (auto& [hashStr, item] : this->fragment.items())
+        for (const auto& [hashStr, item] : this->fragment.items())
         {
             std::optional<std::size_t> hash;
             try
@@ -382,7 +382,7 @@ const json GqlObjectBuild::getFragment(
                 conditions = std::move(
                     this->relation->getConditions(*parentInstanceHash));
             }
-            auto& instances = entity->getInstances(conditions);
+            const auto& instances = entity->getInstances(conditions);
             if (instances.size() == 1 &&
                 entity->getType() != entity::IEntity::Type::array)
             {
