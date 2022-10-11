@@ -238,18 +238,35 @@ static bool authenticate(const app::core::RequestPtr& request,
 
     if (request->isSessionEmpty())
     {
+        using Code = app::http::statuses::Code;
+        using namespace app::http::headers;
+
         log<level::WARNING>("[AuthMiddleware] authorization failed");
 
-        response->setStatus(app::http::statuses::Code::Unauthorized);
+        if (request->isBrowserRequest())
+        {
+            using namespace app::helpers::utils;
+
+            static constexpr const char* loginPathNext = "/#/login?next=";
+
+            response->setStatus(Code::TemporaryRedirect);
+            response->setHeader(location, loginPathNext +
+                                              urlEncode(request->getUriPath()));
+
+            return false;
+        }
+
+        response->setStatus(Code::Unauthorized);
         // only send the WWW-authenticate header if this isn't a xhr
         // from the browser.  most scripts,
         if (request->environment().userAgent.empty())
         {
-            response->setHeader(app::http::headers::wwwAuthenticate, authBasic);
+            response->setHeader(wwwAuthenticate, authBasic);
         }
 
         return false;
     }
+
     if (!request->isSessionEmpty())
     {
         session::ConfigFile::getConfig().commit();
