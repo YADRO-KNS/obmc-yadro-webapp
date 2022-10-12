@@ -46,7 +46,7 @@ class Roles final :
         const EntitySupplementProviderPtr provider;
 
       public:
-        RolesProxyQuery(const EntitySupplementProviderPtr& provider) :
+        explicit RolesProxyQuery(const EntitySupplementProviderPtr& provider) :
             provider(provider)
         {}
         ~RolesProxyQuery() override = default;

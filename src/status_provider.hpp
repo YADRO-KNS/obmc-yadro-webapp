@@ -81,7 +81,7 @@ class StatusRollup final
     const EntityPtr entity;
 
   public:
-    StatusRollup(const EntityPtr& entity) : entity(entity)
+    explicit StatusRollup(const EntityPtr& entity) : entity(entity)
     {
         if (!entity->hasMember(StatusProvider::fieldStatusRollup))
         {
@@ -133,7 +133,7 @@ class StatusRollup final
 class StatusFromRollup final
 {
   public:
-    StatusFromRollup(const EntityPtr& entity)
+    explicit StatusFromRollup(const EntityPtr& entity)
     {
         if (!entity->hasMember(StatusProvider::fieldStatus))
         {
@@ -189,7 +189,7 @@ class StatusByCallbackManager final :
             const std::vector<std::string> observedCausers;
 
           public:
-            BaseStatusFormatter(
+            explicit BaseStatusFormatter(
                 const std::vector<std::string>& observedCausers) :
                 observedCausers(observedCausers)
             {}
@@ -213,7 +213,8 @@ class StatusByCallbackManager final :
         class FormatCauser : public BaseStatusFormatter
         {
           public:
-            FormatCauser(const std::vector<std::string>& observedCausers) :
+            explicit FormatCauser(
+                const std::vector<std::string>& observedCausers) :
                 BaseStatusFormatter(observedCausers)
             {}
             ~FormatCauser() override = default;
@@ -243,7 +244,8 @@ class StatusByCallbackManager final :
         class FormatStatus : public BaseStatusFormatter
         {
           public:
-            FormatStatus(const std::vector<std::string>& observedCausers) :
+            explicit FormatStatus(
+                const std::vector<std::string>& observedCausers) :
                 BaseStatusFormatter(observedCausers)
             {}
             ~FormatStatus() override = default;

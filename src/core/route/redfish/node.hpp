@@ -101,7 +101,7 @@ class ParameterizedNode : public IParameterizedNode
   public:
     ParameterizedNode() = delete;
 
-    ParameterizedNode(const RedfishContextPtr ctx) :
+    explicit ParameterizedNode(const RedfishContextPtr& ctx) :
         pnCtx(ctx), value(ctx->getRequest()->environment().pathInfo.back())
     {}
     ~ParameterizedNode() override = default;
@@ -149,7 +149,7 @@ class NodeNotFound : public INode
     RedfishContextPtr ctx;
 
   public:
-    NodeNotFound(const RedfishContextPtr ctx) : ctx(ctx)
+    explicit NodeNotFound(const RedfishContextPtr& ctx) : ctx(ctx)
     {}
     ~NodeNotFound() override = default;
     void process() override
@@ -446,7 +446,7 @@ class Node : public INode
       public:
         ObjectGetter() : field(dummyFieldName)
         {}
-        ObjectGetter(const std::string& field) : field(field)
+        explicit ObjectGetter(const std::string& field) : field(field)
         {}
         ~ObjectGetter() override = default;
 
@@ -482,7 +482,7 @@ class Node : public INode
       public:
         StaticCollectionGetter() : field(dummyFieldName)
         {}
-        StaticCollectionGetter(const std::string& field) : field(field)
+        explicit StaticCollectionGetter(const std::string& field) : field(field)
         {}
         ~StaticCollectionGetter() override = default;
 
@@ -518,7 +518,7 @@ class Node : public INode
         const std::string annotationFieldName;
 
       public:
-        CollectionSizeAnnotation(const std::string& field) :
+        explicit CollectionSizeAnnotation(const std::string& field) :
             itemFieldName(field),
             annotationFieldName(field + nameFieldODataCount)
         {}
@@ -551,7 +551,8 @@ class Node : public INode
         using EntityType = TEntity;
 
         EntityGetter() = default;
-        EntityGetter(const app::entity::IEntity::InstancePtr instance) :
+        explicit EntityGetter(
+            const app::entity::IEntity::InstancePtr& instance) :
             parentInstance(instance)
         {}
         ~EntityGetter() override = default;
@@ -850,11 +851,11 @@ class Node : public INode
 
       public:
         CollectionGetter(const std::string& fieldName,
-                         const app::entity::IEntity::InstancePtr instance) :
+                         const app::entity::IEntity::InstancePtr& instance) :
             StaticCollectionGetter(fieldName),
             parentInstance(instance)
         {}
-        CollectionGetter(const std::string& fieldName) :
+        explicit CollectionGetter(const std::string& fieldName) :
             StaticCollectionGetter(fieldName), parentInstance()
         {}
         ~CollectionGetter() override = default;
@@ -901,7 +902,7 @@ class Node : public INode
             const std::string uri;
 
           public:
-            LinkRefObject(const std::string& uri) :
+            explicit LinkRefObject(const std::string& uri) :
                 ObjectGetter(nameFieldODataID), uri(uri)
             {}
             ~LinkRefObject() override = default;
@@ -1122,7 +1123,8 @@ class Node : public INode
     class LinksGetter : public ObjectGetter
     {
       public:
-        LinksGetter(const std::string& fieldName) : ObjectGetter(fieldName)
+        explicit LinksGetter(const std::string& fieldName) :
+            ObjectGetter(fieldName)
         {
             static_assert(
                 std::conjunction_v<std::disjunction<
@@ -1151,7 +1153,7 @@ class Node : public INode
         const app::entity::IEntity::InstancePtr instance;
 
       public:
-        OemGetter(const app::entity::IEntity::InstancePtr instance) :
+        explicit OemGetter(const app::entity::IEntity::InstancePtr& instance) :
             ObjectGetter(oemFieldName), instance(instance)
         {}
         OemGetter() : ObjectGetter(oemFieldName)
@@ -1176,7 +1178,7 @@ class Node : public INode
         IdReference(const std::string& name, const std::string& segment) :
             ObjectGetter(name), segment(segment)
         {}
-        IdReference(const std::string& name) :
+        explicit IdReference(const std::string& name) :
             ObjectGetter(name), segment(TNextNode::segment)
         {}
         ~IdReference() override = default;
@@ -1197,7 +1199,8 @@ class Node : public INode
     class ListReferences : public StaticCollectionGetter
     {
       public:
-        ListReferences(const std::string& field) : StaticCollectionGetter(field)
+        explicit ListReferences(const std::string& field) :
+            StaticCollectionGetter(field)
         {}
         ~ListReferences() override = default;
 

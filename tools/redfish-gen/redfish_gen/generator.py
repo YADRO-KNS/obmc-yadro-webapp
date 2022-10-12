@@ -28,8 +28,8 @@ class Generator:
                         Generator.nodes.append(node)
 
         for root, dirs, files in (next(os.walk(rootdir)),):
-            for dir in dirs:
-                Generator.process(rootdir+"/"+dir, parent=new_parent_tmp[dir])
+            for d in dirs:
+                Generator.process(rootdir+"/"+d, parent=new_parent_tmp[d])
 
     def __init__(self, parent=None, **kwargs):
         self.instance = RedfishNode.build(parent=parent, **kwargs)

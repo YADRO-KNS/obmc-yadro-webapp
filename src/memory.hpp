@@ -455,7 +455,7 @@ class Memory final :
     class SMBiosProxyQuery : public proxy::ProxyQuery
     {
       public:
-        SMBiosProxyQuery(const EntitySupplementProviderPtr& provider) :
+        explicit SMBiosProxyQuery(const EntitySupplementProviderPtr& provider) :
             proxy::ProxyQuery(provider)
         {}
         ~SMBiosProxyQuery() override = default;
