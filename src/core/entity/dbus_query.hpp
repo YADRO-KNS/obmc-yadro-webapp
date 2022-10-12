@@ -637,10 +637,9 @@ class DBusQueryViaMethodCall :
                                     const MethodName& method,
                                     Args&&... args) noexcept :
         DBusQuery(),
-        service(service), object(object), interface(interface), method(method)
-    {
-        methodParams = MethodParams(args...);
-    }
+        service(service), object(object), interface(interface), method(method),
+        methodParams(MethodParams(args...))
+    {}
     ~DBusQueryViaMethodCall() override = default;
 
     const entity::IEntity::InstanceCollection process() override
@@ -682,7 +681,7 @@ class DBusQueryViaMethodCall :
     const TCallResult callDBusWithParams(const MethodParams& params,
                                          std::index_sequence<ISeq...>)
     {
-        return getConnect()->callMethodAndRead<TCallResult, Args...>(
+        return getConnect()->template callMethodAndRead<TCallResult, Args...>(
             this->service, this->object, this->interface, this->method,
             std::get<ISeq>(std::forward<decltype(params)>(params))...);
     }

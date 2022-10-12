@@ -239,7 +239,7 @@ class DBusConnect : protected IConnect
      * @param uniqueName          - DBus unique service name
      * @return const std::string& - DBus well-known service name
      */
-    const std::string& getWellKnownServiceName(const std::string uniqueName);
+    const std::string& getWellKnownServiceName(const std::string& uniqueName);
     /**
      * @brief Force update DBus well-known to unique service names dictionary
      */

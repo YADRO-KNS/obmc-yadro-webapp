@@ -22,8 +22,6 @@ using namespace app::entity;
 using namespace app::query;
 using namespace std::placeholders;
 
-
-
 class AssetTagProvider final :
     public entity::EntitySupplementProvider,
     public ISingleton<AssetTagProvider>,
