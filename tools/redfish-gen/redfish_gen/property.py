@@ -578,7 +578,7 @@ class EnumDefinition(Property):
     def description(self, value):
         if value not in self.values():
             raise LookupError(
-                "Value '%s' is not a valid enum of type '%s'" % (value, self.name()))
+                "Value '%r' is not a valid enum of type '%s'" % (value, self.name()))
         return self._prop_spec["enumDescriptions"][value]
 
     def mapping(self):

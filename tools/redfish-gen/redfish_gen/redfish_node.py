@@ -286,13 +286,13 @@ class RedfishNode:
                 ref["Classname"] = ref_class
                 r.append(ref)
         except:
-            None
+            pass
         return r
 
     def __check_properties_definition(self, source: str) -> bool:
-        if not (type(self.__get()) == dict and "Properties" in self.__get()):
+        if not (isinstance(self.__get(), dict) and "Properties" in self.__get()):
             return False
-        if not (type(self.__get()["Properties"]) == dict and source in self.__get()["Properties"]):
+        if not (isinstance(self.__get()["Properties"], dict) and source in self.__get()["Properties"]):
             return False
         return True
 

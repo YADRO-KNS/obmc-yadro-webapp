@@ -161,7 +161,8 @@ class Sensors :
             }
 
           public:
-            GroupParser(const DBusInstancePtr& instance) : instance(instance)
+            explicit GroupParser(const DBusInstancePtr& instance) :
+                instance(instance)
             {}
             ~GroupParser() = default;
 

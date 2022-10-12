@@ -481,7 +481,8 @@ class HostBootProvider final :
             }
 
           public:
-            FormatSource(const InstancePtr instance) : instance(instance)
+            explicit FormatSource(const InstancePtr& instance) :
+                instance(instance)
             {}
             ~FormatSource() = default;
 
@@ -538,7 +539,7 @@ class HostBootProvider final :
             "xyz.openbmc_project.Control.Boot.Type";
 
       public:
-        Query(const ObjectPath& path) :
+        explicit Query(const ObjectPath& path) :
             dbus::GetObjectDBusQuery(settingsService, path)
         {}
         ~Query() override = default;

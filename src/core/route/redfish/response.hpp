@@ -26,7 +26,7 @@ class RedfishResponse : public Response
     static constexpr const char* errorField = "error";
 
   public:
-    RedfishResponse(bool prettyOutput) :
+    explicit RedfishResponse(bool prettyOutput) :
         Response(), payload(nlohmann::json({})), prettyOutput(prettyOutput)
     {}
     RedfishResponse(const RedfishResponse&) = delete;
