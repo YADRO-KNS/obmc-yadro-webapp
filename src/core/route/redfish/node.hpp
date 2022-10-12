@@ -610,8 +610,9 @@ class Node : public INode
         template <typename R, typename TArgCastFrom>
         struct CastFnTraits<R(TArgCastFrom)>
         {
-            using CastToType = std::remove_reference<R>::type;
-            using CastFromType = std::remove_reference<TArgCastFrom>::type;
+            using CastToType = typename std::remove_reference<R>::type;
+            using CastFromType =
+                typename std::remove_reference<TArgCastFrom>::type;
         };
         class ScalarFieldGetter : public IAction
         {

@@ -601,7 +601,6 @@ void eventSubscriptionLimitExceeded(const RedfishContextPtr& context)
     context->getResponse()->addError(eventSubscriptionLimitExceeded());
 }
 
-
 /**
  * @internal
  * @brief Formats ResourceNotFound message into JSON

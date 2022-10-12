@@ -213,7 +213,7 @@ void DBusConnect::setServiceName(const std::string& uniqueName,
 }
 
 const std::string&
-    DBusConnect::getWellKnownServiceName(const std::string uniqueName)
+    DBusConnect::getWellKnownServiceName(const std::string& uniqueName)
 {
     using namespace std::literals;
 

@@ -1,8 +1,12 @@
-#include <gtest/gtest.h>
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2021, KNS Group LLC (YADRO)
+
+#include <http/headers.hpp>
+
 #include <iostream>
 #include <map>
 
-#include <http/headers.hpp>
+#include <gtest/gtest.h>
 
 using namespace app::http;
 using namespace app::http::statuses;

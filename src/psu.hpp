@@ -109,7 +109,6 @@ class PMBusProvider final :
             psuSensorService
         )
         /* clang-format on */
-
     };
 
   public:
