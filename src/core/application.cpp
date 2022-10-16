@@ -14,16 +14,63 @@ namespace app
 namespace core
 {
 
+namespace fs = std::filesystem;
+using namespace std::literals;
 using namespace phosphor::logging;
+using namespace app::obmc::entity;
+
+constexpr const char* yawebInitGuradFile = YAWEB_INIT_GUARD_FILE;
 
 void Application::initDBusConnect()
 {
     dbusConnection = std::move(connect::DBusConnect::createDbusConnection());
+    createInitGuardFile();
 }
 
 void Application::runDBusObserve()
 {
     dbusConnection->run();
+}
+
+void Application::createInitGuardFile()
+{
+    const auto filePath = fs::path(yawebInitGuradFile);
+
+    if (!fs::exists(filePath.parent_path()))
+    {
+        throw std::runtime_error(
+            "The path to create init-guard file doesn't exist. Filename: " +
+            filePath.string());
+    }
+
+    std::ofstream file{filePath};
+    fs::permissions(filePath, (fs::perms::owner_read | fs::perms::owner_write |
+                               fs::perms::group_read));
+}
+
+void Application::removeInitGuardFile()
+{
+    const auto filePath = fs::path(yawebInitGuradFile);
+
+    if (!fs::exists(filePath))
+    {
+        log<level::DEBUG>("The file of init-guard doesn't exist.",
+                          entry("FILENAME=%s", filePath.c_str()));
+        return;
+    }
+
+    fs::remove(filePath);
+}
+
+void Application::finishInitialization()
+{
+    while (!isBaseEntitiesInitialized())
+    {
+        log<level::DEBUG>("Waits for important Entity instances initialization "
+                          "are completed...");
+        std::this_thread::sleep_for(5s);
+    }
+    removeInitGuardFile();
 }
 
 void Application::configure()
@@ -33,6 +80,7 @@ void Application::configure()
     initDBusConnect();
     initEntities();
     runDBusObserve();
+    finishInitialization();
     // run observe dbus signals
     // register handlers
     std::signal(SIGINT, &Application::handleSignals);
@@ -55,16 +103,23 @@ void Application::terminate()
     dbusConnection.reset();
 }
 
+bool Application::isBaseEntitiesInitialized()
+{
+    using namespace app::obmc::entity;
+    return !Server::getEntity()->getInstances().empty() &&
+           !Chassis::getEntity()->getInstances().empty() &&
+           !Baseboard::getEntity()->getInstances().empty();
+}
+
 void Application::waitBootingBmc()
 {
     constexpr const char* bootingFilePath = "/run/bmc-booting";
-    using namespace std::literals;
 
     // Don't initialize the application until the BMC boot processing to avoid
     // query to dbus-services which an incomplete state.
     while (std::filesystem::exists(bootingFilePath))
     {
-        log<level::INFO>("Wait for BMC boot completed...");
+        log<level::DEBUG>("Wait for BMC boot completed...");
         std::this_thread::sleep_for(1s);
     }
 
@@ -92,7 +147,6 @@ const connect::DBusConnectUni& Application::getDBusConnect() const
 
 void Application::initEntities()
 {
-    using namespace app::obmc::entity;
     entityManager.buildEntity<Sensors>();
     entityManager.buildEntity<Processor>();
     entityManager.buildEntity<ProcessorSummary>();

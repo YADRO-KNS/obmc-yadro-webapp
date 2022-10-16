@@ -267,6 +267,7 @@ conf_data = configuration_data()
 conf_data.set('MESON_INSTALL_PREFIX',get_option('prefix'))
 conf_data.set('HTTP_REQ_BODY_LIMIT_MB',get_option('http-body-limit'))
 conf_data.set('FASTCGI_SOCKET_PATH', '"' + get_option('fcgi-socket-path') + '"')
+conf_data.set('YAWEB_INIT_GUARD_FILE', '"' + get_option('yaweb-init-guard-file') + '"')
 
 if get_option('dbus-connect-type') == 'remote'
   conf_data.set('BMC_DBUS_REMOTE_HOST','"' + get_option('dbus-remote-host') + '"')
