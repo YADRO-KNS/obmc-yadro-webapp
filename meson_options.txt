@@ -5,3 +5,4 @@ option('http-body-limit', type: 'integer', min : 0, max : 512, value : 30, descr
 option('dbus-connect-type', type: 'combo', choices: ['remote', 'system'], value: 'system', description: 'Set the DBus connection type.')
 option('dbus-remote-host', type: 'string', value: 'root@127.0.0.1', description: 'Set the hostname to connect to the remote DBus bus through SSH tunnel.')
 option('fcgi-socket-path', type: 'string', value: '/run/yaweb.fcgi', description: 'Set the unix-socket path to start listening incoming connections to handle HTTP requests.')
+option('yaweb-init-guard-file', type: 'string', value: '/run/lighttpd/yaweb-init', description: 'Set the absolute path to the lock-file that indicates the yaweb initialization is in progress.')

@@ -67,7 +67,10 @@ class Application final
     void runDBusObserve();
     void registerAllRoutes();
     void waitBootingBmc();
-
+    bool isBaseEntitiesInitialized();
+    void finishInitialization();
+    inline void createInitGuardFile();
+    inline void removeInitGuardFile();
     static void handleSignals(int signal);
 
   private:
