@@ -375,10 +375,22 @@ class Sensors :
             }
         }
 
+        void setAvailable(const DBusInstancePtr& instance) const
+        {
+            if (instance->getField(fieldAvailable)->isNull())
+            {
+                // Some sensors don't have the
+                // `sensorAvailabilityInterface`, e.g. fan PWM.
+                // Force set to true for them
+                setFieldAvailable(instance, true);
+            }
+        }
+
         void supplementByStaticFields(
             const DBusInstancePtr& instance) const override
         {
             this->setSensorName(instance);
+            this->setAvailable(instance);
             this->setStatus(instance);
             this->setState(instance);
             this->setGroup(instance);
