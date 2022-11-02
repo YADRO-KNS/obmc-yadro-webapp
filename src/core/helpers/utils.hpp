@@ -27,14 +27,19 @@ using namespace phosphor::logging;
 inline long int countExtraSegmentsOfPath(const std::string& namespacePath,
                                          const std::string& path)
 {
-    if (namespacePath.length() >= path.length())
+    auto start = namespacePath.length();
+    auto end = path.length();
+
+    for (; start < end && path[start] == '/'; ++start)
+        ;
+    for (; start < end && path[end - 1] == '/'; --end)
+        ;
+    if (start < end)
     {
-        return 0;
+        return std::count(path.cbegin() + start, path.cbegin() + end, '/') + 1;
     }
 
-    return std::count(path.begin() +
-                          static_cast<long int>(namespacePath.length()),
-                      path.end(), '/');
+    return 0;
 }
 
 inline bool constantTimeStringCompare(const std::string_view a,
