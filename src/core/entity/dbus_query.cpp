@@ -101,6 +101,10 @@ bool FindObjectDBusQuery::checkCriteria(
         return false;
     }
 
+    if (!objectPath.starts_with(getQueryCriteria().path))
+    {
+        return false;
+    }
     if (getQueryCriteria().depth > 0 &&
         app::helpers::utils::countExtraSegmentsOfPath(
             getQueryCriteria().path, objectPath) > getQueryCriteria().depth)
