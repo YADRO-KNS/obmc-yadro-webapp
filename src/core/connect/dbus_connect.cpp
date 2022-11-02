@@ -6,6 +6,7 @@
 #include <systemd/sd-bus.h>
 
 #include <core/connect/connect.hpp>
+#include <core/entity/dbus_query.hpp>
 #include <core/exceptions.hpp>
 #include <phosphor-logging/log.hpp>
 #include <sdbusplus/bus.hpp>
@@ -172,6 +173,7 @@ void DBusConnect::initSdBusConnection()
     sdbusConnect = std::make_unique<sdbusplus::bus::bus>(dbusConnect);
     updateWellKnownServiceNameDict();
     initServiceNamesWatcher();
+    configureObjectManagingHandlers();
 }
 
 void DBusConnect::initServiceNamesWatcher()
@@ -210,6 +212,22 @@ void DBusConnect::setServiceName(const std::string& uniqueName,
                       entry("SVC_UNI_NAME=%s", uniqueName.c_str()),
                       entry("SVC_WK_NAME=%s", wellKnownName.c_str()));
     serviceNamesDict.insert_or_assign(uniqueName, wellKnownName);
+}
+
+void DBusConnect::configureObjectManagingHandlers()
+{
+    using namespace sdbusplus::bus::match;
+    using namespace app::query::dbus;
+
+    globalSignalHandlers.push_back(std::move(createWatcher(
+        rules::interfacesAdded(), [](sdbusplus::message::message& message) {
+            DBusQuery::processObjectCreate(message);
+        })));
+
+    globalSignalHandlers.push_back(std::move(createWatcher(
+        rules::interfacesRemoved(), [](sdbusplus::message::message& message) {
+            DBusQuery::processObjectRemove(message);
+        })));
 }
 
 const std::string&

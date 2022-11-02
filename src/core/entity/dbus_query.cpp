@@ -18,6 +18,9 @@ namespace dbus
 using namespace app::core::exceptions;
 using namespace app::connect;
 
+DBusQuery::InstanceCreateHandlers DBusQuery::instanceCreateHandlers;
+DBusQuery::InstanceRemoveHandlers DBusQuery::instanceRemoveHandlers;
+
 std::size_t FindObjectDBusQuery::DBusObjectEndpoint::getHash() const
 {
     std::size_t hashPath = std::hash<std::string>{}(path);
@@ -650,30 +653,16 @@ void DBusQuery::registerObjectCreationObserver(
     using namespace sdbusplus::bus::match;
     auto handler = [dbusQueryShr = this->getSharedPtr(),
                     actualProperties = std::ref(this->getSearchPropertiesMap()),
-                    entity](sdbusplus::message::message& message) {
-        DBusInterfacesMap interfacesAdded;
-        sdbusplus::message::object_path objectPath;
+                    entity](const sdbusplus::message::object_path& objectPath,
+                            const DBusInterfacesMap& interfacesAdded,
+                            const std::string& sender) -> bool {
         InterfaceList interfacesList;
-
-        try
-        {
-            message.read(objectPath, interfacesAdded);
-        }
-        catch (sdbusplus::exception_t& ex)
-        {
-            log<level::ERR>("Failed to process DBus signal handler",
-                            entry("SIGNAL=InterfaceAdded"),
-                            entry("DBUS_OBJ=%s", message.get_path()),
-                            entry("ERROR=%s", ex.what()));
-            return;
-        }
-
         const std::string& objectPathStr = objectPath.str;
+
         try
         {
             const ServiceName serviceName =
-                dbusQueryShr->getConnect()->getWellKnownServiceName(
-                    message.get_sender());
+                dbusQueryShr->getConnect()->getWellKnownServiceName(sender);
 
             for (const auto& [interfaceName, _] : interfacesAdded)
             {
@@ -683,7 +672,7 @@ void DBusQuery::registerObjectCreationObserver(
             if (!dbusQueryShr->checkCriteria(objectPath, interfacesList,
                                              serviceName))
             {
-                return;
+                return false;
             }
             // fill actual properties from statically defined map.
             // this is must have because the interfacesAdded might missing a
@@ -697,7 +686,7 @@ void DBusQuery::registerObjectCreationObserver(
             log<level::DEBUG>(
                 "Create instance from 'InterfaceAdded' signal handler",
                 entry("SIGNAL=InterfaceAdded"),
-                entry("DBUS_OBJ=%s", message.get_path()));
+                entry("DBUS_OBJ=%s", objectPathStr.c_str()));
 
             auto entityInstance = dbusQueryShr->createInstance(
                 serviceName, objectPathStr, interfacesList);
@@ -718,13 +707,14 @@ void DBusQuery::registerObjectCreationObserver(
             log<level::DEBUG>("Can't handle interfacesAdded signal",
                               entry("ERROR=%s", e.what()),
                               entry("SIGNAL=InterfaceAdded"),
-                              entry("DBUS_OBJ=%s", message.get_path()));
-            return;
+                              entry("DBUS_OBJ=%s", objectPathStr.c_str()));
+            return false;
         }
+
+        return true;
     };
 
-    addObserver(getConnect()->createWatcher(rules::interfacesAdded(),
-                                            std::move(handler)));
+    DBusQuery::instanceCreateHandlers.push_back(std::move(handler));
 }
 
 void DBusQuery::registerObjectRemovingObserver(
@@ -733,41 +723,27 @@ void DBusQuery::registerObjectRemovingObserver(
     using namespace sdbusplus::bus::match;
 
     auto handler = [entity, dbusQueryWeak = this->getWeakPtr()](
-                       sdbusplus::message::message& message) {
-        sdbusplus::message::object_path objectPath;
-        InterfaceList removedInterfaces;
-
-        try
-        {
-            message.read(objectPath, removedInterfaces);
-        }
-        catch (sdbusplus::exception_t& ex)
-        {
-            log<level::ERR>("Failed to process DBus signal handler",
-                            entry("SIGNAL=InterfaceRemoved"),
-                            entry("DBUS_OBJ=%s", message.get_path()),
-                            entry("ERROR=%s", ex.what()));
-            return;
-        }
-
+                       const sdbusplus::message::object_path& objectPath,
+                       const InterfaceList& removedInterfaces,
+                       const std::string& sender) -> bool {
         const std::string& objectPathStr = objectPath.str;
         try
         {
             const ServiceName serviceName =
                 dbusQueryWeak.lock()->getConnect()->getWellKnownServiceName(
-                    message.get_sender());
+                    sender);
             auto instanceHash =
                 DBusInstance::getHash(serviceName, objectPathStr);
 
             log<level::DEBUG>(
                 "Remove instance from 'InterfaceRemoved' signal handler",
                 entry("SIGNAL=InterfaceRemoved"),
-                entry("DBUS_OBJ=%s", message.get_path()));
+                entry("DBUS_OBJ=%s", objectPathStr.c_str()));
 
             if (!dbusQueryWeak.lock()->checkCriteria(
                     objectPath, removedInterfaces, serviceName))
             {
-                return;
+                return false;
             }
 
             entity.get().removeInstance(instanceHash);
@@ -777,13 +753,56 @@ void DBusQuery::registerObjectRemovingObserver(
             log<level::DEBUG>("Can't handle interfaceRemoved signal",
                               entry("ERROR=%s", e.what()),
                               entry("SIGNAL=InterfaceRemoved"),
-                              entry("DBUS_OBJ=%s", message.get_path()));
-            return;
+                              entry("DBUS_OBJ=%s", objectPathStr.c_str()));
+            return false;
         }
+
+        return true;
     };
 
-    addObserver(this->getConnect()->createWatcher(rules::interfacesRemoved(),
-                                                  std::move(handler)));
+    DBusQuery::instanceRemoveHandlers.push_back(std::move(handler));
+}
+
+template <typename TInterfacesDict, typename TCacheUpdatingDict>
+bool DBusQuery::processGlobalSignal(sdbusplus::message::message& message,
+                                    const TCacheUpdatingDict& handlers)
+{
+    sdbusplus::message::object_path objectPath;
+    TInterfacesDict interfacesDict;
+    bool status = false;
+
+    try
+    {
+        message.read(objectPath, interfacesDict);
+    }
+    catch (sdbusplus::exception_t& ex)
+    {
+        log<level::ERR>("Failed to process DBus signal handler",
+                        entry("DBUS_OBJ=%s", message.get_path()),
+                        entry("ERROR=%s", ex.what()));
+        return status;
+    }
+
+    for (const auto& handler : handlers)
+    {
+        if (handler(objectPath, interfacesDict, message.get_sender()))
+        {
+            status = true;
+        }
+    }
+    return status;
+}
+
+void DBusQuery::processObjectCreate(sdbusplus::message::message& message)
+{
+    processGlobalSignal<DBusInterfacesMap>(message,
+                                           DBusQuery::instanceCreateHandlers);
+}
+
+void DBusQuery::processObjectRemove(sdbusplus::message::message& message)
+{
+    processGlobalSignal<InterfaceList>(message,
+                                       DBusQuery::instanceRemoveHandlers);
 }
 
 const DBusPropertyFormatters&
