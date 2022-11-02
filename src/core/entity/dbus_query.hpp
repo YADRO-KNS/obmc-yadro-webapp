@@ -395,6 +395,15 @@ class DBusQuery : public IQuery
         static const dbus::DBusPropertyEndpointMap dictionary{__VA_ARGS__};    \
         return dictionary;                                                     \
     }
+    template <typename TInterfacesDict>
+    using CacheUpdatingHandler =
+        std::function<bool(const sdbusplus::message::object_path&,
+                           const TInterfacesDict&, const std::string&)>;
+    template <typename TInterfacesDict>
+    using CacheUpdatingHandlers =
+        std::vector<CacheUpdatingHandler<TInterfacesDict>>;
+    using InstanceCreateHandlers = CacheUpdatingHandlers<DBusInterfacesMap>;
+    using InstanceRemoveHandlers = CacheUpdatingHandlers<InterfaceList>;
 
   public:
     using DefaultValueSetter =
@@ -452,6 +461,9 @@ class DBusQuery : public IQuery
         registerObjectRemovingObserver(entity);
     }
 
+    static void processObjectCreate(sdbusplus::message::message& message);
+
+    static void processObjectRemove(sdbusplus::message::message& message);
   protected:
     using FormatterFn = std::function<const DbusVariantType(
         const PropertyName&, const DbusVariantType&, DBusInstancePtr)>;
@@ -478,12 +490,18 @@ class DBusQuery : public IQuery
     void
         registerObjectRemovingObserver(std::reference_wrapper<entity::IEntity>);
 
+    template <typename TInterfacesDict, typename TCacheUpdatingDict>
+    static bool processGlobalSignal(sdbusplus::message::message& message,
+                                    const TCacheUpdatingDict& handlers);
+
   protected:
     const DBusConnectUni& getConnect();
     const DBusConnectUni& getConnect() const;
 
   private:
     std::vector<sdbusplus::bus::match::match> observers;
+    static InstanceCreateHandlers instanceCreateHandlers;
+    static InstanceRemoveHandlers instanceRemoveHandlers;
 };
 
 class IFormatter

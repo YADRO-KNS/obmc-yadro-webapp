@@ -286,6 +286,10 @@ class DBusConnect : protected IConnect
      */
     void setServiceName(const std::string& uniqueName,
                         const std::string& wellKnownName);
+    /**
+     * @brief Configure dbus-object adding/removing hanlders
+     */
+    void configureObjectManagingHandlers();
 
   protected:
     /** flag to indicate is dbus-signals watcher thread alive */
@@ -296,6 +300,8 @@ class DBusConnect : protected IConnect
     std::unique_ptr<std::thread> thread;
     /** DBus unique to well-known service names dictionary */
     std::map<std::string, std::string> serviceNamesDict;
+    /** Global singal handlers dict to store sdbusplus matchers */
+    std::vector<sdbusplus::bus::match::match> globalSignalHandlers;
 };
 
 /**
