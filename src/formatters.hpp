@@ -122,6 +122,30 @@ class StrHexToNumberFormatter : public query::dbus::IFormatter
     }
 };
 
+class NumberToStringFormatter : public query::dbus::IFormatter
+{
+  public:
+    ~NumberToStringFormatter() override = default;
+
+    const DbusVariantType format(const PropertyName&,
+                                 const DbusVariantType& value) override
+    {
+        return std::visit(
+            [](const auto& value) -> const DbusVariantType {
+                using TValue = std::decay_t<decltype(value)>;
+                if constexpr (std::is_arithmetic_v<TValue>)
+                {
+                    return std::to_string(value);
+                }
+                else
+                {
+                    return std::nullptr_t(nullptr);
+                }
+            },
+            value);
+    }
+};
+
 class TrimFormatter : public query::dbus::IFormatter
 {
   public:
