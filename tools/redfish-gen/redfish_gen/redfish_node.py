@@ -352,7 +352,10 @@ class RedfishNode:
         return ""
 
     def fieldIdGetterDefinition(self) -> str:
-        return "createAction<StringGetter>(nameFieldId, fieldId)"
+        if self.schema is not None:
+            return "createAction<StringGetter>(nameFieldId, fieldId),"
+
+        return "/* The unique identifier is absent */"
 
 
 class DynamicRedfishNode(RedfishNode):
@@ -403,7 +406,7 @@ class DynamicRedfishNode(RedfishNode):
         return ""
 
     def fieldIdGetterDefinition(self) -> str:
-        return "createAction<CallableGetter>(nameFieldId, std::bind(&ParameterizedNode<%s>::getParameterValue, this))" % self.classname()
+        return "createAction<CallableGetter>(nameFieldId, std::bind(&ParameterizedNode<%s>::getParameterValue, this))," % self.classname()
 
     def parameter_template(self):
         if isinstance(self.node_parameter(), StaticNodeParameter):

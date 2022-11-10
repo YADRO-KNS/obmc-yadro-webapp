@@ -87,7 +87,7 @@ class ${instance.classname()} : ${instance.base_inherit_node_classname()}
             /** The type of a resource */
             createAction<StringGetter>(nameFieldODataType, fieldODataType),
             /** The unique identifier for this resource within the collection of similar resources */
-            ${instance.fieldIdGetterDefinition()},
+            ${instance.fieldIdGetterDefinition()}
             /** The name of the resource or array member */
             createAction<StringGetter>(nameFieldName, fieldName),
         % if instance.odata_context() is not None:
