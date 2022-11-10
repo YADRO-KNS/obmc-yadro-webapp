@@ -350,7 +350,9 @@ class DimmSMBiosProvider final :
                 DBUS_QUERY_EP_FIELDS_ONLY2(fieldModuleManufacturerID),
                 DBUS_QUERY_EP_FIELDS_ONLY2(fieldModuleProductID),
                 DBUS_QUERY_EP_FIELDS_ONLY2(fieldPmRegionNumberLimit),
-                DBUS_QUERY_EP_FIELDS_ONLY2(fieldRevisionCode),
+                DBUS_QUERY_EP_SET_FORMATTERS2(fieldRevisionCode,
+                    DBUS_QUERY_EP_CSTR(NumberToStringFormatter)
+                ),
                 DBUS_QUERY_EP_FIELDS_ONLY2(fieldSlot),
                 DBUS_QUERY_EP_FIELDS_ONLY2(fieldSocket),
                 DBUS_QUERY_EP_FIELDS_ONLY2(fieldSpareDeviceCount),
