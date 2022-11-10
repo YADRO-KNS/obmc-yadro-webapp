@@ -633,6 +633,14 @@ class Node : public INode
             void process(const RedfishContextPtr& ctx) override
             {
                 const auto valVisitor = [ctx, this](auto&& value) {
+                    if constexpr (std::is_same_v<std::string,
+                                                 std::decay_t<decltype(value)>>)
+                    {
+                        if (value.empty())
+                        {
+                            return;
+                        }
+                    }
                     ctx->getResponse()->add(field, value);
                 };
                 try
