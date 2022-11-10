@@ -98,7 +98,9 @@ class CpuSMBiosProvider final :
                 DBUS_QUERY_EP_FIELDS_ONLY("ProcessorCharacteristics", fieldCharacteristics),
                 DBUS_QUERY_EP_FIELDS_ONLY("ProcessorCoreCount", fieldCoreCount),
                 DBUS_QUERY_EP_FIELDS_ONLY("ProcessorFamily", fieldFamily),
-                DBUS_QUERY_EP_FIELDS_ONLY("ProcessorId", fieldIdentityReg),
+                DBUS_QUERY_EP_SET_FORMATTERS("ProcessorId", fieldIdentityReg,
+                    DBUS_QUERY_EP_CSTR(NumberToStringFormatter)
+                ),
                 DBUS_QUERY_EP_FIELDS_ONLY("ProcessorManufacturer", fieldManufacturer),
                 DBUS_QUERY_EP_FIELDS_ONLY("ProcessorMaxSpeed", fieldMaxSpeed),
                 DBUS_QUERY_EP_FIELDS_ONLY("ProcessorSocket", fieldSocket),
