@@ -509,9 +509,10 @@ class OemFragment(Fragments):
         if self._oem_spec is None:
             raise Exception("Schema not found: %s" % self.__schema_name())
         self.init_sources(property_spec, definition, self._oem_spec)
+        self._parent_id = parent_id
 
     def schema_type(self):
-        return "#%s.v%s.%s" % (self.oem_name(), self.version().replace(".", "_"), self.oem_name())
+        return "#%s.v%s.%s" % (self.oem_name(), self.version().replace(".", "_"), self._parent_id )
 
     def owning_entity(self):
         return self._oem_spec["owningEntity"]
