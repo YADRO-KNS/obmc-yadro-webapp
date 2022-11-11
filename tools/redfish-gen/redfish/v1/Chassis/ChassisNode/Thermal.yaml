@@ -89,7 +89,7 @@ Thermal:
                   - Name: UpperThresholdCritical
                     SourceField: Sensors::fieldHighCritical
                   - Name: Reading
-                    SourceField: Sensors::fieldReading
+                    SourceField: Sensors::fieldReadingNatural
                   - Name: ReadingUnits
                     SourceField: Sensors::fieldUnit
             Enums:

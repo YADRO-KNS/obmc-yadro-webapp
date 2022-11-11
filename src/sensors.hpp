@@ -55,6 +55,7 @@ class Sensors :
     ENTITY_DECL_FIELD(std::string, Id)
     ENTITY_DECL_FIELD(std::string, Name)
     ENTITY_DECL_FIELD_DEF(double, Reading, 0)
+    ENTITY_DECL_FIELD_DEF(int64_t, ReadingNatural, 0)
     ENTITY_DECL_FIELD_ENUM(Unit, Unit, unkown)
     ENTITY_DECL_FIELD_ENUM(Group, Group, sensors)
 
@@ -386,6 +387,11 @@ class Sensors :
             }
         }
 
+        void setNaturalReading(const DBusInstancePtr& instance) const
+        {
+            setFieldReadingNatural(instance, getFieldReading(instance));
+        }
+
         void supplementByStaticFields(
             const DBusInstancePtr& instance) const override
         {
@@ -394,6 +400,7 @@ class Sensors :
             this->setStatus(instance);
             this->setState(instance);
             this->setGroup(instance);
+            this->setNaturalReading(instance);
         }
     };
 
@@ -405,6 +412,7 @@ class Sensors :
         this->createMember(fieldStatus);
         this->createMember(fieldState);
         this->createMember(fieldGroup);
+        this->createMember(fieldReadingNatural);
     }
     ~Sensors() override = default;
 
