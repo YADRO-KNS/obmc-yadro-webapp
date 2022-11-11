@@ -86,6 +86,7 @@ class PCIeProvider final :
     ENTITY_DECL_FIELD(std::string, Subsystem)
     /* Dynamic fields */
     ENTITY_DECL_FIELD(std::string, FunctionId)
+    ENTITY_DECL_FIELD_DEF(uint8_t, FunctionIdNumerical, 0U)
     ENTITY_DECL_FIELD(std::string, ClassCode)
     ENTITY_DECL_FIELD_DEF(uint8_t, DeviceClassId, otherDeviceClassId)
     ENTITY_DECL_FIELD_ENUM(DeviceClass, DeviceClass, other)
@@ -513,6 +514,8 @@ class PCIeFunction final :
                     // Set the PCI Function ID
                     PCIeProvider::setFieldFunctionId(targetInstance,
                                                      funcIndexStr);
+                    PCIeProvider::setFieldFunctionIdNumerical(targetInstance,
+                                                              funcIndex);
 
                     // Directly copy member instance from provider
                     for (auto directlyCopyMember : directlyCopyEntityMembers)
@@ -560,6 +563,7 @@ class PCIeFunction final :
                 PCIeProvider::fieldRevisionId,
                 PCIeProvider::fieldSubsystemId,
                 PCIeProvider::fieldFunctionId,
+                PCIeProvider::fieldFunctionIdNumerical,
                 PCIeProvider::fieldSubsystemName,
                 PCIeProvider::fieldSubsystemVendorId,
                 PCIeProvider::fieldVendorId,
