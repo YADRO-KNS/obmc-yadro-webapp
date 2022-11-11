@@ -141,10 +141,11 @@ class RedfishContext
      * @param request
      */
     explicit RedfishContext(const RequestPtr& request) :
-        request(request), response(std::make_shared<RedfishResponse>(
-                              request->isBrowserRequest())),
-        anchor(request->getUriPath() + "#")
-    {}
+        request(request),
+        response(std::make_shared<RedfishResponse>(request->isBrowserRequest()))
+    {
+        initAnchor(request->getUriPath());
+    }
     explicit RedfishContext(const RedfishContext& other) :
         request(other.request), response(std::make_shared<RedfishResponse>(
                                     request->isBrowserRequest())),
@@ -288,6 +289,18 @@ class RedfishContext
     void addAnchorSegment(const std::string& segment)
     {
         anchor = anchor + "/" + segment;
+    }
+
+  protected:
+    inline void initAnchor(const std::string& uri)
+    {
+        if (uri.ends_with('/'))
+        {
+            this->anchor = uri.substr(0, uri.length() - 1) + "#";
+            return;
+        }
+
+        anchor = uri + "#";
     }
 
   private:
