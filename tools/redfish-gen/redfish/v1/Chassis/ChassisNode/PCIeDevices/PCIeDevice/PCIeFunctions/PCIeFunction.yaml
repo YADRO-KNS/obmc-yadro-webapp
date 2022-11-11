@@ -17,7 +17,7 @@ PCIeFunction@dynamic:
           - Source: PCIeFunction
             Fields:
               - Name: Id
-                SourceField: PCIeProvider::fieldFunctionId
+                SourceField: PCIeProvider::fieldFunctionIdNumerical
               - Name: ClassCode
                 SourceField: PCIeProvider::fieldClassCode
               - Name: DeviceClass
