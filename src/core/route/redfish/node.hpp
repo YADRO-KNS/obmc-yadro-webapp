@@ -32,6 +32,7 @@ class IParameterizedNode
     virtual ~IParameterizedNode() = default;
 
     virtual const std::string getParameterValue() const = 0;
+    virtual const std::string& getNodeId() const = 0;
     virtual const entity::IEntity::ConditionsList
         getEntityCondition() const = 0;
     virtual const entity::IEntity::InstancePtr getTargetInstance() const = 0;
@@ -109,6 +110,11 @@ class ParameterizedNode : public IParameterizedNode
     const std::string getParameterValue() const override
     {
         return pnCtx->decodeUriSegment(value);
+    }
+
+    const std::string& getNodeId() const override
+    {
+        return value;
     }
 
     const entity::IEntity::InstancePtr getTargetInstance() const override

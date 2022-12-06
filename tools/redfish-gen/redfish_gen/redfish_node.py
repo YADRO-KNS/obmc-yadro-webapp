@@ -406,7 +406,7 @@ class DynamicRedfishNode(RedfishNode):
         return ""
 
     def fieldIdGetterDefinition(self) -> str:
-        return "createAction<CallableGetter>(nameFieldId, std::bind(&ParameterizedNode<%s>::getParameterValue, this))," % self.classname()
+        return "createAction<CallableGetter>(nameFieldId, std::bind(&ParameterizedNode<%s>::getNodeId, this))," % self.classname()
 
     def parameter_template(self):
         if isinstance(self.node_parameter(), StaticNodeParameter):
