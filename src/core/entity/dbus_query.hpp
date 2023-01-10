@@ -5,8 +5,10 @@
 
 #include <core/connect/dbus_connect.hpp>
 #include <core/entity/entity.hpp>
+#include <core/entity/event.hpp>
 #include <sdbusplus/bus/match.hpp>
 
+#include <atomic>
 #include <functional>
 #include <map>
 #include <tuple>
@@ -87,14 +89,23 @@ class DBusInstance final :
 {
     /** @brief Type of instance hash */
     using InstanceHash = std::size_t;
+    /** @brief The dictionary type of dbus-match watchers */
+    using WatchersMap =
+        std::map<InstanceHash, std::vector<sdbusplus::bus::match::match>>;
     /** @brief The DBus service of instance */
     const std::string serviceName;
     /** @brief The DBus object path of instace*/
     const std::string objectPath;
+    /**
+     * @brief The state of instance.
+     *        This flag determines whether each target property is obtained or
+     *        not.
+     */
+    bool state;
     /** @brief The EP configuration (properties, entity-members, formatters,
      *         validators)
      */
-    const DBusPropertyEndpointMap& targetProperties;
+    const DBusPropertyEndpointMap targetProperties;
     /**
      * @brief The weak-pointer to the query object that is obtained instace from
      *        dbus
@@ -108,7 +119,18 @@ class DBusInstance final :
      * @brief watchers to observe the object/properties signals to
      *        remove/update
      */
-    std::vector<sdbusplus::bus::match::match> listeners;
+    static WatchersMap listeners;
+    /**
+     * @brief when instances are removed, it is requried to clean up the dictionary
+     *        of registered dbus-match watchers. This dictionary contains those
+     *        instances that were already removed but haven't yet been pruned.
+     */
+    static std::vector<InstanceHash> toCleanupInstances;
+
+    /**
+     * @brief The DBusInstances internal resources access guard.
+     */
+    static std::atomic<std::thread::id> instanceAccessGuard;
 
   public:
     DBusInstance(const DBusInstance&) = delete;
@@ -129,9 +151,10 @@ class DBusInstance final :
     explicit DBusInstance(const std::string& inServiceName,
                           const std::string& inObjectPath,
                           const DBusPropertyEndpointMap& targetPropertiesDict,
-                          const DBusQueryConstWeakPtr& queryObject) noexcept :
+                          const DBusQueryConstWeakPtr& queryObject,
+                          bool state = false) noexcept :
         Entity::StaticInstance(inServiceName + inObjectPath),
-        serviceName(inServiceName), objectPath(inObjectPath),
+        serviceName(inServiceName), objectPath(inObjectPath), state(state),
         targetProperties(targetPropertiesDict), dbusQuery(queryObject)
     {
         log<level::DEBUG>("Create DBus instance cache",
@@ -154,7 +177,10 @@ class DBusInstance final :
      * @brief Destroy the DBusInstance
      *
      */
-    virtual ~DBusInstance() = default;
+    virtual ~DBusInstance()
+    {
+        markInstanceIsUnavailable(*this);
+    }
 
     /**
      * @brief Get the object instances with expanded complex types(e.g.
@@ -215,6 +241,8 @@ class DBusInstance final :
      *
      * @param DBusConnectUni             - connection to the DBus
      * @param InterfaceName              - interface to obtain properties
+     *
+     * @throw std::runtime_error         - if failed to receive properties
      * @return const DBusPropertiesMap   - The dictionary of properties
      */
     const DBusPropertiesMap queryProperties(const connect::DBusConnectUni&,
@@ -333,7 +361,36 @@ class DBusInstance final :
      */
     void initDefaultFieldsValue() override;
 
+    /**
+     * @brief Clean up dbus-match watchers
+     *
+     * @note thread-safe
+     */
+    static void cleanupInstacesWatchers();
+
+    virtual void initialize();
+
+    void verifyState() override;
+
+    void setUninitialized() override
+    {
+        this->state = false;
+    }
+
   protected:
+    void setInitialized()
+    {
+        this->state = true;
+    }
+
+    /**
+     * @brief Mark that dbus-match watchers must be down for the specified
+     *        DBusInstance.
+     *
+     * @note thread-safe
+     */
+    static void markInstanceIsUnavailable(const DBusInstance&);
+
     /**
      * @brief Get setters for specified interfaces.
      *        The setters dictionary origin from endpoint dictionary
@@ -343,9 +400,53 @@ class DBusInstance final :
      */
     const DBusPropertySetters&
         dbusPropertySetters(const InterfaceName& interface) const;
+
+  private:
+    /**
+     * @brief Lock access to the DBusInstances internal resources.
+     *
+     * @note Thread safe, non-blocking (like spin-lock), global scope
+     *
+     * @return bool - true if locked, false if protection is not required.
+     */
+    inline static bool instanceAccessGuardLock()
+    {
+        using namespace std::chrono;
+        using namespace std::chrono_literals;
+
+        auto vocation = std::thread::id(0);
+        auto currentThreadId = std::this_thread::get_id();
+
+        /* non-blocking guard to prevent onetime access to the
+         * `toCleanupInstances` from different threads
+         */
+        while (!instanceAccessGuard.compare_exchange_strong(
+            vocation, currentThreadId, std::memory_order_release))
+        {
+            if (vocation == currentThreadId)
+            {
+                return false;
+            }
+            std::this_thread::sleep_for(10ms);
+            vocation = std::thread::id(0);
+        }
+
+        return true;
+    }
+
+    /**
+     * @brief Unlock access to the DBusInstances internal resources.
+     *
+     * @note Thread safe, non-blocking (like spin-lock), global scope
+     *
+     */
+    inline static void instanceAccessGuardUnlock()
+    {
+        instanceAccessGuard.store(std::thread::id(0));
+    }
 };
 
-class DBusQuery : public IQuery
+class DBusQuery : public IQuery, public virtual Event<app::query::QueryEvent>
 {
 #define DBUS_QUERY_CRIT_IFACES(...) __VA_ARGS__
 #define DBUS_QUERY_DECLARE_CRITERIA(p, ifaces, depth, svc)                     \
@@ -464,6 +565,12 @@ class DBusQuery : public IQuery
     static void processObjectCreate(sdbusplus::message::message& message);
 
     static void processObjectRemove(sdbusplus::message::message& message);
+
+    inline void raiseError() const
+    {
+        this->emitEvent(app::query::QueryEvent::hasFailures);
+    }
+
   protected:
     using FormatterFn = std::function<const DbusVariantType(
         const PropertyName&, const DbusVariantType&, DBusInstancePtr)>;
@@ -494,7 +601,7 @@ class DBusQuery : public IQuery
     static bool processGlobalSignal(sdbusplus::message::message& message,
                                     const TCacheUpdatingDict& handlers);
 
-  protected:
+  public:
     const DBusConnectUni& getConnect();
     const DBusConnectUni& getConnect() const;
 
@@ -677,6 +784,7 @@ class DBusQueryViaMethodCall :
                 entry("DBUS_INTF=%s", this->interface.c_str()),
                 entry("DBUS_MTD=%s", this->method.c_str()),
                 entry("ERROR=%s", ex.what()));
+            this->raiseError();
         }
         return {};
     }

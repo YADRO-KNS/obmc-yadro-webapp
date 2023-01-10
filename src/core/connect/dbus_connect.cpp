@@ -4,6 +4,7 @@
 #include "dbus_connect.hpp"
 
 #include <systemd/sd-bus.h>
+#include <unistd.h>
 
 #include <core/connect/connect.hpp>
 #include <core/entity/dbus_query.hpp>
@@ -82,6 +83,7 @@ void DBusConnect::process()
 {
     while (alive.load())
     {
+        query::dbus::DBusInstance::cleanupInstacesWatchers();
         try
         {
             {

@@ -180,6 +180,12 @@ class IEntity
          * @return std::size_t hash value
          */
         virtual std::size_t getHash() const = 0;
+
+        virtual void verifyState()
+        {}
+
+        virtual void setUninitialized()
+        {}
     };
 
     /**
@@ -377,9 +383,48 @@ class IEntity
 };
 } // namespace entity
 
+template <typename TEnumEvent>
+class IEvent
+{
+  public:
+    using Subscriber = typename std::function<void(TEnumEvent)>;
+
+    virtual ~IEvent() = default;
+
+    /**
+     * @brief Add subscriber to observe query process events.
+     *
+     * @param[in] subscriber - the subscriber
+     */
+    virtual void addEventSubscriber(const Subscriber&&)
+    {
+        // default: skip
+    }
+
+  protected:
+    /**
+     * @brief Sends a signal to subscribers with specify TEnumEvent.
+     *
+     * @param[in] event - the type of event
+     */
+    virtual void emitEvent(TEnumEvent) const
+    {
+        // default: skip
+    }
+};
+
 namespace query
 {
-class IQuery
+
+enum class QueryEvent
+{
+    hasFailures,
+    instanceAdded,
+    instanceRemoved,
+    instanceUpdated,
+};
+
+class IQuery : public virtual IEvent<QueryEvent>
 {
   public:
     class QueryException : public app::core::exceptions::ObmcAppException

@@ -325,7 +325,12 @@ const std::vector<IEntity::InstancePtr>
 {
     // FIXME need optimization to prevent high load on CPU per request
     std::vector<IEntity::InstancePtr> result;
-    for (const auto [_, instanceObject] : instances)
+    // Copy the list of instances to avoid corruption on iteration, the cache can
+    // be invalidated in another thread at the same time.
+    // The `instances` dictionary contains smart-pointers to IInstance objects,
+    // the copying will be simple and there is no expensive overhead at memory.
+    const auto instTmp = instances;
+    for (const auto [_, instanceObject] : instTmp)
     {
         instanceObject->initDefaultFieldsValue();
 
@@ -334,6 +339,7 @@ const std::vector<IEntity::InstancePtr>
                                           instanceObject);
         for (const auto [_, instance] : complexInstances)
         {
+            instance->verifyState();
             const auto& providers = getProviders();
             for (auto provider : providers)
             {

@@ -16,6 +16,7 @@
 #include <string>
 #include <variant>
 #include <vector>
+#include <atomic>
 
 namespace app
 {
@@ -547,24 +548,65 @@ class NamedEntity : public virtual IEntity
 class CachedSource : public virtual IEntity
 {
     bool initialized;
+    bool hasErrors;
+    /**
+     * BRIEF: the guard to avoid double processing of the populate action.
+     * NOTE:  we must avoid blocking synchronization to prevent failures on
+     *        low-level dbus sockets.
+     */
+    std::atomic<bool> cachingInProgress;
 
   public:
-    CachedSource() : initialized(false)
+    CachedSource() :
+        initialized(false), hasErrors(false), cachingInProgress(false)
     {}
     void populate() override
     {
-        if (!initialized)
+        // if another thread has already accepted an IEntity filling process, then
+        // skip populating and immediately return uninitialized stuff.
+        if (!cachingInProgress && (!initialized || hasErrors))
         {
+            cachingInProgress = true;
+            hasErrors = false;
             resetCache();
             processQueries();
+            cachingInProgress = false;
+
+            if (!hasErrors)
+            {
+                initialized = true;
+            }
         }
-        initialized = true;
     }
     void configure(const query::QueryPtr query) override
     {
         query->configure(std::ref(*this));
+        this->configureQueryEvents();
     }
     ~CachedSource() override = default;
+
+  protected:
+    inline void invalidateCache() noexcept
+    {
+        hasErrors = true;
+    }
+
+    inline void configureQueryEvents() noexcept
+    {
+        using QueryEvent = app::query::QueryEvent;
+        for (const auto& query : this->getQueries())
+        {
+            query->addEventSubscriber([this](QueryEvent event) {
+                if (event == QueryEvent::hasFailures)
+                {
+                    log<level::DEBUG>(
+                        "Invalidate cache of IQuery",
+                        entry("IQUERY=%s", this->getName().c_str()));
+                    this->invalidateCache();
+                }
+            });
+        }
+    }
 };
 
 /**
