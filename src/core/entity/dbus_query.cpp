@@ -21,6 +21,11 @@ using namespace app::connect;
 DBusQuery::InstanceCreateHandlers DBusQuery::instanceCreateHandlers;
 DBusQuery::InstanceRemoveHandlers DBusQuery::instanceRemoveHandlers;
 
+DBusInstance::WatchersMap DBusInstance::listeners;
+std::vector<DBusInstance::InstanceHash> DBusInstance::toCleanupInstances;
+std::atomic<std::thread::id> DBusInstance::instanceAccessGuard =
+    std::thread::id(0);
+
 std::size_t FindObjectDBusQuery::DBusObjectEndpoint::getHash() const
 {
     std::size_t hashPath = std::hash<std::string>{}(path);
@@ -61,6 +66,7 @@ const entity::IEntity::InstanceCollection FindObjectDBusQuery::process()
             entry("DBUS_DEPTH=%d", getQueryCriteria().depth),
             entry("IFACES=%ld", getQueryCriteria().interfaces.size()),
             entry("ERROR=%s", ex.what()));
+        this->raiseError();
     }
 
     for (const auto& [objectPath, serviceInfoList] : mapperResponse)
@@ -217,12 +223,13 @@ const IEntity::InstanceCollection IntrospectServiceDBusQuery::process()
         log<level::DEBUG>("Fail to process DBus query (service introspect)",
                           entry("DBUS_SVC=%s", serviceName.c_str()),
                           entry("ERROR=%s", e.what()));
+        this->raiseError();
     }
     for (const auto& [objectPath, interfaces] : interfacesResponse)
     {
         auto instance = std::make_shared<DBusInstance>(
-            serviceName, objectPath.str, getSearchPropertiesMap(),
-            getWeakPtr());
+            serviceName, objectPath.str, getSearchPropertiesMap(), getWeakPtr(),
+            true);
 
         for (const auto& [interfaceName, propertiesMap] : interfaces)
         {
@@ -283,16 +290,51 @@ const ObjectPath& IntrospectServiceDBusQuery::getObjectPathNamespace() const
     return globalNamespace;
 }
 
+void DBusInstance::initialize()
+{
+    bool hasError = false;
+    setUninitialized();
+    for (const auto& [interface, _] : targetProperties)
+    {
+        try
+        {
+            auto properties =
+                queryProperties(dbusQuery.lock()->getConnect(), interface);
+            fillMembers(interface, properties);
+        }
+        catch (std::runtime_error&)
+        {
+            // if acquiring properties fails then mark IInstance as
+            // uninitialized.
+            hasError = true;
+            continue;
+        }
+    }
+
+    this->dbusQuery.lock()->supplementByStaticFields(this->shared_from_this());
+    if (!hasError)
+    {
+        setInitialized();
+    }
+}
+
+void DBusInstance::verifyState()
+{
+    if (!state)
+    {
+        initialize();
+    }
+}
+
 DBusInstancePtr DBusQuery::createInstance(const ServiceName& serviceName,
                                           const ObjectPath& objectPath,
                                           const InterfaceList& interfaces)
 {
-    auto instance = std::make_shared<DBusInstance>(
-        serviceName, objectPath, getSearchPropertiesMap(), getWeakPtr());
+    DBusPropertyEndpointMap epMap;
     for (const auto& interface : interfaces)
     {
-        if (getSearchPropertiesMap().find(interface) ==
-            getSearchPropertiesMap().end())
+        auto epIt = getSearchPropertiesMap().find(interface);
+        if (epIt == getSearchPropertiesMap().end())
         {
             // specified interface not declared in EP configuration
             log<level::DEBUG>("createInstance(): specified interface not "
@@ -300,11 +342,13 @@ DBusInstancePtr DBusQuery::createInstance(const ServiceName& serviceName,
                               entry("DBUS_IFACE=%s", interface.c_str()));
             continue;
         }
-        auto properties = instance->queryProperties(getConnect(), interface);
-        instance->fillMembers(interface, properties);
+        epMap.emplace(epIt->first, epIt->second);
     }
 
-    supplementByStaticFields(instance);
+    auto instance = std::make_shared<DBusInstance>(serviceName, objectPath,
+                                                   epMap, getWeakPtr());
+
+    instance->initialize();
     return std::forward<DBusInstancePtr>(instance);
 }
 
@@ -387,8 +431,6 @@ const DBusPropertiesMap
     DBusInstance::queryProperties(const connect::DBusConnectUni& connect,
                                   const InterfaceName& interface)
 {
-    DBusPropertiesMap properties;
-
     log<level::DEBUG>("Query properties of DBus instance cache",
                       entry("DBUS_SVC=%s", serviceName.c_str()),
                       entry("DBUS_OBJ=%s", objectPath.c_str()),
@@ -410,6 +452,7 @@ const DBusPropertiesMap
                           entry("DBUS_OBJ=%s", objectPath.c_str()),
                           entry("DBUS_IFACE=%s", interface.c_str()),
                           entry("ERROR=%s", e.what()));
+        throw std::runtime_error("Failed to query properties");
     }
 
     return DBusPropertiesMap();
@@ -457,8 +500,14 @@ void DBusInstance::bindListeners(const connect::DBusConnectUni& connection)
                           entry("SIGNAL=PropertyChanged"),
                           entry("DBUS_OBJ=%s", getObjectPath().c_str()),
                           entry("DBUS_IFACE=%s", interface.c_str()));
-        listeners.emplace_back(
+
+        auto isLocked = instanceAccessGuardLock();
+        listeners[getHash()].emplace_back(
             std::forward<sdbusplus::bus::match::match>(matcher));
+        if (isLocked)
+        {
+            instanceAccessGuardUnlock();
+        }
     }
 }
 
@@ -549,8 +598,9 @@ void DBusInstance::captureDBusAssociations(
         auto complexAssocDummyPath =
             destObjectPath + "__meta/" + destination + "/" + source;
 
-        auto childInstance = std::make_shared<DBusInstance>(
-            serviceName, complexAssocDummyPath, targetProperties, dbusQuery);
+        auto childInstance =
+            std::make_shared<DBusInstance>(serviceName, complexAssocDummyPath,
+                                           targetProperties, dbusQuery, true);
         DBusPropertiesMap properties{
             {fieldSource, source},
             {fieldDestination, destination},
@@ -620,6 +670,36 @@ void DBusInstance::initDefaultFieldsValue()
     {
         this->supplementOrUpdate(
             memberName, std::invoke(memberValueSetter, shared_from_this()));
+    }
+}
+
+void DBusInstance::cleanupInstacesWatchers()
+{
+    auto isLocked = instanceAccessGuardLock();
+
+    for (auto hash : toCleanupInstances)
+    {
+        auto it = listeners.find(hash);
+        if (it != listeners.end())
+        {
+            listeners.erase(it);
+        }
+    }
+    toCleanupInstances.clear();
+
+    if (isLocked)
+    {
+        instanceAccessGuardUnlock();
+    }
+}
+
+void DBusInstance::markInstanceIsUnavailable(const DBusInstance& instance)
+{
+    auto isLocked = instanceAccessGuardLock();
+    toCleanupInstances.emplace_back(instance.getHash());
+    if (isLocked)
+    {
+        instanceAccessGuardUnlock();
     }
 }
 
