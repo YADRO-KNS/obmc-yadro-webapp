@@ -283,6 +283,7 @@ class RebootRemainingProvider final :
   public:
     ENTITY_DECL_FIELD_DEF(uint32_t, AttemptsLeft, 0U)
   private:
+#ifdef DBUS_AUTOREBOOT_ATTEMPTS_ENABLED
     class Query : public dbus::GetObjectDBusQuery
     {
         static constexpr const char* rebootAttemptsIface =
@@ -290,7 +291,7 @@ class RebootRemainingProvider final :
         static constexpr const char* hostService =
             "xyz.openbmc_project.State.Host";
         static constexpr const char* bootObject =
-            "xyz/openbmc_project/state/host0";
+            "/xyz/openbmc_project/state/host0";
 
       public:
         Query() : GetObjectDBusQuery(hostService, bootObject)
@@ -311,7 +312,29 @@ class RebootRemainingProvider final :
         }
         // clang-format: on
     };
+#else
+    class Query : public IQuery
+    {
+      public:
+        Query() = default;
+        ~Query() override = default;
 
+        const IEntity::InstanceCollection process() override
+        {
+            auto instance = std::make_shared<StaticInstance>(
+                "RebootRemainingProviderInstance");
+            // Not on D-Bus. Hardcoded here:
+            // https://github.com/openbmc/phosphor-state-manager/blob/1dbbef42675e94fb1f78edb87d6b11380260535a/meson_options.txt#L71
+            setFieldAttemptsLeft(instance, 3U);
+            return {instance};
+        }
+
+        const QueryFields getFields() const override
+        {
+            return {fieldAttemptsLeft};
+        }
+    };
+#endif
   public:
     RebootRemainingProvider() :
         EntitySupplementProvider(), query(std::make_shared<Query>())
@@ -321,7 +344,7 @@ class RebootRemainingProvider final :
   protected:
     ENTITY_DECL_QUERY(query)
   private:
-    DBusQueryPtr query;
+    QueryPtr query;
 };
 
 class PowerRestorePolicyProvider final :
