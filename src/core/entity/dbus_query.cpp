@@ -291,6 +291,15 @@ DBusInstancePtr DBusQuery::createInstance(const ServiceName& serviceName,
         serviceName, objectPath, getSearchPropertiesMap(), getWeakPtr());
     for (const auto& interface : interfaces)
     {
+        if (getSearchPropertiesMap().find(interface) ==
+            getSearchPropertiesMap().end())
+        {
+            // specified interface not declared in EP configuration
+            log<level::DEBUG>("createInstance(): specified interface not "
+                              "found in the endpoint configuration",
+                              entry("DBUS_IFACE=%s", interface.c_str()));
+            continue;
+        }
         auto properties = instance->queryProperties(getConnect(), interface);
         instance->fillMembers(interface, properties);
     }
