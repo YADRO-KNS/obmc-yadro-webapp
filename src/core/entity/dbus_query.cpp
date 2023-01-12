@@ -816,10 +816,16 @@ void DBusQuery::registerObjectRemovingObserver(
                        const InterfaceList& removedInterfaces,
                        const std::string& sender) -> bool {
         const std::string& objectPathStr = objectPath.str;
+        const auto dbusQuery = dbusQueryWeak.lock();
+        if (!dbusQuery)
+        {
+            return false;
+        }
+
         try
         {
             const ServiceName serviceName =
-                dbusQueryWeak.lock()->getConnect()->getWellKnownServiceName(
+                dbusQuery->getConnect()->getWellKnownServiceName(
                     sender);
             auto instanceHash =
                 DBusInstance::getHash(serviceName, objectPathStr);
@@ -829,7 +835,7 @@ void DBusQuery::registerObjectRemovingObserver(
                 entry("SIGNAL=InterfaceRemoved"),
                 entry("DBUS_OBJ=%s", objectPathStr.c_str()));
 
-            if (!dbusQueryWeak.lock()->checkCriteria(
+            if (!dbusQuery->checkCriteria(
                     objectPath, removedInterfaces, serviceName))
             {
                 return false;
