@@ -30,8 +30,7 @@ using namespace std::chrono_literals;
 using namespace std::literals;
 using namespace phosphor::logging;
 
-DBusConnect::DBusConnect() :
-    dbusCallWindow(DBusCallWindow::ready), alive(false), dbusConnect(nullptr)
+DBusConnect::DBusConnect() : alive(false), dbusConnect(nullptr)
 {}
 
 DBusConnect::~DBusConnect() noexcept
@@ -60,17 +59,7 @@ void DBusConnect::terminate() noexcept
 match::match DBusConnect::createWatcher(const std::string& rule,
                                         match::match::callback_t handler)
 {
-    bool isWatchThread =
-        thread && std::this_thread::get_id() == thread->get_id();
-    // There are cases where dbus-request might be processed from the
-    // dbus-watcher thread. Those cases are not requred to be protected by
-    // the DBusCallGuard.
-    if (isWatchThread)
-    {
-        return std::forward<match::match>(
-            match::match(*getConnect(), rule, handler));
-    }
-    DBusCallGuard<match::match> guard(dbusCallWindow, [&] {
+    DBusCallGuard<match::match> guard(capturedByThreadId, [&] {
         log<level::DEBUG>("Create DBus signal watcher",
                           entry("RULE=%s", rule.c_str()));
         return std::forward<match::match>(
@@ -90,7 +79,7 @@ void DBusConnect::process()
                 // non-blocking wait to allow atomic exchange dbus-call-window
                 // state
                 DBusCallGuard<void> guard(
-                    dbusCallWindow,
+                    capturedByThreadId,
                     [&]() {
                         getConnect()->wait(0);
                         getConnect()->process_discard();
@@ -148,7 +137,7 @@ void DBusConnect::updateWellKnownServiceNameDict()
 
         try
         {
-            auto uniqueServiceName = this->callMethodAndReadUnsafe<std::string>(
+            auto uniqueServiceName = this->callMethodAndRead<std::string>(
                 "org.freedesktop.DBus", "/", "org.freedesktop.DBus",
                 "GetNameOwner", serviceName);
             setServiceName(uniqueServiceName, serviceName);

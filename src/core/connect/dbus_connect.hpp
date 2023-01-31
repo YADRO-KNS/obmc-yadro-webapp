@@ -37,14 +37,7 @@ class DBusConnect : protected IConnect
 {
     /** sdbusplus connection object wrapper around `sd_bus*` */
     std::unique_ptr<sdbusplus::bus::bus> sdbusConnect;
-    enum class DBusCallWindow
-    {
-        uninitialized = 0,
-        ready = 1 << 0U,
-        busy = 1 << 1U,
-        watch = 1 << 2U,
-    };
-    std::atomic<DBusCallWindow> dbusCallWindow;
+    std::atomic<std::thread::id> capturedByThreadId;
 
   private:
     /**
@@ -56,16 +49,17 @@ class DBusConnect : protected IConnect
     template <typename TOpRet>
     class DBusCallGuard
     {
-        std::atomic<DBusCallWindow>& window;
+        std::atomic<std::thread::id>& threadIdRef;
         std::function<TOpRet()> operation;
         const uint8_t priority;
+        bool calledUnsafe;
 
       public:
-        DBusCallGuard(std::atomic<DBusCallWindow>& window,
+        DBusCallGuard(std::atomic<std::thread::id>& capturedByThreadId,
                       std::function<TOpRet()>&& operation,
                       uint8_t priority = 5) :
-            window(window),
-            operation(operation), priority(priority)
+            threadIdRef(capturedByThreadId),
+            operation(operation), priority(priority), calledUnsafe(false)
         {
             if (priority == 0)
             {
@@ -77,12 +71,24 @@ class DBusConnect : protected IConnect
         {
             using namespace std::chrono;
             using namespace std::chrono_literals;
-            auto windowReady = DBusCallWindow::ready;
-            while (!window.compare_exchange_weak(windowReady,
-                                                 DBusCallWindow::busy))
+            auto currentThreadId = std::this_thread::get_id();
+            auto vocationThreadId = std::thread::id(0);
+
+            while (!threadIdRef.compare_exchange_strong(
+                vocationThreadId, currentThreadId, std::memory_order_seq_cst))
             {
+                if (isSameThread(vocationThreadId))
+                {
+                    auto currentThreadHash =
+                        std::hash<std::thread::id>{}(currentThreadId);
+                    log<level::DEBUG>(
+                        "Call DBus unsafe",
+                        entry("THREAD_ID=0x%08X", currentThreadHash));
+                    calledUnsafe = true;
+                    return std::invoke(operation);
+                }
                 std::this_thread::sleep_for(priority * 20us);
-                windowReady = DBusCallWindow::ready;
+                vocationThreadId = std::thread::id(0);
             }
             return std::invoke(operation);
         }
@@ -90,13 +96,31 @@ class DBusConnect : protected IConnect
         /**
          * @brief Destroy the DBusCallGuard object
          *        The configured operation may raise an exception and
-         *        the DBusCallWindow might be frozen in a busy state.
-         *        Destructor cared about safe reverting DBusCallWindow to ready
+         *        the threadIdRef might be frozen in a busy state.
+         *        Destructor cared about safe reverting threadIdRef to ready
          *        state.
          */
         ~DBusCallGuard()
         {
-            window.store(DBusCallWindow::ready, std::memory_order_release);
+            if (calledUnsafe)
+            {
+                return;
+            }
+            threadIdRef.store(std::thread::id(0), std::memory_order_acq_rel);
+        }
+
+      protected:
+        inline bool
+            isSameThread(std::atomic<std::thread::id> capturedByThreadId,
+                         std::thread::id currentThreadId =
+                             std::this_thread::get_id()) noexcept
+        {
+            // After comparing it doesn't matter which value of
+            // `currentThreadId` is.
+            // So do memory_order_relaxed without synchronization.
+            auto tmpThreadId = capturedByThreadId.load();
+            return capturedByThreadId.compare_exchange_strong(
+                currentThreadId, tmpThreadId, std::memory_order_relaxed);
         }
     };
 
@@ -141,18 +165,8 @@ class DBusConnect : protected IConnect
                           const std::string& interface,
                           const std::string& method, Args... args)
     {
-        bool isWatchThread =
-            thread && std::this_thread::get_id() == thread->get_id();
-        // There are cases where dbus-request might be processed from the
-        // dbus-wathcer thread. Those cases are not requred to be protected by
-        // the DBusCallGuard.
-        if (isWatchThread)
-        {
-            return callMethodAndReadUnsafe<Ret, Args...>(
-                busName, path, interface, method, std::forward<Args>(args)...);
-        }
         DBusCallGuard<Ret> guard(
-            dbusCallWindow,
+            capturedByThreadId,
             [&]() -> Ret {
                 return callMethodAndReadUnsafe<Ret, Args...>(
                     busName, path, interface, method,
