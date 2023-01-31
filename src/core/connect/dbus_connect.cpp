@@ -94,6 +94,15 @@ void DBusConnect::process()
             log<level::CRIT>("Fail to process DBus handlers",
                              entry("ERROR=%s", ex.what()),
                              entry("DESC=%s", ex.description()));
+            if (errno == -EIO || errno == -EBADMSG)
+            {
+                log<level::CRIT>(
+                    "DBus connection is corrupt. No way to continue processing "
+                    "with the current context.",
+                    entry("ERROR=%s", ex.what()),
+                    entry("DESC=%s", ex.description()));
+                exit(EXIT_FAILURE);
+            }
         }
     }
     log<level::DEBUG>("Finish task of dbus connection handler");
