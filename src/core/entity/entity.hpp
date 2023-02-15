@@ -8,15 +8,16 @@
 #include <core/exceptions.hpp>
 #include <phosphor-logging/log.hpp>
 
+#include <atomic>
 #include <chrono>
 #include <functional>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <variant>
 #include <vector>
-#include <atomic>
 
 namespace app
 {
@@ -506,6 +507,9 @@ class BaseEntity : virtual public IEntity
   protected:
     static void defaultLinkProvider(const IEntity::InstancePtr& supplement,
                                     const IEntity::InstancePtr& target);
+
+  private:
+    mutable std::mutex mutex;
 };
 
 template <typename TEntity>
