@@ -311,9 +311,8 @@ const IEntity::EntityMemberPtr
 
 const IEntity::InstancePtr BaseEntity::getInstance(std::size_t hash) const
 {
-    mutex.lock();
+    std::lock_guard<std::mutex> lock(mutex);
     auto findInstanceIt = this->instances.find(hash);
-    mutex.unlock();
     if (findInstanceIt == instances.end())
     {
         return IEntity::InstancePtr();

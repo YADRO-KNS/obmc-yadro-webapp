@@ -409,6 +409,7 @@ void ConfigFile::readData()
 {
     static std::mutex m;
     std::lock_guard<std::mutex> lock(m);
+    for (const auto& [storageType, sotrageMetaData] : configFilePathDict)
     {
         readData(storageType, sotrageMetaData.first, sotrageMetaData.second);
     }
@@ -416,7 +417,7 @@ void ConfigFile::readData()
 
 void ConfigFile::commit()
 {
-    for (auto& [storageType, sotrageMetaData] : configFilePathDict)
+    for (const auto& [storageType, sotrageMetaData] : configFilePathDict)
     {
         writeData(storageType, sotrageMetaData.first, sotrageMetaData.second);
     }
