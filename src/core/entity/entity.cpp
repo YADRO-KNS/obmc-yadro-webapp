@@ -311,7 +311,9 @@ const IEntity::EntityMemberPtr
 
 const IEntity::InstancePtr BaseEntity::getInstance(std::size_t hash) const
 {
+    mutex.lock();
     auto findInstanceIt = this->instances.find(hash);
+    mutex.unlock();
     if (findInstanceIt == instances.end())
     {
         return IEntity::InstancePtr();
@@ -329,7 +331,9 @@ const std::vector<IEntity::InstancePtr>
     // be invalidated in another thread at the same time.
     // The `instances` dictionary contains smart-pointers to IInstance objects,
     // the copying will be simple and there is no expensive overhead at memory.
+    mutex.lock();
     const auto instTmp = instances;
+    mutex.unlock();
     for (const auto [_, instanceObject] : instTmp)
     {
         instanceObject->initDefaultFieldsValue();
@@ -369,6 +373,7 @@ const std::vector<IEntity::InstancePtr>
 
 void BaseEntity::setInstances(std::vector<InstancePtr> instancesList)
 {
+    std::lock_guard<std::mutex> lock(mutex);
     for (const auto& inputInstance : instancesList)
     {
         this->instances.insert_or_assign(inputInstance->getHash(),
@@ -378,6 +383,7 @@ void BaseEntity::setInstances(std::vector<InstancePtr> instancesList)
 
 IEntity::InstancePtr BaseEntity::mergeInstance(InstancePtr instance)
 {
+    std::lock_guard<std::mutex> lock(mutex);
     InstancesHashmap::iterator foundIt = instances.find(instance->getHash());
     if (foundIt == instances.end())
     {
@@ -462,8 +468,10 @@ void BaseEntity::processQueries()
 
 void BaseEntity::resetCache()
 {
-    this->instances.clear();
-
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        this->instances.clear();
+    }
     for (auto provider : getProviders())
     {
         provider.first->resetCache();

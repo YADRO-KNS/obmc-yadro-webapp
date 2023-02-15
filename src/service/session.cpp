@@ -12,6 +12,7 @@
 
 #include <fstream>
 #include <memory>
+#include <mutex>
 #include <string_view>
 
 namespace app
@@ -406,7 +407,8 @@ ConfigFile::~ConfigFile()
 
 void ConfigFile::readData()
 {
-    for (auto& [storageType, sotrageMetaData] : configFilePathDict)
+    static std::mutex m;
+    std::lock_guard<std::mutex> lock(m);
     {
         readData(storageType, sotrageMetaData.first, sotrageMetaData.second);
     }
@@ -438,6 +440,7 @@ void ConfigFile::readData(const session::configFileStorageType storageType,
         if (data.is_discarded())
         {
             log<level::ERR>("Error parsing persistent data in json file");
+            return;
         }
         else
         {
