@@ -385,6 +385,7 @@ IEntity::InstancePtr BaseEntity::mergeInstance(InstancePtr instance)
         return instance;
     }
     foundIt->second->supplementOrUpdate(instance);
+    foundIt->second->mergeInternalMetadata(instance);
     return foundIt->second;
 }
 
