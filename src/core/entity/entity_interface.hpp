@@ -163,7 +163,13 @@ class IEntity
             supplementOrUpdate(const MemberName&,
                                const IEntityMember::IInstance::FieldType&) = 0;
         virtual void supplementOrUpdate(const InstancePtr&) = 0;
-
+        /**
+         * @brief Merge internal metadata of IInstance that is defined by
+         *        implementation.
+         *
+         * @param InstancePtr    - Destination IInstance to copy metadata from.
+         */
+        virtual void mergeInternalMetadata(const InstancePtr&) = 0;
         virtual bool hasField(const MemberName&) const = 0;
         virtual bool checkCondition(const ConditionPtr) const = 0;
         virtual const InstanceCollection

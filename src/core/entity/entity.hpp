@@ -421,7 +421,8 @@ class BaseEntity : virtual public IEntity
             const MemberName&,
             const IEntity::IEntityMember::IInstance::FieldType&) override;
         void supplementOrUpdate(const InstancePtr&) override;
-
+        void mergeInternalMetadata(const InstancePtr&) override
+        {}
         bool hasField(const MemberName&) const override;
         bool checkCondition(const ConditionPtr) const override;
         const InstanceCollection

@@ -105,7 +105,7 @@ class DBusInstance final :
     /** @brief The EP configuration (properties, entity-members, formatters,
      *         validators)
      */
-    const DBusPropertyEndpointMap targetProperties;
+    DBusPropertyEndpointMap targetProperties;
     /**
      * @brief The weak-pointer to the query object that is obtained instace from
      *        dbus
@@ -292,6 +292,13 @@ class DBusInstance final :
      * @param FieldType     - The valud to initialize field
      */
     void supplementOrUpdate(const IEntity::InstancePtr&) override;
+    /**
+     * @brief Merge internal metadata of IInstance that is defined by
+     *        implementation.
+     *
+     * @param InstancePtr    - Destination IInstance to copy metadata from.
+     */
+    void mergeInternalMetadata(const IEntity::InstancePtr&) override;
     /**
      * @brief Apply ICondition to the Instance to verify is the instance is
      *        relevant to some condition.
@@ -538,6 +545,10 @@ class DBusQuery : public IQuery, public virtual Event<app::query::QueryEvent>
         checkCriteria(const ObjectPath&, const InterfaceList&,
                       std::optional<ServiceName> = std::nullopt) const = 0;
 
+    virtual bool
+        checkCriteria(const ObjectPath&,
+                      std::optional<ServiceName> = std::nullopt) const = 0;
+
     const QueryFields getFields() const override
     {
         const auto& searchEp = getSearchPropertiesMap();
@@ -600,6 +611,10 @@ class DBusQuery : public IQuery, public virtual Event<app::query::QueryEvent>
     template <typename TInterfacesDict, typename TCacheUpdatingDict>
     static bool processGlobalSignal(sdbusplus::message::message& message,
                                     const TCacheUpdatingDict& handlers);
+
+    InterfaceList introspectDBusObjectInterfaces(
+        const ServiceName& sn, const ObjectPath& op,
+        const InterfaceList& searchInterfaces) const;
 
   public:
     const DBusConnectUni& getConnect();
@@ -674,6 +689,10 @@ class FindObjectDBusQuery :
         checkCriteria(const ObjectPath&, const InterfaceList&,
                       std::optional<ServiceName> = std::nullopt) const override;
 
+    bool
+        checkCriteria(const ObjectPath&,
+                      std::optional<ServiceName> = std::nullopt) const override;
+
   protected:
     static constexpr int32_t noDepth = 0U;
     static constexpr int32_t nextOneDepth = 1U;
@@ -706,6 +725,10 @@ class GetObjectDBusQuery :
         checkCriteria(const ObjectPath&, const InterfaceList&,
                       std::optional<ServiceName> = std::nullopt) const override;
 
+    bool
+        checkCriteria(const ObjectPath&,
+                      std::optional<ServiceName> = std::nullopt) const override;
+
   protected:
     const ObjectPath& getObjectPathNamespace() const override;
 
@@ -733,6 +756,9 @@ class IntrospectServiceDBusQuery :
 
     bool
         checkCriteria(const ObjectPath&, const InterfaceList&,
+                      std::optional<ServiceName> = std::nullopt) const override;
+    bool
+        checkCriteria(const ObjectPath&,
                       std::optional<ServiceName> = std::nullopt) const override;
 
   protected:
@@ -792,6 +818,12 @@ class DBusQueryViaMethodCall :
     bool checkCriteria(
         const ObjectPath&, const InterfaceList&,
         std::optional<ServiceName> = std::nullopt) const override final
+    {
+        // A criteria checkup required to support cache instances only.
+        return false;
+    }
+    bool checkCriteria(const ObjectPath&, std::optional<ServiceName> =
+                                              std::nullopt) const override final
     {
         // A criteria checkup required to support cache instances only.
         return false;
