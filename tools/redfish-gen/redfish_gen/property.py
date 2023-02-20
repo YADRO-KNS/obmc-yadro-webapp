@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 from .globals import __RFG_PATH__
 
 import redfish_gen.generator as generator
+from .redfish_schema import RedfishSchema
 import json
 
 
@@ -139,6 +140,7 @@ class Property():
         if ref_path is None:
             return prop_spec
         prop_path = ref_path.fragment.split("/")
+        properties = definition["definitions"] if "definitions" in definition else None
         for segment in prop_path:
             if len(segment) > 0:
                 if segment == "definitions" and segment not in definition:
@@ -147,11 +149,13 @@ class Property():
                     definition = definition[segment]
                 else:
                     raise ValueError("Invalid specification of %s" % segment)
-        ref = Property.__retrieve_ref(definition)
-        if recursive and ref is not None and not ref.endswith("/idRef"):
-            ref_spec = Property.__resolve_spec_by_ref(urlparse(ref))
-            recursive_spec = ref_spec if ref_spec is not None else global_spec
-            return Property.resolve_property_spec(definition, recursive_spec)
+        if recursive:
+            ref = Property.__retrieve_ref(definition)
+            if ref is not None and not ref.endswith("/idRef"):
+                ref_spec = Property.__resolve_spec_by_ref(urlparse(ref))
+                recursive_spec = ref_spec if ref_spec is not None else global_spec
+                return Property.resolve_property_spec(definition, recursive_spec)
+        RedfishSchema.extract_schemas(properties)
         return definition
 
     def value(self):
