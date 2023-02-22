@@ -5,12 +5,13 @@ import yaml
 import json
 from xml.dom import minidom
 
+from .redfish_base import RedfishBase
 from .property import OemFragment, Property
 from .globals import __RFG_PATH__
 from .node_parameter import NodeParameter, StaticNodeParameter
 
 
-class RedfishNode:
+class RedfishNode(RedfishBase):
     """
     Redfish node instance.
     Contains all relevant configs, provides engine to acquire
@@ -37,30 +38,19 @@ class RedfishNode:
         else:
             raise ValueError("Invalid config definition")
 
-    # Load configs
-    @staticmethod
-    def __load_file(filename, schema_path=__RFG_PATH__):
-        with open(schema_path + "/assets/schemas/bundle/" + filename) as f:
-            data = f.read()
-            return data
-
     def __load_openapi(self):
-        data = self.__load_file(self.__schema_file_openapi())
+        data = self._load_bundle_file(self.__schema_file_openapi())
         return yaml.safe_load(data)
 
     def __load_schema_json(self):
         file = self.__schema_file_json()
         if file is not None:
-            return json.loads(self.__load_file(file))
+            return json.loads(self._load_bundle_file(file))
         return file
 
     def __load_schema_spec_json(self):
-        data = self.__load_file(self.__schema_spec_file_json())
+        data = self._load_bundle_file(self.__schema_spec_file_json())
         return json.loads(data)
-
-    def __load_csdl(self):
-        data = self.__load_file(self.__schema_file_csdl())
-        return minidom.parseString(data)
 
     def __schema_file(self):
         if self._schema_version:
@@ -92,21 +82,20 @@ class RedfishNode:
 
     # Constructor
     def __init__(self, parent, segment, **kwargs):
+        super().__init__(standard="redfish",
+                         schema_name=kwargs.get("Schema", None),
+                         version=str(kwargs.get("Version", "")))
         self._parent = parent
         self._segment = kwargs.get("Segment", segment)
         self._classname = segment
         self._prefix = kwargs.get("Prefix", "").split("/")
         self.__build_id()
-        self._schema_name = kwargs.get("Schema", None)
-        if self._schema_name is None:
-            raise ValueError("Node config: require field 'Schema'")
-        self._schema_version = str(kwargs.get("Version", ""))
         self._y = kwargs
         # Load resourses
         self.openapi = self.__load_openapi()
         self.schema_spec = self.__load_schema_spec_json()
         self.schema = self.__load_schema_json()
-        self.csdl = self.__load_csdl()
+        self.csdl = RedfishBase._load_csdl_file(self.__schema_file_csdl())
 
     def is_dynamic(self):
         return False
@@ -136,11 +125,6 @@ class RedfishNode:
     def __modify(self):
         return self.__actions()("Modify")
 
-    def __available_schema(self):
-        if self.schema is not None:
-            return self.schema
-        return self.schema_spec
-
     def __schema_spec_node(self):
         """
         BUG note
@@ -161,9 +145,6 @@ class RedfishNode:
     # Public
     def name(self):
         return self._y["Name"]
-
-    def schema_id(self):
-        return self._schema_name
 
     def segment(self):
         return self._segment
@@ -192,18 +173,13 @@ class RedfishNode:
         return self._id
 
     def odata_type(self):
-        return self.__available_schema()["title"]
+        return self._available_schema()["title"]
 
     def classname(self):
         return RedfishNode.__formatting_classname(self._classname)
 
     def def_filename(self):
         return self._classname
-
-    def version(self):
-        if self._schema_version:
-            return "v" + self._schema_version.replace(".", "_")
-        return None
 
     def insertable(self):
         return self.__schema_spec_node()["insertable"]
@@ -299,7 +275,7 @@ class RedfishNode:
     def _properties_expand(self, source: str):
         if not self.__check_properties_definition(source):
             return []
-        return Property.build(source, self.schema_id(), self.__available_schema(), self.__get()["Properties"])
+        return Property.build(source, self.schema_id(), self._available_schema(), self.__get()["Properties"])
 
     def links(self):
         return self._properties_expand("Links")
