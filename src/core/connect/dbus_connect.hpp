@@ -87,7 +87,7 @@ class DBusConnect : protected IConnect
                     calledUnsafe = true;
                     return std::invoke(operation);
                 }
-                std::this_thread::sleep_for(priority * 20us);
+                std::this_thread::sleep_for(priority * 500us);
                 vocationThreadId = std::thread::id(0);
             }
             return std::invoke(operation);
