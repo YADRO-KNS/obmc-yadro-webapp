@@ -268,11 +268,19 @@ const ResponsePtr GraphqlRouter::run(const RequestPtr& request)
             throw exceptions::GqlAstError(
                 "Invalid Grapqh AST. Can't parse comming request");
         }
-        gqlNode->accept(&visitor);
-        graphql_ast_to_json(
-            reinterpret_cast<const struct GraphQLAstNode*>(gqlNode.get()));
+        try
+        {
+            gqlNode->accept(&visitor);
+            graphql_ast_to_json(
+                reinterpret_cast<const struct GraphQLAstNode*>(gqlNode.get()));
 
-        result.push_back({fields::respFieldData, visitor.getResult()});
+            result.push_back({fields::respFieldData, visitor.getResult()});
+        }
+        catch (const nlohmann::detail::exception& ex)
+        {
+            log<level::DEBUG>("JSON parse error", entry("ERROR=%s", ex.what()));
+            throw exceptions::GqlInternalError("AST filling error");
+        }
     }
     catch (exceptions::GqlException& gqlException)
     {
