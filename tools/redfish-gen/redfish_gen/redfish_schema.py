@@ -162,7 +162,7 @@ class RedfishSchema(RedfishBase):
     @staticmethod
     def __resolve_remaining_schemas():
         """
-        Runs over added schemas and resolve they in cycle 
+        Runs over added schemas and resolve they in cycle
         until new ones will be resolved.
         """
         resolve_iterations = 10
@@ -380,9 +380,14 @@ class RedfishSchema(RedfishBase):
 
     @staticmethod
     def __json_schema_index_template():
+        # fix: in the "@odata.id" field, the <id> should be started with "/redfish/v1"
+        # to avoid the following errors:
+        #
+        # "ERROR - URI /redfish/swordfish/v1/JsonSchemas/ClassOfService does not match
+        # the following required URIs in Schema of JsonSchemaFile.v1_0_2.JsonSchemaFile"
         return '''{
-    "@odata.context": "/{standard}/{v}/$metadata#JsonSchemaFile.JsonSchemaFile",
-    "@odata.id": "/{standard}/{v}/{JsonSchemas}/{name}",
+    "@odata.context": "/redfish/{v}/$metadata#JsonSchemaFile.JsonSchemaFile",
+    "@odata.id": "/redfish/{v}/{JsonSchemas}/{name}",
     "@odata.type": "#JsonSchemaFile.v1_0_2.JsonSchemaFile",
     "Name": "{name} Schema File",
     "Schema": "#{name}.{name}",
