@@ -254,8 +254,13 @@ const IEntity::InstanceCollection IntrospectServiceDBusQuery::process()
     }
     for (const auto& [objectPath, interfaces] : interfacesResponse)
     {
+        InterfaceList actualInterfaces;
+        for (const auto& [interface, _] : interfaces)
+        {
+            actualInterfaces.emplace_back(interface);
+        }
         auto instance = std::make_shared<DBusInstance>(
-            serviceName, objectPath.str, getSearchPropertiesMap(), getWeakPtr(),
+            serviceName, objectPath.str, actualInterfaces, getWeakPtr(),
             true);
 
         for (const auto& [interfaceName, propertiesMap] : interfaces)
@@ -332,7 +337,7 @@ void DBusInstance::initialize()
 {
     bool hasError = false;
     setUninitialized();
-    for (const auto& [interface, _] : targetProperties)
+    for (const auto& interface : actualInterfaces)
     {
         try
         {
@@ -368,7 +373,7 @@ DBusInstancePtr DBusQuery::createInstance(const ServiceName& serviceName,
                                           const ObjectPath& objectPath,
                                           const InterfaceList& interfaces)
 {
-    DBusPropertyEndpointMap epMap;
+    InterfaceList actualInterfaces;
     for (const auto& interface : interfaces)
     {
         auto epIt = getSearchPropertiesMap().find(interface);
@@ -380,11 +385,11 @@ DBusInstancePtr DBusQuery::createInstance(const ServiceName& serviceName,
                               entry("DBUS_IFACE=%s", interface.c_str()));
             continue;
         }
-        epMap.emplace(epIt->first, epIt->second);
+        actualInterfaces.emplace_back(interface);
     }
 
-    auto instance = std::make_shared<DBusInstance>(serviceName, objectPath,
-                                                   epMap, getWeakPtr());
+    auto instance = std::make_shared<DBusInstance>(
+        serviceName, objectPath, actualInterfaces, getWeakPtr());
 
     instance->initialize();
     return std::forward<DBusInstancePtr>(instance);
@@ -502,7 +507,7 @@ void DBusInstance::bindListeners(const connect::DBusConnectUni& connection)
 
     auto selfWeak = weak_from_this();
 
-    for (auto [interface, _] : targetProperties)
+    for (const auto& interface : actualInterfaces)
     {
         auto matcher = connection->createWatcher(
             rules::propertiesChanged(this->getObjectPath(), interface),
@@ -576,13 +581,21 @@ void DBusInstance::supplementOrUpdate(
 void DBusInstance::mergeInternalMetadata(
     const IEntity::InstancePtr& destination)
 {
+    InterfaceList mergedList;
     auto dbusInstanceDest =
         std::dynamic_pointer_cast<DBusInstance>(destination);
     if (!dbusInstanceDest)
     {
         return;
     }
-    this->targetProperties.merge(dbusInstanceDest->targetProperties);
+
+    std::merge(actualInterfaces.begin(), actualInterfaces.end(),
+               dbusInstanceDest->actualInterfaces.begin(),
+               dbusInstanceDest->actualInterfaces.end(),
+               std::back_inserter(mergedList));
+
+    // asuming, a mutex required
+    actualInterfaces.swap(mergedList);
 }
 
 void DBusInstance::supplementOrUpdate(const IEntity::InstancePtr& destination)
@@ -650,7 +663,7 @@ void DBusInstance::captureDBusAssociations(
 
         auto childInstance =
             std::make_shared<DBusInstance>(serviceName, complexAssocDummyPath,
-                                           targetProperties, dbusQuery, true);
+                                           actualInterfaces, dbusQuery, true);
         DBusPropertiesMap properties{
             {fieldSource, source},
             {fieldDestination, destination},
@@ -756,14 +769,32 @@ void DBusInstance::markInstanceIsUnavailable(const DBusInstance& instance)
 const DBusPropertySetters&
     DBusInstance::dbusPropertySetters(const InterfaceName& interface) const
 {
-    auto findInterface = this->targetProperties.find(interface);
-    if (findInterface == this->targetProperties.end())
+    static const DBusPropertySetters noSetters;
+    const auto query = this->dbusQuery.lock();
+    auto findInterface = std::find_if(
+        actualInterfaces.begin(), actualInterfaces.end(),
+        [interface](const auto& value) { return value == interface; });
+
+    if (findInterface == actualInterfaces.end())
     {
-        static const DBusPropertySetters noSetters;
         return noSetters;
     }
 
-    return std::move(findInterface->second);
+    if (query)
+    {
+        try
+        {
+            return query->dbusPropertySetters(*findInterface);
+        }
+        catch (const std::invalid_argument& iaEx)
+        {
+            log<level::DEBUG>("Specified interface not found at the endpoint "
+                              "criteria definition",
+                              entry("ERROR=%s", iaEx.what()));
+        }
+    }
+
+    return noSetters;
 }
 
 const DbusVariantType DBusQuery::processFormatters(const PropertyName& property,
@@ -784,6 +815,18 @@ const DbusVariantType DBusQuery::processFormatters(const PropertyName& property,
     }
 
     return formattedValue;
+}
+
+const DBusPropertySetters&
+    DBusQuery::dbusPropertySetters(const InterfaceName& interface) const
+{
+    auto findSetters = getSearchPropertiesMap().find(interface);
+    if (findSetters != getSearchPropertiesMap().end())
+    {
+        return findSetters->second;
+    }
+
+    throw std::invalid_argument("Interface not found: " + interface);
 }
 
 void DBusQuery::registerObjectCreationObserver(

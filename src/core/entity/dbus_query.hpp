@@ -102,10 +102,10 @@ class DBusInstance final :
      *        not.
      */
     bool state;
-    /** @brief The EP configuration (properties, entity-members, formatters,
-     *         validators)
+    /** 
+     * @brief Interfaces list that actual for this instance 
      */
-    DBusPropertyEndpointMap targetProperties;
+    InterfaceList actualInterfaces;
     /**
      * @brief The weak-pointer to the query object that is obtained instace from
      *        dbus
@@ -142,20 +142,20 @@ class DBusInstance final :
      * @brief Construct a new DBusInstance object
      *
      * @param inServiceName         - The DBus service name
-     * @param inObjectPath          - the DBus object path
-     * @param targetPropertiesDict  - The EP configuration (properties,
-     *                                entity-members, formatters, validators)
+     * @param inObjectPath          - The DBus object path
+     * @param actualInterfaces      - Interfaces list that actual for this
+     *                                instance
      * @param queryObject           - The weak-pointer to the query that is
      *                                obtained dbus-object
      */
     explicit DBusInstance(const std::string& inServiceName,
                           const std::string& inObjectPath,
-                          const DBusPropertyEndpointMap& targetPropertiesDict,
+                          const InterfaceList& actualInterfaces,
                           const DBusQueryConstWeakPtr& queryObject,
                           bool state = false) noexcept :
         Entity::StaticInstance(inServiceName + inObjectPath),
         serviceName(inServiceName), objectPath(inObjectPath), state(state),
-        targetProperties(targetPropertiesDict), dbusQuery(queryObject)
+        actualInterfaces(actualInterfaces), dbusQuery(queryObject)
     {
         log<level::DEBUG>("Create DBus instance cache",
                           entry("DBUS_SVC=%s", inServiceName.c_str()),
@@ -566,6 +566,18 @@ class DBusQuery : public IQuery, public virtual Event<app::query::QueryEvent>
                           entry("COUNT=%ld", fields.size()));
         return std::forward<const QueryFields>(fields);
     }
+
+    /**
+     * @brief Get setters for specified interfaces.
+     *        The setters dictionary origin from endpoint dictionary
+     *
+     * @throw std::invalid_argument       - setters not found for the specified
+     *                                      interface
+     * @param interface                   - interface name
+     * @return const DBusPropertySetters& - setters for the interface properties
+     */
+    const DBusPropertySetters&
+        dbusPropertySetters(const InterfaceName& interface) const;
 
     void configure(std::reference_wrapper<IEntity> entity) override
     {
