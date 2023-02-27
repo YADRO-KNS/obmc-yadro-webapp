@@ -6,6 +6,7 @@ import os
 import yaml
 from datetime import date
 from .redfish_node import RedfishNode
+from .redfish_schema import RedfishSchema
 from .globals import __BASE_PATH__
 
 
@@ -41,6 +42,7 @@ class Generator:
         template = Generator.render(
             loader, "node.hpp.mako", instance=self.instance, year=year)
         Generator.__write_gen_file(self.instance.classname(), template)
+        RedfishSchema.build("redfish", self.instance.schema_id(), self.instance.version(), resolved=True, schema_json=self.instance.schema)
 
     @staticmethod
     def get_node(schema_name):
@@ -59,6 +61,7 @@ class Generator:
     def generate_all(loader):
         for node in Generator.nodes:
             node.generate(loader=loader)
+        RedfishSchema.generate_all_schema()
 
     @staticmethod
     def __write_gen_file(filename, content, basedir=__BASE_PATH__+"/src/redfish/generated/"):
