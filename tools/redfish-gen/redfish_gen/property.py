@@ -155,7 +155,7 @@ class Property():
                 ref_spec = Property.__resolve_spec_by_ref(urlparse(ref))
                 recursive_spec = ref_spec if ref_spec is not None else global_spec
                 return Property.resolve_property_spec(definition, recursive_spec)
-        RedfishSchema.extract_schemas(properties)
+        RedfishSchema.expand_schema_properties(properties)
         return definition
 
     def value(self):

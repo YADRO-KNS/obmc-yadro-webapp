@@ -7,7 +7,6 @@ from os import path, makedirs, walk
 from xml.dom import minidom
 
 from .redfish_base import RedfishBase
-from .globals import __RFG_PATH__
 from .globals import __WWW_PATH__
 
 class RedfishSchema(RedfishBase):
@@ -16,6 +15,8 @@ class RedfishSchema(RedfishBase):
     Contains all relevant schemes and versions, provides engine to acquire
     required information to prepare schema file
     """
+
+    REDFISH_CSDL_BUNDLE_URL = "http://docs.oasis-open.org/odata/ns/edmx"
 
     schemas = {}
 
@@ -37,8 +38,8 @@ class RedfishSchema(RedfishBase):
         if schema_json is not None:
             self.schema = schema_json
         else:
-            filename = self.__json_full_filename()
-            self.schema = RedfishSchema.load_json(filename)
+            filename = RedfishBase._json_full_filename(self)
+            self.schema = RedfishBase._load_json_file(filename)
 
     def schema_and_version(self):
         if self._schema_version:
@@ -49,29 +50,12 @@ class RedfishSchema(RedfishBase):
     def resolved(self):
         return self._resolved
 
+    def get_json_schema(self):
+        return self.schema
+
     @staticmethod
     def redfish_v1_relative_path(standard: str):
         return path.join(standard, RedfishBase.redfish_version())
-
-    @staticmethod
-    def extract_schemas(properties: dict, deep = 0):
-        """
-        Interates properties recusively to find all inner schema references.
-        """
-        if deep == 10:
-            raise Exception("Unadle to find all inner schemas in properties, max deep recusion reached: %s" % str(deep))
-        if properties is not None:
-            for prop in properties.values():
-                if "anyOf" in prop:
-                    for ref in prop["anyOf"]:
-                        if "$ref" in ref:
-                            RedfishSchema.__add_schema_by_ref_json(ref["$ref"])
-                if "items" in prop:
-                    prop = prop["items"]
-                if "$ref" in prop:
-                    RedfishSchema.__add_schema_by_ref_json(prop["$ref"])
-                if "properties" in prop:
-                    RedfishSchema.extract_schemas(prop["properties"], deep + 1)
 
     @staticmethod
     def __add_schema_by_ref_json(schema_ref):
@@ -130,6 +114,9 @@ class RedfishSchema(RedfishBase):
 
     @staticmethod
     def generate_all_schema():
+        """
+        Main method to generate all schemas.
+        """
         schemaIndexDoc, rootElement = RedfishSchema.__create_csdl_scheme_index()
         jsonSchemas = []
         RedfishSchema.__prepare_additional_schemas()
@@ -140,9 +127,12 @@ class RedfishSchema(RedfishBase):
 
     @staticmethod
     def __prepare_additional_schemas():
-        # add requred redfish schemas
+        """
+        Adds schemas required by the Redfish Sevice Validator.
+        """
         additionalRequiredSchemas = {
-            "RedfishExtensions": "redfish" # or, maybe, "redfish/swordfish"
+            # <Schema name>: <standard> ("redfish" or "redfish/swordfish")
+            "RedfishExtensions": "redfish"
             }
         for schemaName in sorted(additionalRequiredSchemas):
             if schemaName not in RedfishSchema.schemas:
@@ -153,7 +143,11 @@ class RedfishSchema(RedfishBase):
                 print("Warning: additional scheme already added: \"%s\"" % schemaName)
 
     @staticmethod
-    def __prepare_oem_schemas(jsondir=path.join(__RFG_PATH__, "assets", "schemas", "bundle", "json-schema")):
+    def __prepare_oem_schemas():
+        """
+        Finds files by the "Oem*.json" mask and adds to common schemas list.
+        """
+        jsondir = RedfishBase._json_full_path(standard="redfish")
         for root, _, files in (next(walk(jsondir)),):
             for file in files:
                 if file.startswith("Oem") and file.endswith(".json"):
@@ -161,12 +155,16 @@ class RedfishSchema(RedfishBase):
                     _, schemaVersion = RedfishBase.schema_and_version_from(file)
                     # Add Oem*.json schemas only with version
                     if path.isfile(filename) and schemaVersion is not None:
-                        json_spec = RedfishSchema.load_json(filename)
-                        RedfishSchema.extract_schemas(json_spec)
+                        json_spec = RedfishSchema._load_json_file(filename)
+                        RedfishSchema.expand_schema_properties(json_spec)
                         RedfishSchema.__add_schema_by_ref_json(filename)
 
     @staticmethod
     def __resolve_remaining_schemas():
+        """
+        Runs over added schemas and resolve they in cycle 
+        until new ones will be resolved.
+        """
         resolve_iterations = 10
         while resolve_iterations > 0:
             resolve_iterations -= 1
@@ -184,16 +182,34 @@ class RedfishSchema(RedfishBase):
     def __resolve(schema):
         json = schema.get_json_schema()
         if "definitions" in json:
-            RedfishSchema.extract_schemas(json["definitions"])
+            RedfishSchema.expand_schema_properties(json["definitions"])
         schema._resolved = True
+
+    @staticmethod
+    def expand_schema_properties(properties: dict, deep = 0):
+        """
+        Iterates properties recusively to find all inner schema properties and references.
+        """
+        if deep == 10:
+            raise Exception("Unadle to find all inner schemas in properties, max deep recusion reached: %s" % str(deep))
+        if properties is not None:
+            for prop in properties.values():
+                if "anyOf" in prop:
+                    for ref in prop["anyOf"]:
+                        if "$ref" in ref:
+                            RedfishSchema.__add_schema_by_ref_json(ref["$ref"])
+                if "items" in prop:
+                    prop = prop["items"]
+                if "$ref" in prop:
+                    RedfishSchema.__add_schema_by_ref_json(prop["$ref"])
+                if "properties" in prop:
+                    RedfishSchema.expand_schema_properties(prop["properties"], deep + 1)
 
     @staticmethod
     def __build_result_schemas(schemaIndexDoc, rootElement, jsonSchemas):
         keys = sorted(RedfishSchema.schemas)
         for key in keys:
             schema = RedfishSchema.schemas[key]
-            if not schema.resolved():
-                RedfishSchema.__resolve(schema)
             print(" - Generating Redfish scheme file: " + schema.schema_and_version())
             RedfishSchema.__copy_schema_scdl_from_assets(schema)
             RedfishSchema.__add_index_refs_part(schema.standard(), schema.schema_id(), schemaIndexDoc, rootElement)
@@ -204,9 +220,9 @@ class RedfishSchema(RedfishBase):
     @staticmethod
     def __create_csdl_scheme_index():
         domImpl = minidom.getDOMImplementation()
-        csdlDocument = domImpl.createDocument("http://docs.oasis-open.org/odata/ns/edmx", "edmx:Edmx", None) # TODO replace Url with variable
+        csdlDocument = domImpl.createDocument(RedfishSchema.REDFISH_CSDL_BUNDLE_URL, "edmx:Edmx", None)
         rootElement = csdlDocument.documentElement
-        rootElement.setAttributeNS("xmls", "xmlns:edmx", "http://docs.oasis-open.org/odata/ns/edmx") # TODO replace Url with variable
+        rootElement.setAttributeNS("xmls", "xmlns:edmx", RedfishSchema.REDFISH_CSDL_BUNDLE_URL)
         rootElement.setAttribute("Version", "4.0")
         return csdlDocument, rootElement
 
@@ -215,7 +231,7 @@ class RedfishSchema(RedfishBase):
         # Generate "/redfish/v1/$metadata/index.xml"
         csdlSchemeIndex = schemaIndexDoc.toprettyxml(encoding="utf-8")
         csdlOutDir = path.join(__WWW_PATH__, RedfishSchema.redfish_v1_relative_path("redfish"), "$metadata")
-        RedfishBase.write_file(csdlOutDir, "index.xml", csdlSchemeIndex)
+        RedfishBase._write_file(csdlOutDir, "index.xml", csdlSchemeIndex)
         # Generate "/redfish/v1/JsonSchemas/index.json"
         RedfishSchema.__generate_json_index("redfish", jsonSchemas)
 
@@ -227,10 +243,10 @@ class RedfishSchema(RedfishBase):
     @staticmethod
     def __add_index_refs_part(standard: str, schema_name: str, csdlIndexDoc, csdlIndexRoot, scdlOemDir = ""):
         referenceElement = csdlIndexDoc.createElement('edmx:Reference')
-        uri = path.join(RedfishSchema.redfish_v1_relative_path(standard), "schema", RedfishSchema.__schema_file_csdl_by_name(schema_name)) \
+        uri = path.join(RedfishSchema.redfish_v1_relative_path(standard), "schema", RedfishSchema._schema_file_csdl_by_name(schema_name)) \
             if len(scdlOemDir) == 0 else path.join(scdlOemDir, schema_name + "_" + RedfishBase.redfish_version() + ".xml")
         csdlPath = path.join(__WWW_PATH__, uri)
-        csdl = RedfishBase._load_csdl_file(csdlPath)
+        csdl = RedfishBase._load_csdl_file(standard, csdlPath)
         referenceElement.setAttribute("Uri", "/" + uri)
         for schema in csdl.getElementsByTagName("Schema"):
             schemaNamespace = schema.getAttribute("Namespace")
@@ -242,18 +258,18 @@ class RedfishSchema(RedfishBase):
         csdlIndexRoot.appendChild(referenceElement)
 
     @staticmethod
-    def __copy_schema_scdl_from_assets(schema, srcdir=__RFG_PATH__, destdir=__WWW_PATH__):
-        """ Copying scheme file prevents re-formatting XML """
+    def __copy_schema_scdl_from_assets(schema, destdir=__WWW_PATH__):
+        """
+        Copying scheme file prevents re-formatting XML.
+        """
         if schema.is_oem():
             fromfile = path.join(
-                srcdir,
-                RedfishSchema.__oem_relative_path(),
-                RedfishSchema.__schema_file_csdl_by_name(schema.schema_id()))
+                RedfishBase._oem_full_path(),
+                RedfishBase._schema_file_csdl_by_name(schema.schema_id()))
         else:
             fromfile = path.join(
-                srcdir,
-                RedfishSchema.__bundle_csdl_relative_path(schema.standard()),
-                RedfishSchema.__schema_file_csdl_by_name(schema.schema_id()))
+                RedfishBase._bundle_csdl_full_path(schema.standard()),
+                RedfishBase._schema_file_csdl_by_name(schema.schema_id()))
         todir = path.join(
             destdir,
             schema.standard(),
@@ -263,11 +279,11 @@ class RedfishSchema(RedfishBase):
             makedirs(todir, exist_ok=True)
         tofile = path.join(
             todir,
-            RedfishSchema.__schema_file_csdl_by_name(schema.schema_id()))
+            RedfishBase._schema_file_csdl_by_name(schema.schema_id()))
         copy(fromfile, tofile)
 
     @staticmethod
-    def __copy_schema_json_file_from_assets(schema, srcdir=__RFG_PATH__, destdir=__WWW_PATH__):
+    def __copy_schema_json_file_from_assets(schema, destdir=__WWW_PATH__):
         """
         Copy json schema file from the "redfish" and "redfish/swordfish" bundles
         to the destination diretory.
@@ -281,7 +297,7 @@ class RedfishSchema(RedfishBase):
         """
         schemaNameVer = schema.schema_and_version()
 
-        fromfile = schema.__json_full_filename()
+        fromfile = RedfishBase._json_full_filename(schema)
         toname = schema.schema_id()
         redfishdir = path.join(
             schema.standard(),
@@ -309,21 +325,12 @@ class RedfishSchema(RedfishBase):
             RedfishSchema.__write_json_subindex(schema.standard(), redfishdir, schema.schema_id())
         return redfishdir
 
-    def __json_full_filename(self, srcdir=__RFG_PATH__):
-        fromname = RedfishSchema.__map_json_schema_file(self.schema_id())
-        from_name_version = fromname
-        if self._schema_version is not None:
-            from_name_version += ".v" + self._schema_version
-        return path.join(
-            srcdir,
-            RedfishSchema.bundle_relative_path(self._standard),
-            "json-schema",
-            from_name_version + ".json")
-
     @staticmethod
     def __generate_json_index(standard: str, json_schemas):
+        """
+        Generates "/redfish/v1/JsonSchemas/index.json".
+        """
         json_schema_index = RedfishSchema.__create_json_schema_index(standard)
-        # Generate "/redfish/v1/JsonSchemas/index.json"
         for schema_id in json_schemas:
             RedfishSchema.__add_json_scheme_index_member(json_schema_index, schema_id)
         json_schema_index["Members@odata.count"] = len(json_schema_index["Members"])
@@ -333,13 +340,13 @@ class RedfishSchema(RedfishBase):
             RedfishBase.redfish_version(),
             "JsonSchemas"
             )
-        RedfishBase.write_file(json_out_dir, "index.json", content)
+        RedfishBase._write_file(json_out_dir, "index.json", content)
 
     @staticmethod
     def __write_json_subindex(standard: str, relative_schema_path, schema_spec_name, destdir = __WWW_PATH__):
         content = RedfishSchema.__generate_json_schema_index(standard, schema_spec_name, relative_schema_path)
         fullpath = path.join(destdir, relative_schema_path)
-        RedfishBase.write_file(fullpath, "index.json", content)
+        RedfishBase._write_file(fullpath, "index.json", content)
 
     @staticmethod
     def __create_json_schema_index(standard: str):
@@ -363,7 +370,7 @@ class RedfishSchema(RedfishBase):
 
     @staticmethod
     def __generate_json_schema_index(standard: str, schema_spec_name, relative_schema_path):
-        template = RedfishSchema.__generate_json_schema_index_template()
+        template = RedfishSchema.__json_schema_index_template()
         template = template.replace("{name}", schema_spec_name)
         template = template.replace("{relativeSchemaPath}", relative_schema_path)
         template = template.replace("{JsonSchemas}", RedfishBase._json_schemas_relative_dir())
@@ -372,7 +379,7 @@ class RedfishSchema(RedfishBase):
         return template
 
     @staticmethod
-    def __generate_json_schema_index_template():
+    def __json_schema_index_template():
         return '''{
     "@odata.context": "/{standard}/{v}/$metadata#JsonSchemaFile.JsonSchemaFile",
     "@odata.id": "/{standard}/{v}/{JsonSchemas}/{name}",
@@ -396,12 +403,9 @@ class RedfishSchema(RedfishBase):
 }'''
 
     @staticmethod
-    def __find_latest_version_schema_in_json(standartd: str, schema_id, srcdir=__RFG_PATH__):
-        json_bundle_path = path.join(
-            srcdir,
-            RedfishSchema.bundle_relative_path(standartd),
-            "json-schema")
-        schema_id = RedfishSchema.__map_json_schema_file(schema_id)
+    def __find_latest_version_schema_in_json(standard: str, schema_id):
+        json_bundle_path = RedfishBase._json_full_path(standard)
+        schema_id = RedfishSchema._map_json_schema_file(schema_id)
         newest_name = schema_id
         newest_double_ver = 0
         for _, _, files in (next(walk(json_bundle_path)),):
@@ -414,35 +418,6 @@ class RedfishSchema(RedfishBase):
         return RedfishBase._version_from_filename(newest_name)
 
     @staticmethod
-    def __schema_file_csdl_by_name(schema_id):
-        return schema_id + "_" + RedfishBase.redfish_version() + ".xml"
-
-    @staticmethod
-    def __bundle_csdl_relative_path(standard: str):
-        if "swordfish" in standard:
-            # bundle/scdl-schema for SNI Swordfish bundle zip
-            return path.join(RedfishSchema.bundle_relative_path(standard), "csdl-schema")
-        else:
-            # bundle/scdl for DMTF bundle zip
-            return path.join(RedfishSchema.bundle_relative_path(standard), "csdl")
-
-    @staticmethod
-    def bundle_relative_path(standard: str):
-        if "swordfish" in standard:
-            return path.join("assets", "schemas", "swordfish", "bundle")
-        else:
-            return path.join("assets", "schemas", "bundle")
-
-    @staticmethod
-    def __oem_relative_path():
-        return path.join("assets", "oem")
-
-    @staticmethod
-    def load_json(fullname):
-        data = RedfishSchema._load_file_fullpath(fullname)
-        return json.loads(data)
-
-    @staticmethod
     def __version_to_double(schema_spec):
         parts = schema_spec.split(".")
         if len(parts) > 1:
@@ -452,18 +427,6 @@ class RedfishSchema(RedfishBase):
             elif len(ver_parts) >= 2:
                 return int(ver_parts[1]) + 0.00000001
         return 0
-
-    @staticmethod
-    def __map_json_schema_file(basename):
-        schemas_map = RedfishSchema.__json_schema_file_map()
-        if basename in schemas_map:
-            return schemas_map[basename]
-        else:
-            return basename
-
-    @staticmethod
-    def __json_schema_file_map():
-        return { "RedfishExtensions": "redfish-schema" }
 
     @staticmethod
     def __fix_to_dot_version(filename):
