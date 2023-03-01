@@ -26,7 +26,7 @@ DBusQuery::InstanceRemoveHandlers DBusQuery::instanceRemoveHandlers;
 
 DBusInstance::WatchersMap DBusInstance::listeners;
 std::vector<DBusInstance::InstanceHash> DBusInstance::toCleanupInstances;
-std::atomic<std::thread::id> DBusInstance::instanceAccessGuard =
+std::atomic<std::thread::id> DBusInstance::AccessGuard::instanceAccessGuard =
     std::thread::id(0);
 
 std::size_t FindObjectDBusQuery::DBusObjectEndpoint::getHash() const
@@ -260,8 +260,7 @@ const IEntity::InstanceCollection IntrospectServiceDBusQuery::process()
             actualInterfaces.emplace_back(interface);
         }
         auto instance = std::make_shared<DBusInstance>(
-            serviceName, objectPath.str, actualInterfaces, getWeakPtr(),
-            true);
+            serviceName, objectPath.str, actualInterfaces, getWeakPtr(), true);
 
         for (const auto& [interfaceName, propertiesMap] : interfaces)
         {
@@ -337,6 +336,7 @@ void DBusInstance::initialize()
 {
     bool hasError = false;
     setUninitialized();
+    AccessGuard guard;
     for (const auto& interface : actualInterfaces)
     {
         try
@@ -506,6 +506,7 @@ void DBusInstance::bindListeners(const connect::DBusConnectUni& connection)
     using namespace sdbusplus::bus::match;
 
     auto selfWeak = weak_from_this();
+    AccessGuard guard;
 
     for (const auto& interface : actualInterfaces)
     {
@@ -544,13 +545,8 @@ void DBusInstance::bindListeners(const connect::DBusConnectUni& connection)
                           entry("DBUS_OBJ=%s", getObjectPath().c_str()),
                           entry("DBUS_IFACE=%s", interface.c_str()));
 
-        auto isLocked = instanceAccessGuardLock();
         listeners[getHash()].emplace_back(
             std::forward<sdbusplus::bus::match::match>(matcher));
-        if (isLocked)
-        {
-            instanceAccessGuardUnlock();
-        }
     }
 }
 
@@ -589,6 +585,7 @@ void DBusInstance::mergeInternalMetadata(
         return;
     }
 
+    AccessGuard guard;
     std::merge(actualInterfaces.begin(), actualInterfaces.end(),
                dbusInstanceDest->actualInterfaces.begin(),
                dbusInstanceDest->actualInterfaces.end(),
@@ -738,7 +735,7 @@ void DBusInstance::initDefaultFieldsValue()
 
 void DBusInstance::cleanupInstacesWatchers()
 {
-    auto isLocked = instanceAccessGuardLock();
+    AccessGuard guard;
 
     for (auto hash : toCleanupInstances)
     {
@@ -749,21 +746,12 @@ void DBusInstance::cleanupInstacesWatchers()
         }
     }
     toCleanupInstances.clear();
-
-    if (isLocked)
-    {
-        instanceAccessGuardUnlock();
-    }
 }
 
 void DBusInstance::markInstanceIsUnavailable(const DBusInstance& instance)
 {
-    auto isLocked = instanceAccessGuardLock();
+    AccessGuard guard;
     toCleanupInstances.emplace_back(instance.getHash());
-    if (isLocked)
-    {
-        instanceAccessGuardUnlock();
-    }
 }
 
 const DBusPropertySetters&
@@ -771,6 +759,7 @@ const DBusPropertySetters&
 {
     static const DBusPropertySetters noSetters;
     const auto query = this->dbusQuery.lock();
+    AccessGuard guard;
     auto findInterface = std::find_if(
         actualInterfaces.begin(), actualInterfaces.end(),
         [interface](const auto& value) { return value == interface; });

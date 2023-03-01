@@ -102,8 +102,8 @@ class DBusInstance final :
      *        not.
      */
     bool state;
-    /** 
-     * @brief Interfaces list that actual for this instance 
+    /**
+     * @brief Interfaces list that actual for this instance
      */
     InterfaceList actualInterfaces;
     /**
@@ -126,11 +126,6 @@ class DBusInstance final :
      *        instances that were already removed but haven't yet been pruned.
      */
     static std::vector<InstanceHash> toCleanupInstances;
-
-    /**
-     * @brief The DBusInstances internal resources access guard.
-     */
-    static std::atomic<std::thread::id> instanceAccessGuard;
 
   public:
     DBusInstance(const DBusInstance&) = delete;
@@ -410,47 +405,72 @@ class DBusInstance final :
 
   private:
     /**
-     * @brief Lock access to the DBusInstances internal resources.
+     * @brief RAII of access-guard of a non-threadsafe DBusInstace
+     *        resources.
      *
-     * @note Thread safe, non-blocking (like spin-lock), global scope
-     *
-     * @return bool - true if locked, false if protection is not required.
      */
-    inline static bool instanceAccessGuardLock()
+    class AccessGuard final
     {
-        using namespace std::chrono;
-        using namespace std::chrono_literals;
-
-        auto vocation = std::thread::id(0);
-        auto currentThreadId = std::this_thread::get_id();
-
-        /* non-blocking guard to prevent onetime access to the
-         * `toCleanupInstances` from different threads
+        /**
+         * @brief The DBusInstances internal resources access guard.
          */
-        while (!instanceAccessGuard.compare_exchange_strong(
-            vocation, currentThreadId, std::memory_order_release))
+        static std::atomic<std::thread::id> instanceAccessGuard;
+
+        /**
+         * @brief Lock access to the DBusInstances internal resources.
+         *
+         * @note Thread safe, non-blocking (like spin-lock), global scope
+         *
+         * @return bool - true if locked, false if protection is not required.
+         */
+        inline static bool instanceAccessGuardLock()
         {
-            if (vocation == currentThreadId)
+            using namespace std::chrono;
+            using namespace std::chrono_literals;
+
+            auto vocation = std::thread::id(0);
+            auto currentThreadId = std::this_thread::get_id();
+
+            /* non-blocking guard to prevent onetime access to the
+             * `toCleanupInstances` from different threads
+             */
+            while (!instanceAccessGuard.compare_exchange_strong(
+                vocation, currentThreadId, std::memory_order_release))
             {
-                return false;
+                if (vocation == currentThreadId)
+                {
+                    return false;
+                }
+                std::this_thread::sleep_for(10ms);
+                vocation = std::thread::id(0);
             }
-            std::this_thread::sleep_for(10ms);
-            vocation = std::thread::id(0);
+
+            return true;
         }
 
-        return true;
-    }
+        /**
+         * @brief Unlock access to the DBusInstances internal resources.
+         *
+         * @note Thread safe, non-blocking (like spin-lock), global scope
+         *
+         */
+        inline static void instanceAccessGuardUnlock()
+        {
+            instanceAccessGuard.store(std::thread::id(0));
+        }
+        bool isLocked;
 
-    /**
-     * @brief Unlock access to the DBusInstances internal resources.
-     *
-     * @note Thread safe, non-blocking (like spin-lock), global scope
-     *
-     */
-    inline static void instanceAccessGuardUnlock()
-    {
-        instanceAccessGuard.store(std::thread::id(0));
-    }
+      public:
+        explicit AccessGuard() noexcept : isLocked(false)
+        {
+            isLocked = instanceAccessGuardLock();
+        }
+        ~AccessGuard()
+        {
+            if (isLocked)
+                instanceAccessGuardUnlock();
+        }
+    };
 };
 
 class DBusQuery : public IQuery, public virtual Event<app::query::QueryEvent>
