@@ -87,7 +87,7 @@ void DBusConnect::process()
                     10);
                 guard();
             }
-            std::this_thread::sleep_for(1ms);
+            std::this_thread::sleep_for(20ms);
         }
         catch (const sdbusplus::exception_t& ex)
         {

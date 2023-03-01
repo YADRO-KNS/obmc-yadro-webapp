@@ -102,10 +102,10 @@ class DBusInstance final :
      *        not.
      */
     bool state;
-    /** @brief The EP configuration (properties, entity-members, formatters,
-     *         validators)
+    /**
+     * @brief Interfaces list that actual for this instance
      */
-    DBusPropertyEndpointMap targetProperties;
+    InterfaceList actualInterfaces;
     /**
      * @brief The weak-pointer to the query object that is obtained instace from
      *        dbus
@@ -127,11 +127,6 @@ class DBusInstance final :
      */
     static std::vector<InstanceHash> toCleanupInstances;
 
-    /**
-     * @brief The DBusInstances internal resources access guard.
-     */
-    static std::atomic<std::thread::id> instanceAccessGuard;
-
   public:
     DBusInstance(const DBusInstance&) = delete;
     DBusInstance& operator=(const DBusInstance&) = delete;
@@ -142,20 +137,20 @@ class DBusInstance final :
      * @brief Construct a new DBusInstance object
      *
      * @param inServiceName         - The DBus service name
-     * @param inObjectPath          - the DBus object path
-     * @param targetPropertiesDict  - The EP configuration (properties,
-     *                                entity-members, formatters, validators)
+     * @param inObjectPath          - The DBus object path
+     * @param actualInterfaces      - Interfaces list that actual for this
+     *                                instance
      * @param queryObject           - The weak-pointer to the query that is
      *                                obtained dbus-object
      */
     explicit DBusInstance(const std::string& inServiceName,
                           const std::string& inObjectPath,
-                          const DBusPropertyEndpointMap& targetPropertiesDict,
+                          const InterfaceList& actualInterfaces,
                           const DBusQueryConstWeakPtr& queryObject,
                           bool state = false) noexcept :
         Entity::StaticInstance(inServiceName + inObjectPath),
         serviceName(inServiceName), objectPath(inObjectPath), state(state),
-        targetProperties(targetPropertiesDict), dbusQuery(queryObject)
+        actualInterfaces(actualInterfaces), dbusQuery(queryObject)
     {
         log<level::DEBUG>("Create DBus instance cache",
                           entry("DBUS_SVC=%s", inServiceName.c_str()),
@@ -410,47 +405,72 @@ class DBusInstance final :
 
   private:
     /**
-     * @brief Lock access to the DBusInstances internal resources.
+     * @brief RAII of access-guard of a non-threadsafe DBusInstace
+     *        resources.
      *
-     * @note Thread safe, non-blocking (like spin-lock), global scope
-     *
-     * @return bool - true if locked, false if protection is not required.
      */
-    inline static bool instanceAccessGuardLock()
+    class AccessGuard final
     {
-        using namespace std::chrono;
-        using namespace std::chrono_literals;
-
-        auto vocation = std::thread::id(0);
-        auto currentThreadId = std::this_thread::get_id();
-
-        /* non-blocking guard to prevent onetime access to the
-         * `toCleanupInstances` from different threads
+        /**
+         * @brief The DBusInstances internal resources access guard.
          */
-        while (!instanceAccessGuard.compare_exchange_strong(
-            vocation, currentThreadId, std::memory_order_release))
+        static std::atomic<std::thread::id> instanceAccessGuard;
+
+        /**
+         * @brief Lock access to the DBusInstances internal resources.
+         *
+         * @note Thread safe, non-blocking (like spin-lock), global scope
+         *
+         * @return bool - true if locked, false if protection is not required.
+         */
+        inline static bool instanceAccessGuardLock()
         {
-            if (vocation == currentThreadId)
+            using namespace std::chrono;
+            using namespace std::chrono_literals;
+
+            auto vocation = std::thread::id(0);
+            auto currentThreadId = std::this_thread::get_id();
+
+            /* non-blocking guard to prevent onetime access to the
+             * `toCleanupInstances` from different threads
+             */
+            while (!instanceAccessGuard.compare_exchange_strong(
+                vocation, currentThreadId, std::memory_order_release))
             {
-                return false;
+                if (vocation == currentThreadId)
+                {
+                    return false;
+                }
+                std::this_thread::sleep_for(10ms);
+                vocation = std::thread::id(0);
             }
-            std::this_thread::sleep_for(10ms);
-            vocation = std::thread::id(0);
+
+            return true;
         }
 
-        return true;
-    }
+        /**
+         * @brief Unlock access to the DBusInstances internal resources.
+         *
+         * @note Thread safe, non-blocking (like spin-lock), global scope
+         *
+         */
+        inline static void instanceAccessGuardUnlock()
+        {
+            instanceAccessGuard.store(std::thread::id(0));
+        }
+        bool isLocked;
 
-    /**
-     * @brief Unlock access to the DBusInstances internal resources.
-     *
-     * @note Thread safe, non-blocking (like spin-lock), global scope
-     *
-     */
-    inline static void instanceAccessGuardUnlock()
-    {
-        instanceAccessGuard.store(std::thread::id(0));
-    }
+      public:
+        explicit AccessGuard() noexcept : isLocked(false)
+        {
+            isLocked = instanceAccessGuardLock();
+        }
+        ~AccessGuard()
+        {
+            if (isLocked)
+                instanceAccessGuardUnlock();
+        }
+    };
 };
 
 class DBusQuery : public IQuery, public virtual Event<app::query::QueryEvent>
@@ -566,6 +586,18 @@ class DBusQuery : public IQuery, public virtual Event<app::query::QueryEvent>
                           entry("COUNT=%ld", fields.size()));
         return std::forward<const QueryFields>(fields);
     }
+
+    /**
+     * @brief Get setters for specified interfaces.
+     *        The setters dictionary origin from endpoint dictionary
+     *
+     * @throw std::invalid_argument       - setters not found for the specified
+     *                                      interface
+     * @param interface                   - interface name
+     * @return const DBusPropertySetters& - setters for the interface properties
+     */
+    const DBusPropertySetters&
+        dbusPropertySetters(const InterfaceName& interface) const;
 
     void configure(std::reference_wrapper<IEntity> entity) override
     {
